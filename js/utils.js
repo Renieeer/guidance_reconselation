@@ -142,9 +142,13 @@ function setUserInfo() {
     const user = getCurrentUser();
     if (user) {
         const nameEl = document.getElementById('userName');
+        const roleEl = document.getElementById('userRole');
         const avatarEl = document.getElementById('userAvatar');
         
         if (nameEl) nameEl.textContent = user.name;
+        if (roleEl && user.role) {
+            roleEl.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('-', ' ');
+        }
         if (avatarEl) {
             const initials = user.name.split(' ').map(n => n[0]).join('');
             avatarEl.textContent = initials;

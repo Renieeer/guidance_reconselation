@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDO Dashboard - Guidance Management System</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="main-wrapper">
+        <!-- Sidebar -->
+        <?php include '../../includes/sidebar-sdo.php'; ?><!-- Main Content -->
+        <div class="main-content">
+            <!-- Topbar -->
+            <div class="topbar">
+                <div class="topbar-left">
+                    <h1>District Overview Dashboard</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">SD</div>
+                        <div>
+                            <div class="fw-bold" id="userName">SDO</div>
+                            <small class="text-muted" id="userRole">School District Officer</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Content -->
+            <div class="page-content">
+                <!-- District Selection -->
+                <div class="card mb-5">
+                    <label class="fw-500 mb-2">View District Analytics:</label>
+                    <select id="districtFilter" class="form-control" style="max-width: 300px;">
+                        <option value="">All 11 Districts</option>
+                        <option value="district1">District 1</option>
+                        <option value="district2">District 2</option>
+                        <option value="district3">District 3</option>
+                        <option value="district4">District 4</option>
+                        <option value="district5">District 5</option>
+                        <option value="district6">District 6</option>
+                        <option value="district7">District 7</option>
+                        <option value="district8">District 8</option>
+                        <option value="district9">District 9</option>
+                        <option value="district10">District 10</option>
+                        <option value="district11">District 11</option>
+                    </select>
+                </div>
+
+                <!-- Overview Stats -->
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Total Referrals</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-box-arrow-up"></i></div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="totalReferrals">0</div>
+                            <p>Across all 11 districts</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Active Cases</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-arrow-repeat"></i></div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="activeCases">0</div>
+                            <p>Currently in progress</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Resolution Rate</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-check-circle"></i></div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="resolutionRate">0%</div>
+                            <p>Cases closed/resolved</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Schools Reporting</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-buildings"></i></div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="schoolsReporting">0</div>
+                            <p>Active in system</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- District Performance Table -->
+                <div class="table-container mt-5">
+                    <h2 class="mb-4">District Performance Summary</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>District</th>
+                                <th>Schools</th>
+                                <th>Total Referrals</th>
+                                <th>Active Cases</th>
+                                <th>Completed Cases</th>
+                                <th>Avg. Resolution Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="districtTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center p-5 text-muted">Loading district data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/utils.js"></script>
+    <script src="sdo.js"></script>
+</body>
+</html>

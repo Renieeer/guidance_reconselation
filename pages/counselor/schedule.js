@@ -6,6 +6,7 @@ function initSchedulePage() {
     initPage();
     loadAppointmentRequests();
     document.getElementById('editAppointmentForm').addEventListener('submit', submitEditAppointment);
+    document.getElementById('declineAppointmentForm').addEventListener('submit', submitDeclineAppointment);
 }
 
 // ===== APPOINTMENT REQUESTS MANAGEMENT =====
@@ -155,20 +156,47 @@ function submitEditAppointment(e) {
 }
 
 function rejectRequest(requestId) {
-    if (!confirm('Are you sure you want to reject this appointment request?')) return;
-
     const requests = getData('appointmentRequests') || [];
     const request = requests.find(r => r.id === requestId);
 
+    if (!request) return;
+
+    currentEditingAppointmentId = requestId;
+    document.getElementById('declineStudentName').value = request.studentName;
+    document.getElementById('declineReason').value = '';
+    document.getElementById('suggestAlternative').value = '';
+
+    document.getElementById('declineAppointmentModal').style.display = 'flex';
+}
+
+function submitDeclineAppointment(e) {
+    e.preventDefault();
+
+    const requests = getData('appointmentRequests') || [];
+    const request = requests.find(r => r.id === currentEditingAppointmentId);
+
     if (request) {
         request.status = 'rejected';
-        request.counselorNotes = 'Request rejected by counselor';
+        request.counselorNotes = document.getElementById('declineReason').value;
+        
+        // Store alternative suggestion if provided
+        const suggestion = document.getElementById('suggestAlternative').value;
+        if (suggestion) {
+            request.counselorSuggestion = suggestion;
+        }
+        
         request.updatedAt = new Date().toISOString();
 
         saveData('appointmentRequests', requests);
-        showAlert('Request rejected!', 'success');
+        showAlert(`Request from ${request.studentName} has been declined!`, 'success');
+        closeDeclineModal();
         loadAppointmentRequests();
     }
+}
+
+function closeDeclineModal() {
+    document.getElementById('declineAppointmentModal').style.display = 'none';
+    currentEditingAppointmentId = null;
 }
 
 function closeEditModal() {

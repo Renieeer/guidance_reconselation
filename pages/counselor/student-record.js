@@ -1,139 +1,158 @@
 // Student Record Script
 
-let allReferrals = [];
+let allStudents = [];
 let currentStudent = null;
 
 function loadStudentRecords() {
     initPage();
-    allReferrals = getData('referrals') || [];
     
-    document.getElementById('searchStudent').addEventListener('keyup', searchRecords);
-    document.getElementById('gradeFilter').addEventListener('change', searchRecords);
-    document.getElementById('statusFilter').addEventListener('change', searchRecords);
+    // Get user info for school filtering
+    const userInfo = JSON.parse(sessionStorage.getItem('userInfo')) || {};
+    const userSchool = userInfo.school_attended || userInfo.school || '';
     
-    displayRecords(allReferrals);
+    // Fetch students from database
+    fetchStudents(userSchool)
+        .then(() => {
+            // Setup event listeners
+            document.getElementById('searchStudent').addEventListener('keyup', filterStudents);
+            document.getElementById('gradeFilter').addEventListener('change', filterStudents);
+            document.getElementById('statusFilter').addEventListener('change', filterStudents);
+            
+            displayStudents(allStudents);
+        })
+        .catch(error => {
+            console.error('Error loading students:', error);
+            alert('Error loading student records. Please try again.');
+        });
 }
 
-function displayRecords(referrals) {
-    // Get unique students from referrals
-    const students = {};
+function fetchStudents(school) {
+    const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(school)}`;
     
-    referrals.forEach(ref => {
-        if (!students[ref.studentId]) {
-            students[ref.studentId] = {
-                studentName: ref.studentName,
-                studentId: ref.studentId,
-                grade: ref.grade,
-                age: ref.age,
-                section: ref.section,
-                gender: ref.gender,
-                parentGuardian: ref.parentGuardian,
-                parentContact: ref.parentContact,
-                referrals: [],
-                lastContact: ref.dateSubmitted
-            };
-        }
-        students[ref.studentId].referrals.push(ref);
-        if (new Date(ref.dateSubmitted) > new Date(students[ref.studentId].lastContact)) {
-            students[ref.studentId].lastContact = ref.dateSubmitted;
-        }
-    });
+    return fetch(apiUrl)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                allStudents = result.data || [];
+            } else {
+                throw new Error(result.message || 'Failed to fetch students');
+            }
+        });
+}
 
+function displayStudents(students) {
     const tbody = document.getElementById('recordsTableBody');
-    const studentArray = Object.values(students);
 
-    if (studentArray.length === 0) {
+    if (students.length === 0) {
         tbody.innerHTML = `<tr>
             <td colspan="9" style="text-align: center; padding: 30px; color: #999;">No student records found</td>
         </tr>`;
         return;
     }
 
-    tbody.innerHTML = studentArray.map(student => `
+    tbody.innerHTML = students.map(student => `
         <tr>
-            <td><strong>${student.studentName}</strong></td>
-            <td>${student.studentId}</td>
-            <td>${student.grade}</td>
-            <td>${student.age}</td>
-            <td>${student.section}</td>
-            <td><span class="badge badge-pending">${student.referrals.length}</span></td>
-            <td>${formatDate(student.lastContact)}</td>
-            <td>${createBadge(student.referrals.some(r => r.stage === 6) ? 'completed' : 'in-progress')}</td>
+            <td><strong>${student.first_name || ''} ${student.last_name || ''}</strong></td>
+            <td>${student.email || 'N/A'}</td>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td>${student.referral_count || 0}</td>
+            <td>${student.last_referral_date ? formatDate(student.last_referral_date) : 'Never'}</td>
+            <td>${student.referral_count > 0 ? '<span class="badge" style="background: #ff9800;">Active</span>' : '<span class="badge" style="background: #4caf50;">No Case</span>'}</td>
             <td>
-                <button class="btn btn-sm btn-primary" onclick="viewStudentRecord('${student.studentId}')">View</button>
+                <button class="btn btn-sm btn-primary" onclick="viewStudentRecord(${student.id})">View</button>
             </td>
         </tr>
     `).join('');
 }
 
 function viewStudentRecord(studentId) {
-    const student = allReferrals.find(r => r.studentId === studentId);
+    const userInfo = JSON.parse(sessionStorage.getItem('userInfo')) || {};
+    const userSchool = userInfo.school_attended || userInfo.school || '';
     
-    if (!student) return;
+    // Fetch student details
+    fetch(`/guidancemanagment/api/get-student-details.php?student_id=${studentId}&school=${encodeURIComponent(userSchool)}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                currentStudent = result.student;
+                displayStudentDetail(result);
+                openModal('studentDetailModal');
+            } else {
+                alert(result.message || 'Error loading student details');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching student details:', error);
+            alert('Error loading student details');
+        });
+}
 
-    currentStudent = student;
-
-    document.getElementById('modalStudentName').textContent = student.studentName;
-    document.getElementById('modalStudentId').textContent = student.studentId;
-    document.getElementById('modalStudentGrade').textContent = student.grade + ' - ' + student.section;
-    document.getElementById('modalStudentAge').textContent = student.age;
-    document.getElementById('modalStudentGender').textContent = student.gender;
-
-    // Load referral history
-    const studentReferrals = allReferrals.filter(r => r.studentId === studentId);
+function displayStudentDetail(data) {
+    const student = data.student;
+    const referrals = data.referrals || [];
+    
+    // Display student info
+    document.getElementById('modalStudentName').textContent = `${student.first_name} ${student.last_name}`;
+    document.getElementById('modalStudentId').textContent = student.email;
+    document.getElementById('modalStudentGrade').textContent = 'N/A';
+    document.getElementById('modalStudentAge').textContent = 'N/A';
+    document.getElementById('modalStudentGender').textContent = 'N/A';
+    
+    // Display referral history
     const referralList = document.getElementById('modalReferralList');
-    
-    referralList.innerHTML = studentReferrals.map(ref => 
-        `<li><strong>${ref.id}</strong> - ${ref.referralReason} (${formatDate(ref.dateSubmitted)})</li>`
-    ).join('');
-
-    if (studentReferrals.length === 0) {
-        referralList.innerHTML = '<li>No referral history</li>';
+    if (referrals.length === 0) {
+        referralList.innerHTML = '<li style="color: #999;">No referral history</li>';
+    } else {
+        referralList.innerHTML = referrals.map(ref => `
+            <li style="margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                <strong>${ref.referral_reason}</strong><br>
+                <small>Code: ${ref.referral_code}</small><br>
+                <small>Stage: ${ref.stage}/6 | Status: ${ref.status}</small><br>
+                <small>Submitted: ${formatDate(ref.date_submitted)}</small>
+            </li>
+        `).join('');
     }
-
-    openModal('studentDetailModal');
 }
 
-function saveCounselingNotes() {
-    const notes = document.getElementById('counselingNotes').value;
-    showAlert('Counseling notes saved successfully!', 'success');
-    closeModal('studentDetailModal');
-}
-
-function searchRecords() {
-    const searchText = document.getElementById('searchStudent').value.toLowerCase();
+function filterStudents() {
+    const searchTerm = document.getElementById('searchStudent').value.toLowerCase();
     const gradeFilter = document.getElementById('gradeFilter').value;
     const statusFilter = document.getElementById('statusFilter').value;
 
-    let filtered = allReferrals;
+    let filtered = allStudents;
 
-    if (searchText) {
-        filtered = filtered.filter(r => 
-            r.studentName.toLowerCase().includes(searchText) || 
-            r.studentId.toLowerCase().includes(searchText)
+    if (searchTerm) {
+        filtered = filtered.filter(s => 
+            (s.first_name + ' ' + s.last_name).toLowerCase().includes(searchTerm) ||
+            s.email.toLowerCase().includes(searchTerm)
         );
     }
 
-    if (gradeFilter) {
-        filtered = filtered.filter(r => r.grade === gradeFilter);
+    if (statusFilter === 'Active') {
+        filtered = filtered.filter(s => s.referral_count > 0);
+    } else if (statusFilter === 'Closed') {
+        filtered = filtered.filter(s => s.referral_count === 0);
     }
 
-    if (statusFilter) {
-        if (statusFilter === 'Active') {
-            filtered = filtered.filter(r => r.stage !== 6);
-        } else if (statusFilter === 'Closed') {
-            filtered = filtered.filter(r => r.stage === 6);
-        }
-    }
+    displayStudents(filtered);
+}
 
-    displayRecords(filtered);
+function searchRecords() {
+    filterStudents();
 }
 
 function clearSearch() {
     document.getElementById('searchStudent').value = '';
     document.getElementById('gradeFilter').value = '';
     document.getElementById('statusFilter').value = '';
-    displayRecords(allReferrals);
+    displayStudents(allStudents);
 }
 
+function saveCounselingNotes() {
+    alert('Note saving feature coming soon');
+}
+
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', loadStudentRecords);

@@ -1,21 +1,54 @@
-// Mock auth data
-const demoUsers = {
-    'student@school.com': { password: 'password123', role: 'student', name: 'Juan Dela Cruz', id: 'STU001' },
-    'teacher@school.com': { password: 'password123', role: 'teacher', name: 'Ms. Sarah Johnson'},
-    'coordinator@school.com': { password: 'password123', role: 'coordinator', name: 'Mr. James Smith' },
-    'counselor@school.com': { password: 'password123', role: 'counselor', name: 'Mrs. Maria Garcia' },
-    'sdo@school.com': { password: 'password123', role: 'sdo', name: 'Dr. Robert Wilson' }
-};
 
 const dashboardRoutes = {
-    student: 'pages/student/dashboard.html',
-    teacher: 'pages/teacher/dashboard.html',
-    coordinator: 'pages/coordinator/dashboard.html',
-    counselor: 'pages/counselor/dashboard.html',
-    sdo: 'pages/sdo/dashboard.html'
+    student: 'pages/student/dashboard.php',
+    teacher: 'pages/teacher/dashboard.php',
+    coordinator: 'pages/coordinator/dashboard.php',
+    counselor: 'pages/counselor/dashboard.php',
+    'other-school': 'pages/other-school/dashboard.php',
+    sdo: 'pages/sdo/dashboard.php'
 };
 
-document.getElementById('loginForm')?.addEventListener('submit', function(e) {
+// Demo credentials for fallback login
+const demoUsers = {
+    'student@school.com': {
+        name: 'Demo Student',
+        password: 'password123',
+        role: 'student',
+        id: 'STU001'
+    },
+    'teacher@school.com': {
+        name: 'Demo Teacher',
+        password: 'password123',
+        role: 'teacher',
+        id: 'TCH001'
+    },
+    'coordinator@school.com': {
+        name: 'Demo Coordinator',
+        password: 'password123',
+        role: 'coordinator',
+        id: 'COORD001'
+    },
+    'counsilor@school.com': {
+        name: 'Demo Counselor',
+        password: 'password123',
+        role: 'counselor',
+        id: 'COUN001'
+    },
+    'otherschool@school.com': {
+        name: 'Demo Other School',
+        password: 'password123',
+        role: 'other-school',
+        id: 'OS001'
+    },
+    'sdo@school.com': {
+        name: 'Demo SDO',
+        password: 'password123',
+        role: 'sdo',
+        id: 'SDO001'
+    }
+};
+
+document.getElementById('loginForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
 
     const email = document.getElementById('email').value;
@@ -29,39 +62,105 @@ document.getElementById('loginForm')?.addEventListener('submit', function(e) {
         return;
     }
 
-    // Check credentials
-    const user = demoUsers[email];
-    if (!user || user.password !== password || user.role !== role) {
-        showError('Invalid email, password, or role');
-        return;
+    // Disable submit button to prevent multiple submissions
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in...';
+
+    try {
+        // Try database login first
+        const response = await fetch('http://localhost/guidancemanagment/api/login.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password,
+                role: role
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Store session
+            const userData = {
+                email: data.user.email,
+                role: data.user.role,
+                name: data.user.name,
+                id: data.user.id
+            };
+            
+            sessionStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+
+            // Redirect to dashboard
+            window.location.href = dashboardRoutes[role];
+        } else {
+            // If database login fails, try demo users as fallback
+            const user = demoUsers[email];
+            if (user && user.password === password && user.role === role) {
+                // Demo login
+                const userData = {
+                    email: email,
+                    role: role,
+                    name: user.name,
+                    id: user.id || email.split('@')[0]
+                };
+                
+                sessionStorage.setItem('user', JSON.stringify(userData));
+                localStorage.setItem('currentUser', JSON.stringify(userData));
+
+                // Redirect to dashboard
+                window.location.href = dashboardRoutes[role];
+            } else {
+                showError('Invalid email, password, or role');
+            }
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        // Fallback to demo login on network error
+        const user = demoUsers[email];
+        if (user && user.password === password && user.role === role) {
+            const userData = {
+                email: email,
+                role: role,
+                name: user.name,
+                id: user.id || email.split('@')[0]
+            };
+            
+            sessionStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+
+            window.location.href = dashboardRoutes[role];
+        } else {
+            showError('Login failed: ' + error.message);
+        }
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
     }
-
-    // Store session in both sessionStorage and localStorage for persistence
-    const userData = {
-        email: email,
-        role: role,
-        name: user.name,
-        id: user.id || email.split('@')[0]
-    };
-    
-    sessionStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('currentUser', JSON.stringify(userData));
-
-    // Redirect to dashboard
-    window.location.href = dashboardRoutes[role];
 });
 
 function showError(message) {
     const errorDiv = document.getElementById('loginError');
-    errorDiv.textContent = message;
-    errorDiv.classList.add('show');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.classList.add('show');
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            errorDiv.classList.remove('show');
+        }, 5000);
+    }
 }
 
 // Check if user is logged in
 function checkAuth() {
     const user = sessionStorage.getItem('user');
     if (!user) {
-        window.location.href = '../../index.html';
+        window.location.href = '../../index.php';
     }
     return JSON.parse(user);
 }
@@ -69,7 +168,8 @@ function checkAuth() {
 // Logout function
 function logout() {
     sessionStorage.removeItem('user');
-    window.location.href = '../../index.html';
+    // Optional: Call logout.php if you want server-side logout
+    window.location.href = '../../index.php';
 }
 
 // Get current user

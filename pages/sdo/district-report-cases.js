@@ -229,5 +229,5 @@ function showAlert(type, message) {
 // Logout function
 function logout() {
     localStorage.removeItem('currentUser');
-    window.location.href = '../../index.html';
+    window.location.href = '../../index.php';
 }

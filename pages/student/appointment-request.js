@@ -181,7 +181,16 @@ function viewRequest(requestId) {
             <p><strong>Status:</strong> ${createStatusBadge(request.status)}</p>
     `;
 
-    if (request.counselorNotes) {
+    if (request.status === 'rejected') {
+        content += `
+            <hr>
+            <div style="background-color: #ffebee; padding: 15px; border-radius: 5px; border-left: 4px solid #f44336;">
+                <h4 style="color: #c62828; margin-top: 0;">Decline Reason</h4>
+                <p><strong>Message from Counselor:</strong> <em>${request.counselorNotes}</em></p>
+                ${request.counselorSuggestion ? `<p><strong>Suggested Next Steps:</strong> <em>${request.counselorSuggestion}</em></p>` : ''}
+            </div>
+        `;
+    } else if (request.counselorNotes && request.status !== 'rejected') {
         content += `<p><strong>Counselor's Note:</strong> <em>${request.counselorNotes}</em></p>`;
     }
 

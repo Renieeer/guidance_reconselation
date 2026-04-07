@@ -38,7 +38,7 @@ function loadRecentReferrals(referrals) {
             <td>${formatDate(referral.dateSubmitted)}</td>
             <td>${createBadge(getStatusLabel(referral.stage))}</td>
             <td>
-                <a href="referral-status.html?id=${referral.id}" class="btn btn-sm btn-primary">View</a>
+                <a href="referral-status.php?id=${referral.id}" class="btn btn-sm btn-primary">View</a>
             </td>
         </tr>
     `).join('');

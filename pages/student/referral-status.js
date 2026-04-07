@@ -7,68 +7,101 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadUserInfo() {
-    const user = JSON.parse(localStorage.getItem('currentUser'));
+    const user = JSON.parse(sessionStorage.getItem('userInfo'));
     if (user) {
-        document.getElementById('userName').textContent = user.name || 'Student';
-        const initials = user.name.split(' ').map(n => n[0]).join('');
+        document.getElementById('userName').textContent = user.name || 'Student';        if (document.getElementById('userRole')) {
+            document.getElementById('userRole').textContent = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('-', ' ') : 'Student';
+        }        const initials = (user.name || '').split(' ').map(n => n[0]).join('');
         document.getElementById('userAvatar').textContent = initials.substring(0, 2);
     }
 }
 
 function loadReferrals() {
-    const referrals = JSON.parse(localStorage.getItem('referrals') || '[]');
-    const user = JSON.parse(localStorage.getItem('currentUser'));
-    const userId = user?.id;
+    const user = JSON.parse(sessionStorage.getItem('userInfo'));
+    const userSchool = user?.school_attended || '';
+    const studentName = user?.name || '';
     
-    const studentReferrals = referrals.filter(r => r.studentId === userId);
+    if (!studentName) {
+        document.getElementById('referralsTableBody').innerHTML = 
+            '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #999;">Unable to load referrals. Please log in again.</td></tr>';
+        return;
+    }
+
+    // Fetch referrals from database
+    const apiUrl = `/guidancemanagment/api/referral.php?role=student&school=${encodeURIComponent(userSchool)}&student_name=${encodeURIComponent(studentName)}`;
+    
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success && result.data) {
+                displayReferrals(result.data);
+            } else {
+                throw new Error(result.message || 'Failed to load referrals');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading referrals:', error);
+            document.getElementById('referralsTableBody').innerHTML = 
+                '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #999;">Error loading referrals. Please try again.</td></tr>';
+        });
+}
+
+function displayReferrals(referrals) {
     const tbody = document.getElementById('referralsTableBody');
     
-    if (studentReferrals.length === 0) {
+    if (referrals.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #999;">No referrals yet</td></tr>';
         return;
     }
     
-    tbody.innerHTML = studentReferrals.map(referral => `
+    tbody.innerHTML = referrals.map(referral => `
         <tr>
-            <td>${new Date(referral.dateCreated).toLocaleDateString()}</td>
-            <td>${referral.reason}</td>
-            <td>${referral.submittedByName || referral.submittedBy}</td>
+            <td>${formatDate(referral.date_submitted)}</td>
+            <td>${referral.referral_reason}</td>
+            <td>${referral.teacher_name || 'Unknown'}</td>
             <td>
                 <span class="badge" style="background: ${getStatusColor(referral.status)}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.85em;">
-                    ${referral.status}
+                    ${referral.status || 'pending'}
                 </span>
             </td>
             <td>
-                <button class="btn btn-sm btn-primary" onclick="viewReferral('${referral.id}')">View</button>
+                <button class="btn btn-sm btn-primary" onclick="viewReferral(${referral.id})">View</button>
             </td>
         </tr>
     `).join('');
 }
 
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        return new Date(dateString).toLocaleDateString();
+    } catch {
+        return dateString;
+    }
+}
+
 function viewReferral(referralId) {
-    const referrals = JSON.parse(localStorage.getItem('referrals') || '[]');
-    const referral = referrals.find(r => r.id === referralId);
-    
-    if (!referral) return;
-    
-    document.getElementById('referralId').value = referral.id;
-    document.getElementById('referralReason').value = referral.reason;
-    document.getElementById('referralSubmittedBy').value = referral.submittedByName || referral.submittedBy;
-    document.getElementById('referralDate').value = new Date(referral.dateCreated).toLocaleDateString();
-    document.getElementById('referralStatus').value = referral.status;
-    document.getElementById('referralNotes').value = referral.description || 'No additional notes';
-    
+    // This would require fetching single referral details
+    // For now, show basic modal with the referral ID
+    document.getElementById('referralId').value = referralId;
     document.getElementById('referralModal').style.display = 'flex';
 }
 
 function setupEventListeners() {
-    document.getElementById('closeReferralModal').addEventListener('click', () => {
-        document.getElementById('referralModal').style.display = 'none';
-    });
+    const closeBtn = document.getElementById('closeReferralModal');
+    const closeBtnAlt = document.getElementById('closeReferralBtn');
     
-    document.getElementById('closeReferralBtn').addEventListener('click', () => {
-        document.getElementById('referralModal').style.display = 'none';
-    });
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            document.getElementById('referralModal').style.display = 'none';
+        });
+    }
+    
+    if (closeBtnAlt) {
+        closeBtnAlt.addEventListener('click', () => {
+            document.getElementById('referralModal').style.display = 'none';
+        });
+    }
     
     window.addEventListener('click', (e) => {
         const modal = document.getElementById('referralModal');
@@ -78,18 +111,18 @@ function setupEventListeners() {
 
 function getStatusColor(status) {
     const colors = {
-        'Pending': '#f59e0b',
-        'Approved': '#10b981',
-        'In Progress': '#3b82f6',
-        'Completed': '#8b5cf6',
-        'Rejected': '#ef4444'
+        'pending': '#f59e0b',
+        'in-progress': '#3b82f6',
+        'completed': '#10b981',
+        'rejected': '#ef4444'
     };
-    return colors[status] || '#6b7280';
+    return colors[status?.toLowerCase?.()] || colors[status] || '#6b7280';
 }
 
 // Logout
 document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
     e.preventDefault();
+    sessionStorage.removeItem('userInfo');
     localStorage.removeItem('currentUser');
-    window.location.href = '../../index.html';
+    window.location.href = '../../index.php';
 });

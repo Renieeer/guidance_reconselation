@@ -37,7 +37,7 @@ function loadRecentReferrals(teacherReferrals) {
     if (teacherReferrals.length === 0) {
         tbody.innerHTML = `<tr>
             <td colspan="7" style="text-align: center; color: #999; padding: 30px;">
-                No referrals yet. <a href="referral-form.html">Submit one now</a>
+                No referrals yet. <a href="referral-form.php">Submit one now</a>
             </td>
         </tr>`;
         return;
@@ -52,7 +52,7 @@ function loadRecentReferrals(teacherReferrals) {
             <td>${createBadge(getStatusLabel(referral.stage))}</td>
             <td>${referral.stage} / 6</td>
             <td>
-                <a href="referral-status.html?id=${referral.id}" class="btn btn-sm btn-primary">View</a>
+                <a href="referral-status.php?id=${referral.id}" class="btn btn-sm btn-primary">View</a>
             </td>
         </tr>
     `).join('');

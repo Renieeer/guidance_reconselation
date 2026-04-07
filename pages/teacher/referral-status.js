@@ -6,37 +6,59 @@ function initReferralStatus() {
     const params = new URLSearchParams(window.location.search);
     const referralId = params.get('id');
 
-    if (referralId) {
-        loadReferralDetail(referralId);
-    } else {
-        loadReferralsList();
-    }
+    // Fetch teacher's referrals from database
+    fetchTeacherReferrals()
+        .then(() => {
+            if (referralId) {
+                const referral = document.allReferralsData.find(r => r.id === parseInt(referralId) || r.referral_code === referralId);
+                if (referral) {
+                    loadReferralDetail(referral);
+                } else {
+                    loadReferralsList();
+                }
+            } else {
+                loadReferralsList();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading referrals:', error);
+            showAlert('Error loading referrals. Please try again.', 'error');
+        });
 }
 
-function loadReferralDetail(referralId) {
-    const referrals = getData('referrals') || [];
-    const referral = referrals.find(r => r.id === referralId);
+function fetchTeacherReferrals() {
+    const user = getCurrentUser();
+    const teacherSchool = user?.school_attended || '';
+    const teacherId = user?.id || null;
+    
+    // Teachers can only see their own referrals
+    const apiUrl = `/guidancemanagment/api/referral.php?role=teacher&school=${encodeURIComponent(teacherSchool)}&user_id=${teacherId}`;
+    
+    return fetch(apiUrl)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                document.allReferralsData = result.data || [];
+            } else {
+                throw new Error(result.message || 'Failed to fetch referrals');
+            }
+        });
+}
 
-    if (!referral) {
-        document.getElementById('referralDetailContainer').style.display = 'none';
-        document.getElementById('referralListContainer').style.display = 'block';
-        loadReferralsList();
-        return;
-    }
-
+function loadReferralDetail(referral) {
     // Show detail container
     document.getElementById('referralDetailContainer').style.display = 'block';
     document.getElementById('referralListContainer').style.display = 'none';
 
-    // Populate details
-    document.getElementById('refId').textContent = referral.id;
-    document.getElementById('refStudentName').textContent = referral.studentName;
-    document.getElementById('refGrade').textContent = referral.grade;
-    document.getElementById('refDateSubmitted').textContent = formatDate(referral.dateSubmitted);
-    document.getElementById('refUrgency').textContent = referral.urgency;
+    // Populate details - use snake_case keys from database
+    document.getElementById('refId').textContent = referral.referral_code || referral.id;
+    document.getElementById('refStudentName').textContent = referral.student_name;
+    document.getElementById('refGrade').textContent = referral.grade || 'N/A';
+    document.getElementById('refDateSubmitted').textContent = formatDate(referral.date_submitted);
+    document.getElementById('refUrgency').textContent = referral.urgency || 'normal';
     document.getElementById('refStatus').innerHTML = createBadge(referral.status);
-    document.getElementById('refReason').textContent = referral.referralReason;
-    document.getElementById('refDescription').textContent = referral.description;
+    document.getElementById('refReason').textContent = referral.referral_reason;
+    document.getElementById('refDescription').textContent = referral.description || 'No description provided';
 
     // Load stages
     loadStages(referral);
@@ -80,35 +102,40 @@ function loadStages(referral) {
 }
 
 function loadReferralsList() {
-    const referrals = getData('referrals') || [];
-    const user = getCurrentUser();
-    const userReferrals = referrals.filter(r => r.submittedBy === user.email);
-
+    const referrals = document.allReferralsData || [];
     const tbody = document.getElementById('referralListBody');
 
-    if (userReferrals.length === 0) {
+    if (referrals.length === 0) {
         tbody.innerHTML = `<tr>
             <td colspan="8" style="text-align: center; padding: 30px; color: #999;">
-                No referrals found. <a href="referral-form.html">Submit a new referral</a>
+                No referrals found. <a href="referral-form.php">Submit a new referral</a>
             </td>
         </tr>`;
         return;
     }
 
-    tbody.innerHTML = userReferrals.reverse().map(referral => `
+    tbody.innerHTML = referrals.reverse().map(referral => `
         <tr>
-            <td><strong>${referral.id}</strong></td>
-            <td>${referral.studentName}</td>
-            <td>${referral.grade}</td>
-            <td>${formatDate(referral.dateSubmitted)}</td>
-            <td>${referral.referralReason}</td>
+            <td><strong>${referral.referral_code || referral.id}</strong></td>
+            <td>${referral.student_name}</td>
+            <td>${referral.grade || 'N/A'}</td>
+            <td>${formatDate(referral.date_submitted)}</td>
+            <td>${referral.referral_reason}</td>
             <td><strong>${referral.stage}/6</strong></td>
             <td>${createBadge(referral.status)}</td>
             <td>
-                <a href="?id=${referral.id}" class="btn btn-sm btn-primary">View</a>
+                <button class="btn btn-sm btn-primary" onclick="selectReferral(${referral.id})">View</button>
             </td>
         </tr>
     `).join('');
+}
+
+function selectReferral(referralId) {
+    const referral = (document.allReferralsData || []).find(r => r.id === referralId);
+    if (referral) {
+        window.history.pushState({}, '', `?id=${referral.referral_code || referralId}`);
+        loadReferralDetail(referral);
+    }
 }
 
 // Initialize on page load

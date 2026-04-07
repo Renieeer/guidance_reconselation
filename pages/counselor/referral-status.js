@@ -5,48 +5,72 @@ let currentReferral = null;
 
 function loadReferralStatus() {
     initPage();
-    allReferrals = getData('referrals') || [];
-
+    
     const params = new URLSearchParams(window.location.search);
     const referralId = params.get('id');
 
-    if (referralId) {
-        loadDetailView(referralId);
-    } else {
-        loadListView();
-    }
+    // Fetch referrals from database
+    fetchCounselorReferrals()
+        .then(() => {
+            if (referralId) {
+                const referral = allReferrals.find(r => r.id === parseInt(referralId) || r.referral_code === referralId);
+                if (referral) {
+                    loadDetailView(referral);
+                } else {
+                    loadListView();
+                }
+            } else {
+                loadListView();
+            }
 
-    document.getElementById('stageFilter').addEventListener('change', applyStageFilter);
+            document.getElementById('stageFilter').addEventListener('change', applyStageFilter);
+        })
+        .catch(error => {
+            console.error('Error loading referrals:', error);
+            showAlert('Error loading referrals. Please try again.', 'error');
+        });
 }
 
-function loadDetailView(referralId) {
-    currentReferral = allReferrals.find(r => r.id === referralId);
+function fetchCounselorReferrals() {
+    const userInfo = JSON.parse(sessionStorage.getItem('userInfo')) || {};
+    const userSchool = userInfo.school || '';
+    
+    const apiUrl = `/guidancemanagment/api/referral.php?role=counselor&school=${encodeURIComponent(userSchool)}`;
+    
+    return fetch(apiUrl)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                allReferrals = result.data || [];
+            } else {
+                throw new Error(result.message || 'Failed to fetch referrals');
+            }
+        });
+}
 
-    if (!currentReferral) {
-        loadListView();
-        return;
-    }
+function loadDetailView(referral) {
+    currentReferral = referral;
 
     document.getElementById('detailView').style.display = 'block';
     document.getElementById('listView').style.display = 'none';
 
-    // Load details
-    document.getElementById('detRefId').textContent = currentReferral.id;
-    document.getElementById('detStudentName').textContent = currentReferral.studentName;
-    document.getElementById('detStudentGradeSection').textContent = currentReferral.grade + ' - ' + currentReferral.section;
-    document.getElementById('detReason').textContent = currentReferral.referralReason;
-    document.getElementById('detDateSubmitted').textContent = formatDate(currentReferral.dateSubmitted);
-    document.getElementById('detUrgency').textContent = currentReferral.urgency;
-    document.getElementById('detStatus').innerHTML = createBadge(getStatusLabel(currentReferral.stage));
-    document.getElementById('detStage').textContent = currentReferral.stage + '/6';
+    // Load details - use snake_case keys from database
+    document.getElementById('detRefId').textContent = referral.referral_code || referral.id;
+    document.getElementById('detStudentName').textContent = referral.student_name;
+    document.getElementById('detStudentGradeSection').textContent = (referral.grade || 'N/A') + ' - ' + (referral.section || 'N/A');
+    document.getElementById('detReason').textContent = referral.referral_reason;
+    document.getElementById('detDateSubmitted').textContent = formatDate(referral.date_submitted);
+    document.getElementById('detUrgency').textContent = referral.urgency || 'normal';
+    document.getElementById('detStatus').innerHTML = createBadge(getStatusLabel(referral.stage));
+    document.getElementById('detStage').textContent = referral.stage + '/6';
 
     // Load stages
     const stageContainer = document.getElementById('detailStagesContainer');
-    stageContainer.innerHTML = createStageIndicator(currentReferral.stage);
+    stageContainer.innerHTML = createStageIndicator(referral.stage);
 
     // Show follow-up form for stage 3
     const followUpSection = document.getElementById('followUpFormSection');
-    if (currentReferral.stage === 3) {
+    if (referral.stage === 3) {
         followUpSection.style.display = 'block';
         document.getElementById('followUpForm').addEventListener('submit', submitFollowUp);
     } else {
@@ -111,32 +135,67 @@ function advanceStage() {
     }
 
     const newStage = currentReferral.stage + 1;
-    currentReferral.stage = newStage;
-    currentReferral.status = newStage === 6 ? 'completed' : 'in-progress';
+    const newStatus = newStage === 6 ? 'completed' : 'in-progress';
 
-    const index = allReferrals.findIndex(r => r.id === currentReferral.id);
-    if (index !== -1) {
-        allReferrals[index] = currentReferral;
-        saveData('referrals', allReferrals);
-    }
-
-    showAlert(`Referral advanced to stage ${newStage}!`, 'success');
-    loadDetailView(currentReferral.id);
+    // Update to database
+    const apiUrl = `/guidancemanagment/api/update-referral.php`;
+    
+    fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            stage: newStage,
+            status: newStatus
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            currentReferral = result.referral;
+            showAlert(`Referral advanced to stage ${newStage}!`, 'success');
+            loadDetailView(currentReferral);
+        } else {
+            showAlert(result.message || 'Error advancing stage', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error advancing stage:', error);
+        showAlert('Error advancing stage. Please try again.', 'error');
+    });
 }
 
 function closeCase() {
     if (confirm('Are you sure you want to close this case?')) {
-        currentReferral.stage = 6;
-        currentReferral.status = 'completed';
-
-        const index = allReferrals.findIndex(r => r.id === currentReferral.id);
-        if (index !== -1) {
-            allReferrals[index] = currentReferral;
-            saveData('referrals', allReferrals);
-        }
-
-        showAlert('Case closed successfully!', 'success');
-        backToList();
+        const apiUrl = `/guidancemanagment/api/update-referral.php`;
+        
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                referral_id: currentReferral.id,
+                stage: 6,
+                status: 'completed'
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                currentReferral = result.referral;
+                showAlert('Case closed successfully!', 'success');
+                setTimeout(() => backToList(), 1500);
+            } else {
+                showAlert(result.message || 'Error closing case', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error closing case:', error);
+            showAlert('Error closing case. Please try again.', 'error');
+        });
     }
 }
 
@@ -150,41 +209,46 @@ function backToList() {
 function loadListView() {
     const tbody = document.getElementById('referralsTableBody');
 
-    // Filter to counselor's cases (stage 3+)
-    const counselorReferrals = allReferrals.filter(r => r.stage >= 3);
-
-    if (counselorReferrals.length === 0) {
+    if (allReferrals.length === 0) {
         tbody.innerHTML = `<tr>
-            <td colspan="9" style="text-align: center; padding: 30px; color: #999;">No referrals assigned to you yet</td>
+            <td colspan="9" style="text-align: center; padding: 30px; color: #999;">No referrals found for your school</td>
         </tr>`;
         return;
     }
 
-    tbody.innerHTML = counselorReferrals.map(referral => `
+    tbody.innerHTML = allReferrals.map(referral => `
         <tr>
-            <td><strong>${referral.id}</strong></td>
-            <td>${referral.studentName}</td>
-            <td>${referral.grade}</td>
-            <td>${referral.referralReason}</td>
-            <td>${formatDate(referral.dateSubmitted)}</td>
-            <td>${referral.urgency}</td>
+            <td><strong>${referral.referral_code || referral.id}</strong></td>
+            <td>${referral.student_name}</td>
+            <td>${referral.grade || 'N/A'}</td>
+            <td>${referral.referral_reason}</td>
+            <td>${formatDate(referral.date_submitted)}</td>
+            <td>${referral.urgency || 'normal'}</td>
             <td>${referral.stage}/6</td>
             <td>${createBadge(getStatusLabel(referral.stage))}</td>
             <td>
-                <a href="?id=${referral.id}" class="btn btn-sm btn-primary">View</a>
+                <button class="btn btn-sm btn-primary" onclick="selectReferral(${referral.id})">View</button>
             </td>
         </tr>
     `).join('');
+}
+
+function selectReferral(referralId) {
+    const referral = allReferrals.find(r => r.id === referralId);
+    if (referral) {
+        window.history.pushState({}, '', `?id=${referral.referral_code || referralId}`);
+        loadDetailView(referral);
+    }
 }
 
 function applyStageFilter() {
     const stage = document.getElementById('stageFilter').value;
     const tbody = document.getElementById('referralsTableBody');
 
-    let filtered = allReferrals.filter(r => r.stage >= 3);
-
+    // Filter by stage if selected
+    let filtered = allReferrals;
     if (stage) {
-        filtered = filtered.filter(r => r.stage === parseInt(stage));
+        filtered = allReferrals.filter(r => r.stage === parseInt(stage));
     }
 
     if (filtered.length === 0) {
@@ -196,16 +260,16 @@ function applyStageFilter() {
 
     tbody.innerHTML = filtered.map(referral => `
         <tr>
-            <td><strong>${referral.id}</strong></td>
-            <td>${referral.studentName}</td>
-            <td>${referral.grade}</td>
-            <td>${referral.referralReason}</td>
-            <td>${formatDate(referral.dateSubmitted)}</td>
-            <td>${referral.urgency}</td>
+            <td><strong>${referral.referral_code || referral.id}</strong></td>
+            <td>${referral.student_name}</td>
+            <td>${referral.grade || 'N/A'}</td>
+            <td>${referral.referral_reason}</td>
+            <td>${formatDate(referral.date_submitted)}</td>
+            <td>${referral.urgency || 'normal'}</td>
             <td>${referral.stage}/6</td>
             <td>${createBadge(getStatusLabel(referral.stage))}</td>
             <td>
-                <a href="?id=${referral.id}" class="btn btn-sm btn-primary">View</a>
+                <button class="btn btn-sm btn-primary" onclick="selectReferral(${referral.id})">View</button>
             </td>
         </tr>
     `).join('');

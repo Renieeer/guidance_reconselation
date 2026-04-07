@@ -10,6 +10,9 @@ function loadUserInfo() {
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (user) {
         document.getElementById('userName').textContent = user.name || 'Student';
+        if (document.getElementById('userRole')) {
+            document.getElementById('userRole').textContent = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('-', ' ') : 'Student';
+        }
         const initials = user.name.split(' ').map(n => n[0]).join('');
         document.getElementById('userAvatar').textContent = initials.substring(0, 2);
     }
@@ -162,5 +165,5 @@ function showNotification(message) {
 document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
     e.preventDefault();
     localStorage.removeItem('currentUser');
-    window.location.href = '../../index.html';
+    window.location.href = '../../index.php';
 });
