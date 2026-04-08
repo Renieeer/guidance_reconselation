@@ -1,7 +1,29 @@
 // Coordinator Dashboard Script
 
+// Initialize sidebar active state based on current page
+function initSidebarActive() {
+    // Get the current page filename
+    const url = window.location.href;
+    const currentFile = url.substring(url.lastIndexOf('/') + 1);
+    
+    // Get all sidebar menu links
+    const menuLinks = document.querySelectorAll('.sidebar-menu a');
+    
+    // Remove active class from all and add to current page
+    menuLinks.forEach(link => {
+        link.classList.remove('active');
+        const href = link.getAttribute('href');
+        
+        // Match current file with link href
+        if (href && url.includes(href)) {
+            link.classList.add('active');
+        }
+    });
+}
+
 function loadCoordinatorDashboard() {
     initPage();
+    initSidebarActive();
     const referrals = getData('referrals') || [];
 
     // Calculate statistics

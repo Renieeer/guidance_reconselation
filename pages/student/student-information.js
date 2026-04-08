@@ -21,40 +21,24 @@ let friendCount  = 0;
 
 // ─── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing student information form');
+    
+    // Load grades immediately
+    loadGrades();
+    
     try {
-        console.log('DOMContentLoaded event fired');
-        
         // Add a longer delay to ensure all DOM elements are truly ready
         setTimeout(() => {
             try {
-                console.log('Starting setup...');
                 setupUserInfo();
-                console.log('setupUserInfo complete');
-                
                 setupStepClickListeners();
-                console.log('setupStepClickListeners complete');
-                
                 initDynamicSections();
-                console.log('initDynamicSections complete');
-                
                 loadStudentData();
-                console.log('loadStudentData complete');
-                
                 updateStepIndicator();
-                console.log('updateStepIndicator complete');
-                
                 updateNavigationButtons();
-                console.log('updateNavigationButtons complete');
-
                 setupFamilyStatusDependencies();
-                console.log('setupFamilyStatusDependencies complete');
-
-                setupFieldChangeLiseners();
-                console.log('setupFieldChangeLiseners complete');
-                
-                console.log('All initialization complete');
             } catch (error) {
-                console.error('Error during initialization:', error);
+                console.error('Initialization error:', error);
             }
         }, 200);
     } catch (error) {
@@ -62,51 +46,103 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ─── SETUP FIELD CHANGE LISTENERS FOR AUTO DATABASE SAVE ───────
-function setupFieldChangeLiseners() {
-    const form = document.getElementById('studentForm');
-    if (!form) return;
-
-    const inputs = form.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        input.addEventListener('change', triggerDatabaseSave);
-        input.addEventListener('input', triggerDatabaseSave);
-    });
-
-    console.log('Field change listeners attached to', inputs.length, 'form elements');
+// ─── LOAD GRADES ───────────────────────────────────────────────
+function loadGrades() {
+    const gradeSelect = document.getElementById('gradeSelect');
+    if (!gradeSelect) return;
+    
+    fetch(`${getApiUrl()}/school-config.php?action=getGrades`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.grades) && data.grades.length > 0) {
+                while (gradeSelect.options.length > 1) {
+                    gradeSelect.remove(1);
+                }
+                data.grades.forEach(grade => {
+                    const option = document.createElement('option');
+                    option.value = String(grade.id);
+                    option.textContent = grade.grade_name;
+                    gradeSelect.appendChild(option);
+                });
+            } else {
+                addFallbackGrades(gradeSelect);
+            }
+        })
+        .catch(err => {
+            addFallbackGrades(gradeSelect);
+        });
 }
 
-// ─── TRIGGER DATABASE SAVE (with confirmation) ────────────────
-function triggerDatabaseSave() {
-    // Get StudentId
+// ─── FALLBACK GRADES ───────────────────────────────────────────
+function addFallbackGrades(gradeSelect) {
+    const fallbackGrades = [
+        { id: 1, grade_name: 'Grade 7' },
+        { id: 2, grade_name: 'Grade 8' },
+        { id: 3, grade_name: 'Grade 9' },
+        { id: 4, grade_name: 'Grade 10' }
+    ];
+    
+    while (gradeSelect.options.length > 1) {
+        gradeSelect.remove(1);
+    }
+    
+    fallbackGrades.forEach(grade => {
+        const option = document.createElement('option');
+        option.value = String(grade.id);
+        option.textContent = grade.grade_name;
+        gradeSelect.appendChild(option);
+    });
+}
+
+// ─── MANUAL SAVE BUTTON (no auto-save) ──────────────────────
+function manualSaveChanges() {
+    console.log('manualSaveChanges called!');
+    
     const studentIdField = document.querySelector('input[name="StudentId"]');
+    console.log('studentIdField:', studentIdField);
+    console.log('studentIdField value:', studentIdField ? studentIdField.value : 'NOT FOUND');
+    
     if (!studentIdField || !studentIdField.value.trim()) {
-        console.log('Cannot save: StudentId is empty');
+        console.log('StudentId validation failed');
+        showNotification('Cannot save: StudentId is empty', 'error');
         return;
     }
 
-    // Clear existing timer
-    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    // Validate grade selection
+    const gradeSelect = document.querySelector('select[name="grade_id"]');
+    console.log('gradeSelect:', gradeSelect);
+    console.log('gradeSelect value:', gradeSelect ? gradeSelect.value : 'NOT FOUND');
+    
+    if (!gradeSelect || !gradeSelect.value) {
+        console.log('Grade validation failed');
+        showNotification('Please select a grade before saving', 'warning');
+        return;
+    }
 
-    // Set new timer to show confirmation dialog after user stops typing (1 second)
-    autoSaveTimer = setTimeout(() => {
-        showConfirmationDialog(
-            'Save Changes',
-            'Do you want to save these changes to the database?',
-            () => saveToDatabaseQuick(studentIdField.value.trim())
-        );
-    }, 1000);
+    const studentIdToSave = studentIdField.value.trim();
+    console.log('About to save for StudentId:', studentIdToSave);
+    
+    showConfirmationDialog(
+        'Save Changes',
+        'Save your changes?',
+        () => saveToDatabaseQuick(studentIdToSave)
+    );
 }
 
-// ─── QUICK SAVE TO DATABASE (partial) ──────────────────────────
+// ─── SAVE TO DATABASE (called by manual save button) ──────────
 function saveToDatabaseQuick(studentId) {
     try {
+        console.log('saveToDatabaseQuick called with studentId:', studentId);
+        
         const form = document.getElementById('studentForm');
-        if (!form) return;
+        if (!form) {
+            console.error('studentForm not found');
+            return;
+        }
 
         const fd = new FormData(form);
         
-        // Collect basic data
+        // Collect basic student data
         const studentData = {
             StudentId: studentId,
             LRN: fd.get('LRN') || '',
@@ -123,6 +159,7 @@ function saveToDatabaseQuick(studentId) {
             CurrentAddress: fd.get('CurrentAddress') || '',
             PermanentAddress: fd.get('PermanentAddress') || '',
             CellphoneNumber: fd.get('CellphoneNumber') || '',
+            grade_id: fd.get('grade_id') !== '' ? parseInt(fd.get('grade_id'), 10) : null,
             
             // Parents
             father_FirstName: fd.get('father_FirstName') || '',
@@ -165,30 +202,196 @@ function saveToDatabaseQuick(studentId) {
             guardian_Relationship: fd.get('guardian_Relationship') || '',
             guardian_Address: fd.get('guardian_Address') || '',
             guardian_Landline: fd.get('guardian_Landline') || '',
-            guardian_MobileNumber: fd.get('guardian_MobileNumber') || ''
+            guardian_MobileNumber: fd.get('guardian_MobileNumber') || '',
+            
+            // Education data
+            education: collectEducationData(),
+            
+            // Organization data
+            organization: collectOrganizationData(),
+            
+            // Sibling data
+            sibling: collectSiblingData(),
+            
+            // Friend data
+            friend: collectFriendData()
         };
 
+        console.log('Collected form data:', studentData);
+        console.log('Education items:', studentData.education.length);
+        console.log('Organization items:', studentData.organization.length);
+        console.log('Sibling items:', studentData.sibling.length);
+        console.log('Friend items:', studentData.friend.length);
+
+        // Check if there's actual data to save
+        if (!studentId || studentId.trim() === '') {
+            console.warn('No StudentId provided');
+            showNotification('Please enter a Student ID', 'warning');
+            return;
+        }
+
         // Send to database
-        fetch(`${getApiUrl()}/save-student.php`, {
+        const apiUrl = `${getApiUrl()}/save-student.php`;
+        console.log('Sending POST to:', apiUrl);
+        
+        fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(studentData)
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showNotification('✓ Changes saved successfully!', 'success');
-            } else {
-                showNotification(data.message || 'Failed to save changes', 'error');
+        .then(r => {
+            console.log('Response status:', r.status);
+            return r.text();
+        })
+        .then(text => {
+            console.log('Response text:', text);
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    showNotification('✓ All information saved successfully!', 'success');
+                } else {
+                    showNotification(data.message || 'Failed to save information', 'error');
+                }
+            } catch (parseErr) {
+                console.error('Response parsing error:', parseErr);
+                console.error('Raw response:', text);
+                showNotification('Server error: ' + text, 'error');
             }
         })
         .catch(err => {
-            console.error('Error saving to database:', err);
-            showNotification('Error saving changes', 'error');
+            console.error('Fetch error:', err);
+            showNotification('Error saving information: ' + err.message, 'error');
         });
     } catch (error) {
         console.error('Error in saveToDatabaseQuick:', error);
+        showNotification('Error: ' + error.message, 'error');
     }
+}
+
+// ─── HELPER: Collect education data from form ──────────────────
+function collectEducationData() {
+    console.log('collectEducationData called');
+    const education = [];
+    const eduContainer = document.getElementById('educationContainer');
+    console.log('educationContainer:', eduContainer);
+    
+    if (!eduContainer) {
+        console.log('educationContainer not found');
+        return education;
+    }
+    
+    const eduCards = eduContainer.querySelectorAll('.dyn-card');
+    console.log('Found education cards:', eduCards.length);
+    
+    eduCards.forEach((card, i) => {
+        const gradeLevel = card.querySelector(`input[name="education[${i}][GradeLevel]"]`)?.value || '';
+        const schoolAttended = card.querySelector(`input[name="education[${i}][SchoolAttended]"]`)?.value || '';
+        const inclusiveYes = card.querySelector(`input[name="education[${i}][InclusiveYes]"]`)?.value || '';
+        const placeAndSchool = card.querySelector(`textarea[name="education[${i}][PlaceAndSchool]"]`)?.value || '';
+        
+        console.log(`Education card ${i}:`, { gradeLevel, schoolAttended, inclusiveYes, placeAndSchool });
+        
+        if (gradeLevel || schoolAttended || inclusiveYes || placeAndSchool) {
+            education.push({ GradeLevel: gradeLevel, SchoolAttended: schoolAttended, InclusiveYes: inclusiveYes, PlaceAndSchool: placeAndSchool });
+        }
+    });
+    console.log('Total education records collected:', education.length);
+    return education;
+}
+
+// ─── HELPER: Collect organization data from form ──────────────────
+function collectOrganizationData() {
+    console.log('collectOrganizationData called');
+    const organization = [];
+    const orgContainer = document.getElementById('organizationContainer');
+    console.log('organizationContainer:', orgContainer);
+    
+    if (!orgContainer) {
+        console.log('organizationContainer not found');
+        return organization;
+    }
+    
+    const orgCards = orgContainer.querySelectorAll('.dyn-card');
+    console.log('Found organization cards:', orgCards.length);
+    
+    orgCards.forEach((card, i) => {
+        const orgName = card.querySelector(`input[name="organization[${i}][OrganizationName]"]`)?.value || '';
+        const positionTitle = card.querySelector(`input[name="organization[${i}][PositionTitle]"]`)?.value || '';
+        const inCampus = card.querySelector(`select[name="organization[${i}][inCampus]"]`)?.value || '';
+        
+        console.log(`Organization card ${i}:`, { orgName, positionTitle, inCampus });
+        
+        if (orgName || positionTitle || inCampus) {
+            organization.push({ OrganizationName: orgName, PositionTitle: positionTitle, inCampus: inCampus });
+        }
+    });
+    console.log('Total organization records collected:', organization.length);
+    return organization;
+}
+
+// ─── HELPER: Collect sibling data from form ──────────────────
+function collectSiblingData() {
+    console.log('collectSiblingData called');
+    const siblings = [];
+    const sibContainer = document.getElementById('siblingsContainer');
+    console.log('siblingsContainer:', sibContainer);
+    
+    if (!sibContainer) {
+        console.log('siblingsContainer not found');
+        return siblings;
+    }
+    
+    const sibCards = sibContainer.querySelectorAll('.dyn-card');
+    console.log('Found sibling cards:', sibCards.length);
+    
+    sibCards.forEach((card, i) => {
+        const firstName = card.querySelector(`input[name="sibling[${i}][FirstName]"]`)?.value || '';
+        const lastName = card.querySelector(`input[name="sibling[${i}][LastName]"]`)?.value || '';
+        const middleName = card.querySelector(`input[name="sibling[${i}][MiddleName]"]`)?.value || '';
+        const nickName = card.querySelector(`input[name="sibling[${i}][NickName]"]`)?.value || '';
+        const age = card.querySelector(`input[name="sibling[${i}][Age]"]`)?.value || '';
+        const birthOrder = card.querySelector(`input[name="sibling[${i}][BirthOrder]"]`)?.value || '';
+        const schoolId = card.querySelector(`input[name="sibling[${i}][SchoolId]"]`)?.value || '';
+        
+        console.log(`Sibling card ${i}:`, { firstName, lastName, age, birthOrder });
+        
+        if (firstName || lastName || age) {
+            siblings.push({ FirstName: firstName, LastName: lastName, MiddleName: middleName, NickName: nickName, Age: age, BirthOrder: birthOrder, SchoolId: schoolId });
+        }
+    });
+    console.log('Total sibling records collected:', siblings.length);
+    return siblings;
+}
+
+// ─── HELPER: Collect friend data from form ──────────────────
+function collectFriendData() {
+    console.log('collectFriendData called');
+    const friends = [];
+    const friendContainer = document.getElementById('friendsContainer');
+    console.log('friendsContainer:', friendContainer);
+    
+    if (!friendContainer) {
+        console.log('friendsContainer not found');
+        return friends;
+    }
+    
+    const friendCards = friendContainer.querySelectorAll('.dyn-card');
+    console.log('Found friend cards:', friendCards.length);
+    
+    friendCards.forEach((card, i) => {
+        const inSchool = card.querySelector(`select[name="friend[${i}][In_school]"]`)?.value || '';
+        const firstName = card.querySelector(`input[name="friend[${i}][FirstName]"]`)?.value || '';
+        const middleName = card.querySelector(`input[name="friend[${i}][MiddleName]"]`)?.value || '';
+        const lastName = card.querySelector(`input[name="friend[${i}][LastName]"]`)?.value || '';
+        
+        console.log(`Friend card ${i}:`, { firstName, lastName, inSchool });
+        
+        if (firstName || lastName) {
+            friends.push({ In_school: inSchool, FirstName: firstName, MiddleName: middleName, LastName: lastName });
+        }
+    });
+    console.log('Total friend records collected:', friends.length);
+    return friends;
 }
 
 // ─── Seed one entry in each dynamic container ─────────────────
@@ -339,6 +542,7 @@ function populateFormWithData(d) {
         NickName:  'input[name="NickName"]',
         Sex:       'select[name="Sex"]',
         Age:       'input[name="Age"]',
+        grade_id:  'select[name="grade_id"]',
         DateOfBirth:       'input[name="DateOfBirth"]',
         PlaceOfBirth:      'input[name="PlaceOfBirth"]',
         ReligionFromBirth: 'input[name="ReligionFromBirth"]',
@@ -349,7 +553,9 @@ function populateFormWithData(d) {
     };
     Object.entries(basicMap).forEach(([key, sel]) => {
         const el = document.querySelector(sel);
-        if (el && d[key]) el.value = d[key];
+        if (el && (d[key] !== null && d[key] !== undefined && d[key] !== '')) {
+            el.value = d[key];
+        }
     });
 
     // ── Step 2: education ──
@@ -441,6 +647,12 @@ function populateFormWithData(d) {
 // ─── UPDATE MODE UI ────────────────────────────────────────────
 function enterUpdateMode() {
     isUpdateMode = true;
+
+    // Show "Save Changes" button
+    const saveBtn = document.getElementById('saveChangesBtn');
+    if (saveBtn) {
+        saveBtn.style.display = 'flex'; // or 'inline-block' depending on layout
+    }
 
     // Show persistent "saved" banner in topbar area
     if (!document.querySelector('.saved-banner')) {
@@ -664,8 +876,14 @@ function updateNavigationButtons() {
             nextBtn.onclick = function(e) { 
                 e.preventDefault();
                 e.stopPropagation();
-                saveCurrentStep(); 
-                submitForm(e); 
+                console.log('Update Information/Submit button clicked');
+                const studentIdField = document.querySelector('input[name="StudentId"]');
+                if (studentIdField && studentIdField.value) {
+                    manualSaveChanges();
+                } else {
+                    console.error('StudentId field not found or empty');
+                    showNotification('Error: StudentId is missing', 'error');
+                }
                 return false;
             };
         } else {
@@ -866,33 +1084,33 @@ function showConfirmationDialog(title, message, onConfirm) {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); z-index: 10000;
+        background: rgba(0,0,0,0.6); z-index: 10000;
         display: flex; align-items: center; justify-content: center;
         animation: fadeIn 0.2s ease;
     `;
 
     const dialog = document.createElement('div');
     dialog.style.cssText = `
-        background: white; border-radius: 12px; padding: 28px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        max-width: 400px; width: 90%; font-family: 'Plus Jakarta Sans', sans-serif;
+        background: white; border-radius: 16px; padding: 32px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+        max-width: 420px; width: 90%; font-family: 'Plus Jakarta Sans', sans-serif;
         animation: scaleIn 0.2s ease;
     `;
 
     dialog.innerHTML = `
-        <h2 style="margin: 0 0 12px 0; font-size: 18px; color: #1f2937; font-weight: 700;">${title}</h2>
-        <p style="margin: 0 0 24px 0; color: #6b7280; font-size: 14px; line-height: 1.5;">${message}</p>
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <h2 style="margin: 0 0 8px 0; font-size: 20px; color: #1f2937; font-weight: 700;">${title}</h2>
+        <p style="margin: 0 0 28px 0; color: #6b7280; font-size: 15px; line-height: 1.6;">${message}</p>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
             <button id="confirmCancel" style="
-                padding: 8px 16px; border: 1px solid #d1d5db; background: #f3f4f6;
-                border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
-                color: #374151; transition: all 0.2s ease;
+                padding: 10px 20px; border: 1px solid #d1d5db; background: white;
+                border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
+                color: #374151; transition: all 0.3s ease;
             ">Cancel</button>
             <button id="confirmSave" style="
-                padding: 8px 16px; background: #3b82f6; color: white;
-                border: none; border-radius: 6px; cursor: pointer; font-size: 14px;
-                font-weight: 600; transition: all 0.2s ease;
-            ">Save Changes</button>
+                padding: 10px 24px; background: #10b981; color: white;
+                border: none; border-radius: 8px; cursor: pointer; font-size: 14px;
+                font-weight: 600; transition: all 0.3s ease;
+            ">Save</button>
         </div>
     `;
 
@@ -904,17 +1122,21 @@ function showConfirmationDialog(title, message, onConfirm) {
     const saveBtn = dialog.querySelector('#confirmSave');
 
     cancelBtn.addEventListener('mouseover', () => {
-        cancelBtn.style.background = '#e5e7eb';
+        cancelBtn.style.background = '#f9fafb';
+        cancelBtn.style.borderColor = '#9ca3af';
     });
     cancelBtn.addEventListener('mouseout', () => {
-        cancelBtn.style.background = '#f3f4f6';
+        cancelBtn.style.background = 'white';
+        cancelBtn.style.borderColor = '#d1d5db';
     });
 
     saveBtn.addEventListener('mouseover', () => {
-        saveBtn.style.background = '#2563eb';
+        saveBtn.style.background = '#059669';
+        saveBtn.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
     });
     saveBtn.addEventListener('mouseout', () => {
-        saveBtn.style.background = '#3b82f6';
+        saveBtn.style.background = '#10b981';
+        saveBtn.style.boxShadow = 'none';
     });
 
     cancelBtn.addEventListener('click', () => {

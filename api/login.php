@@ -33,17 +33,16 @@ try {
     }
 
     // Validate required fields
-    if (!isset($data['email']) || !isset($data['password']) || !isset($data['role'])) {
+    if (!isset($data['email']) || !isset($data['password'])) {
         echo json_encode(['success' => false, 'message' => 'Missing required fields']);
         exit;
     }
 
     $email = trim($data['email']);
     $plainPassword = $data['password'];
-    $role = trim($data['role']);
 
     // Validate input
-    if (empty($email) || empty($plainPassword) || empty($role)) {
+    if (empty($email) || empty($plainPassword)) {
         echo json_encode(['success' => false, 'message' => 'All fields are required']);
         exit;
     }
@@ -76,13 +75,7 @@ try {
         exit;
     }
 
-    // Verify role matches
-    if ($user['user_type'] !== $role) {
-        echo json_encode(['success' => false, 'message' => 'Invalid role for this account']);
-        exit;
-    }
-
-    // Login successful
+    // Login successful - role is retrieved from database
     $userData = [
         'id' => $user['id'],
         'email' => $user['email'],

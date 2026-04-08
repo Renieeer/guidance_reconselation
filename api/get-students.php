@@ -24,16 +24,22 @@ try {
     $limit = intval($_GET['limit'] ?? 100);
     $offset = intval($_GET['offset'] ?? 0);
 
-    // Build query to get all students from accounts table
+    // Build query to get all students from accounts table and join with student_table
+    // Handle collation differences by using COLLATE
     $query = "SELECT 
         a.id, 
         a.first_name, 
         a.last_name, 
         a.email, 
         a.school_attended,
+        st.Age,
+        st.Sex,
+        st.DateOfBirth,
+        st.grade_id,
         COUNT(DISTINCT r.id) as referral_count,
         MAX(r.date_submitted) as last_referral_date
     FROM accounts a
+    LEFT JOIN student_table st ON (CAST(a.id AS CHAR) COLLATE utf8mb4_unicode_ci = st.StudentId COLLATE utf8mb4_unicode_ci)
     LEFT JOIN referral r ON a.first_name = r.student_name AND a.school_attended = r.school_attended
     WHERE a.user_type = 'student'";
 
@@ -50,7 +56,7 @@ try {
                    OR a.email LIKE '%$search_term%')";
     }
 
-    $query .= " GROUP BY a.id, a.first_name, a.last_name, a.email, a.school_attended
+    $query .= " GROUP BY a.id, a.first_name, a.last_name, a.email, a.school_attended, st.Age, st.Sex, st.DateOfBirth, st.grade_id
                 ORDER BY a.first_name ASC
                 LIMIT $limit OFFSET $offset";
 

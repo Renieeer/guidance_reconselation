@@ -16,6 +16,7 @@ session_start();
 try {
     // Include database connection
     require_once 'conn.php';
+    require_once 'school-config.php';
 
     // Get JSON input
     $input = file_get_contents('php://input');
@@ -58,8 +59,28 @@ try {
         exit;
     }
 
+    // Validate school and get appropriate role
+    $schoolConfig = getSchoolConfig($school);
+    if (!$schoolConfig) {
+        echo json_encode(['success' => false, 'message' => 'Invalid school selected']);
+        exit;
+    }
+
+    // For schools with combined role, auto-assign counselor-and-coordinator
+    // For other schools, validate that selected role is available
+    if ($schoolConfig['type'] === 'counselor') {
+        // School has combined role only
+        $role = 'counselor-and-coordinator';
+    } else {
+        // Validate role is available for this school
+        if (!in_array($role, $schoolConfig['availableRoles'])) {
+            echo json_encode(['success' => false, 'message' => 'This role is not available for the selected school']);
+            exit;
+        }
+    }
+
     // Validate role
-    $validRoles = ['student', 'teacher', 'coordinator', 'counselor', 'other-school'];
+    $validRoles = ['student', 'teacher', 'coordinator', 'counselor', 'counselor-and-coordinator'];
     if (!in_array($role, $validRoles)) {
         echo json_encode(['success' => false, 'message' => 'Invalid role selected']);
         exit;

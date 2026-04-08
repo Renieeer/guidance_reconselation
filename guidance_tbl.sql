@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Mar 24, 2026 at 03:08 PM
+-- Generation Time: Apr 07, 2026 at 08:01 PM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -28,28 +28,33 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `accounts` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int NOT NULL,
   `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `user_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'student',
+  `user_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'student',
   `first_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `last_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `school_attended` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `school_attended` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `accounts`
 --
 
-INSERT INTO `accounts` (`id`, `email`, `password`, `user_type`, `first_name`, `last_name`, `school_attended`, `phone`, `created_at`, `updated_at`) VALUES
-(1, 'raizahmae@gmail.com', '$2y$10$f1XuVATmY3nyVsFkjnxHWOHjq0QodDCINrx3P4uoW216FsnJmw6lG', 'student', 'Raizah Mae', 'Lupig', 'Butucan National High School', '096622060205', '2026-03-01 13:21:27', '2026-03-01 13:21:27'),
-(2, 'coordinator@gmail.com', '$2y$10$iswxQqTJaugwQOxCgiNJAeudR2to4QOI/ztSpnQjLn.QCn4ANaOJy', 'coordinator', 'Maam', 'Donna', 'Butucan National High School', '12345678911', '2026-03-01 13:38:11', '2026-03-01 13:39:28'),
-(3, 'counsilor@gmail.com', '$2y$10$27Y7yJIetnT/LtAMeIKwz.ZK9kuJmDbPrLdxMw5nddVxNkEEGbdTC', 'counselor', 'counselor', 'consi', 'Butucan National High School', '12345678910', '2026-03-01 13:39:15', '2026-03-01 13:39:15');
+INSERT INTO `accounts` (`id`, `email`, `password`, `user_type`, `first_name`, `last_name`, `phone`, `school_attended`, `created_at`, `updated_at`) VALUES
+(5, 'counselor@gmail.com', '$2y$10$ERhNcegrQ3gFj/W.TFsYRuiCVCMo/ZXYZACaPbrSGdusX33Erpayi', 'counselor', 'admin', 'admin', NULL, 'omnhs', '2026-04-03 17:36:15', '2026-04-03 17:36:15'),
+(7, 'coordinator@gmail.com', '$2y$10$OWydHeJe.A2tN.okDVio0ep7AKqbroyKExuzlLZvAPhINMVBi86NK', 'coordinator', 'admin', 'admin', NULL, 'omnhs', '2026-04-03 17:42:55', '2026-04-03 17:42:55'),
+(8, 'teacher@gmail.com', '$2y$10$uJpWqcqk7UNLlsGgb6MrIeb2KBsGOazzSoIL6rATszSDNF.lK6lye', 'teacher', 'admin', 'admin', NULL, 'omnhs', '2026-04-03 17:55:54', '2026-04-03 17:55:54'),
+(9, 'reneirmanongsong1@gmail.com', '$2y$10$YxDu8IvRTZDl0aO0oZZoguOL/cFuy5bE0ER2A0QV5cZruFfU40jsO', 'student', 'renier', 'manongsong', NULL, 'omnhs', '2026-04-03 18:12:32', '2026-04-03 18:12:32'),
+(10, 'alice@test.com', '$2y$10$9wEJRqygMcudm44rDyy.QO3AtJAK3L7.swGkUyjYd8ekQSUZXVPCy', 'student', 'Alice', 'Johnson', '09123456789', 'omnhs', '2026-04-06 18:34:38', '2026-04-06 18:50:07'),
+(11, 'bob@test.com', '$2y$10$iySogRrIqM3HigSNFmhr6.PbGT8yYeNx/NJxoLougiFVpyIeez9c6', 'student', 'Bob', 'Smith', '09123456789', 'omnhs', '2026-04-06 18:34:38', '2026-04-06 18:50:07'),
+(12, 'carol@test.com', '$2y$10$.eFn5PJFDLwKFNRmeg3VGOece4pNVQVxLo7O7iKojyMjx8C/maJ1S', 'student', 'Carol', 'Davis', '09123456789', 'omnhs', '2026-04-06 18:34:38', '2026-04-06 18:50:07'),
+(13, 'raizah@gmail.com', '$2y$10$tCO4dMNlmfATouGzJy1f9e7Fx1H/WIlc1mnoYjXmtBJ.fjlYzU6IS', 'student', 'raizah', 'manogsong', NULL, 'omnhs', '2026-04-06 19:21:48', '2026-04-06 19:21:48'),
+(14, 'trial@gmail.com', '$2y$10$Nn4DGWHBr3z5bd44TxL7juLBchwGazu.GIhhWGAZqvOHWQRQ2Ag.C', 'counselor-and-coordinator', 'raizah', 'manongsong', NULL, 'personas', '2026-04-07 18:00:52', '2026-04-07 18:00:52'),
+(15, 'SchoolDistricOffice@gmail.com', '$2y$10$aefyxsXv55BIKWO7Bka0XeFhycDhXgaWzGkQ5IWCmHf0sdhInEaea', 'sdo', 'System', 'Administrator', NULL, NULL, '2026-04-07 18:19:19', '2026-04-07 18:25:34');
 
 -- --------------------------------------------------------
 
@@ -99,6 +104,29 @@ INSERT INTO `categories` (`id`, `section_id`, `category_name`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `document_library`
+--
+
+CREATE TABLE `document_library` (
+  `document_id` int NOT NULL,
+  `student_id` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `document_type` enum('inventory','referral','follow-up','case') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `original_filename` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `stored_filename` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_size` int NOT NULL,
+  `mime_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'image/jpeg',
+  `uploaded_by` int NOT NULL,
+  `school_attended` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `access_level` enum('student','counselor','coordinator','sdo') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'coordinator',
+  `uploaded_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `educational_background`
 --
 
@@ -110,14 +138,6 @@ CREATE TABLE `educational_background` (
   `InclusiveYes` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `PlaceAndSchool` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `educational_background`
---
-
-INSERT INTO `educational_background` (`EducationalBgId`, `StudentId`, `GradeLevel`, `SchoolAttended`, `InclusiveYes`, `PlaceAndSchool`) VALUES
-(1, 'STU001', 'Grade 8', 'Butucan National High School', 'No', 'Butucan NHS'),
-(2, 'STU002', 'Grade 9', 'Valencia National High School', 'Yes', 'Valencia NHS');
 
 -- --------------------------------------------------------
 
@@ -133,23 +153,9 @@ CREATE TABLE `family_status` (
   `MarriedChurch` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `TemporarilySepered` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `PermanentlySepered` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `FatherDie` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `MotherDie` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `FatherWithPartner` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `MotherWithPartner` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `family_status`
---
-
-INSERT INTO `family_status` (`FamilyStatusID`, `StudentId`, `LivingTogether`, `MarriedYet`, `MarriedChurch`, `TemporarilySepered`, `PermanentlySepered`, `FatherDie`, `MotherDie`, `FatherWithPartner`, `MotherWithPartner`) VALUES
-(1, '23414', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(2, '2341', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(3, '2341', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(4, '2341', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(5, 'STU001', 'Yes', 'Yes', 'Yes', 'No', 'No', 'No', 'No', 'No', 'No'),
-(6, 'STU002', 'No', 'Yes', 'No', 'Yes', 'No', 'No', 'No', 'Yes', 'No');
 
 -- --------------------------------------------------------
 
@@ -168,14 +174,6 @@ CREATE TABLE `follow_up` (
   `TimeUpdated` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `follow_up`
---
-
-INSERT INTO `follow_up` (`Follow_id`, `StudentID`, `Status`, `CategoryID`, `Title`, `Counselor`, `TimeCreated`, `TimeUpdated`) VALUES
-(1, 'STU002', 'Pending', '', 'Counseling ', 'maam donna', '2026-02-21 23:26:28', '2026-02-21 23:26:28'),
-(2, 'STU001', 'Pending', '1', 'CAR (Children at Risk) - Alcohol', 'maam donna', '2026-02-21 23:37:14', '2026-02-21 23:37:14');
-
 -- --------------------------------------------------------
 
 --
@@ -190,14 +188,6 @@ CREATE TABLE `friends_table` (
   `MiddleName` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `LastName` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `friends_table`
---
-
-INSERT INTO `friends_table` (`FriendID`, `StudentId`, `In_school`, `FirstName`, `MiddleName`, `LastName`) VALUES
-(1, 'STU001', 'Yes', 'Mark', 'Lee', 'Reyes'),
-(2, 'STU002', 'Yes', 'Angela', 'Marie', 'Santos');
 
 -- --------------------------------------------------------
 
@@ -260,14 +250,6 @@ CREATE TABLE `oraganization` (
   `StudentId` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `oraganization`
---
-
-INSERT INTO `oraganization` (`OrganizationId`, `OrganizationName`, `PositionTitle`, `inCampus`, `StudentId`) VALUES
-('ORG001', 'Supreme Student Government', 'Member', 'Yes', 'STU001'),
-('ORG002', 'Science Club', 'Secretary', 'Yes', 'STU002');
-
 -- --------------------------------------------------------
 
 --
@@ -290,14 +272,6 @@ CREATE TABLE `parent_table` (
   `isDeceased` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `parent_table`
---
-
-INSERT INTO `parent_table` (`ParentId`, `StudentId`, `FirstName`, `LastName`, `MiddleName`, `NickName`, `BirthDate`, `PlaceOfBirth`, `Address`, `ContactNumber`, `HighestEducationalAttainment`, `Occupation`, `isDeceased`) VALUES
-('PAR001', 'STU001', 'Jose', 'Dela Cruz', 'Ramos', 'Joe', '1980-03-15', 'Bukidnon', 'Butucan Proper', '09111111111', 'College Graduate', 'Farmer', 'No'),
-('PAR002', 'STU002', 'Elena', 'Garcia', 'Mendoza', 'Len', '1982-11-25', 'Cagayan de Oro', 'Valencia City', '09444444444', 'High School Graduate', 'Vendor', 'No');
-
 -- --------------------------------------------------------
 
 --
@@ -305,38 +279,40 @@ INSERT INTO `parent_table` (`ParentId`, `StudentId`, `FirstName`, `LastName`, `M
 --
 
 CREATE TABLE `referral` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `referral_code` varchar(100) UNIQUE NOT NULL,
-  `student_id` varchar(45) DEFAULT NULL,
-  `student_name` varchar(255) NOT NULL,
-  `grade` varchar(45) DEFAULT NULL,
-  `section` varchar(45) DEFAULT NULL,
+  `id` int NOT NULL,
+  `referral_code` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `student_id` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `student_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `grade` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `section` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `age` int DEFAULT NULL,
-  `gender` varchar(10) DEFAULT NULL,
-  `referral_reason` text,
-  `description` text,
-  `intervention_attempts` text,
-  `observed_behaviors` text,
-  `parent_guardian` varchar(255) DEFAULT NULL,
-  `parent_contact` varchar(20) DEFAULT NULL,
-  `parent_email` varchar(100) DEFAULT NULL,
-  `family_background` text,
+  `gender` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `referral_reason` text COLLATE utf8mb4_unicode_ci,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `intervention_attempts` text COLLATE utf8mb4_unicode_ci,
+  `observed_behaviors` text COLLATE utf8mb4_unicode_ci,
+  `parent_guardian` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `parent_contact` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `parent_email` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `family_background` text COLLATE utf8mb4_unicode_ci,
   `teacher_id` int DEFAULT NULL,
-  `teacher_name` varchar(255) DEFAULT NULL,
-  `school_attended` varchar(255) NOT NULL,
-  `student_school` varchar(255) NOT NULL,
-  `urgency` varchar(20) DEFAULT 'normal',
-  `stage` int DEFAULT 1,
-  `status` varchar(20) DEFAULT 'pending',
-  `date_submitted` timestamp DEFAULT CURRENT_TIMESTAMP,
-  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `student_id` (`student_id`),
-  KEY `teacher_id` (`teacher_id`),
-  KEY `school_attended` (`school_attended`),
-  KEY `date_submitted` (`date_submitted`)
+  `teacher_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `school_attended` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `student_school` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `urgency` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'normal',
+  `stage` int DEFAULT '1',
+  `status` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+  `date_submitted` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `referral`
+--
+
+INSERT INTO `referral` (`id`, `referral_code`, `student_id`, `student_name`, `grade`, `section`, `age`, `gender`, `referral_reason`, `description`, `intervention_attempts`, `observed_behaviors`, `parent_guardian`, `parent_contact`, `parent_email`, `family_background`, `teacher_id`, `teacher_name`, `school_attended`, `student_school`, `urgency`, `stage`, `status`, `date_submitted`, `created_at`, `updated_at`) VALUES
+(4, 'REF-F40C6114', '11156410012', 'Renier Manongsong', 'Grade 7', 'A', 12, 'Male', 'Breathing difficulty', 'utot ng utot ', '', '', 'renan santos', '09662260205', 'admin@gmail.com', '', 8, 'admin admin', 'Default School', 'Default School', 'Low', 6, 'completed', '2026-04-05 04:53:27', '2026-04-05 04:53:27', '2026-04-05 04:55:40');
 
 -- --------------------------------------------------------
 
@@ -431,14 +407,6 @@ CREATE TABLE `sibling` (
   `StudentId` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `sibling`
---
-
-INSERT INTO `sibling` (`SiblingId`, `FirstName`, `LastName`, `MiddleName`, `NickName`, `Age`, `SchoolId`, `BirthOrder`, `StudentId`) VALUES
-(1, 'Anna', 'Dela Cruz', 'Santos', 'Ann', '10', 'Elementary School', '2nd', 'STU001'),
-(2, 'Joshua', 'Garcia', 'Mendoza', 'Josh', '12', 'Junior High', '1st', 'STU002');
-
 -- --------------------------------------------------------
 
 --
@@ -460,16 +428,16 @@ CREATE TABLE `student_table` (
   `CurrentReligion` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `CurrentAddress` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `PermanentAddress` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `CellphoneNumber` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+  `CellphoneNumber` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `grade_id` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `student_table`
 --
 
-INSERT INTO `student_table` (`StudentId`, `LRN`, `FirstName`, `LastName`, `MiddleName`, `NickName`, `Sex`, `Age`, `DateOfBirth`, `PlaceOfBirth`, `ReligionFromBirth`, `CurrentReligion`, `CurrentAddress`, `PermanentAddress`, `CellphoneNumber`) VALUES
-('STU001', '202600000001', 'John', 'Dela Cruz', 'Santos', 'Johnny', 'Male', '14', '2011-05-12', 'Butucan', 'Catholic', 'Catholic', 'Butucan Proper', 'Butucan Proper', '09123456789'),
-('STU002', '202600000002', 'Maria', 'Lopez', 'Garcia', 'Mia', 'Female', '15', '2010-08-20', 'Valencia City', 'Catholic', 'Catholic', 'Valencia City', 'Valencia City', '09223334444');
+INSERT INTO `student_table` (`StudentId`, `LRN`, `FirstName`, `LastName`, `MiddleName`, `NickName`, `Sex`, `Age`, `DateOfBirth`, `PlaceOfBirth`, `ReligionFromBirth`, `CurrentReligion`, `CurrentAddress`, `PermanentAddress`, `CellphoneNumber`, `grade_id`) VALUES
+('9', '123456789111', 'Renier ', 'Manongsong', 'T', 'rener', 'Male', '21', '2004-01-12', 'calapan', 'catholic', 'catholic', 'Lumangbayan ', 'lumangbayan', '+6396622060205', NULL);
 
 -- --------------------------------------------------------
 
@@ -495,6 +463,7 @@ CREATE TABLE `teacher` (
 ALTER TABLE `accounts`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `unique_email` (`email`),
   ADD KEY `idx_email` (`email`);
 
 --
@@ -503,6 +472,17 @@ ALTER TABLE `accounts`
 ALTER TABLE `categories`
   ADD PRIMARY KEY (`id`),
   ADD KEY `section_id` (`section_id`);
+
+--
+-- Indexes for table `document_library`
+--
+ALTER TABLE `document_library`
+  ADD PRIMARY KEY (`document_id`),
+  ADD KEY `idx_student_id` (`student_id`),
+  ADD KEY `idx_document_type` (`document_type`),
+  ADD KEY `idx_school` (`school_attended`),
+  ADD KEY `idx_uploaded_by` (`uploaded_by`),
+  ADD KEY `idx_uploaded_at` (`uploaded_at`);
 
 --
 -- Indexes for table `educational_background`
@@ -564,6 +544,7 @@ ALTER TABLE `parent_table`
 --
 ALTER TABLE `referral`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `referral_code` (`referral_code`),
   ADD KEY `student_id` (`student_id`),
   ADD KEY `teacher_id` (`teacher_id`),
   ADD KEY `school_attended` (`school_attended`),
@@ -596,7 +577,8 @@ ALTER TABLE `sibling`
 ALTER TABLE `student_table`
   ADD PRIMARY KEY (`StudentId`),
   ADD UNIQUE KEY `idx_student_lrn` (`LRN`),
-  ADD KEY `idx_student_name` (`LastName`,`FirstName`);
+  ADD KEY `idx_student_name` (`LastName`,`FirstName`),
+  ADD KEY `idx_student_grade` (`grade_id`);
 
 --
 -- Indexes for table `teacher`
@@ -612,13 +594,19 @@ ALTER TABLE `teacher`
 -- AUTO_INCREMENT for table `accounts`
 --
 ALTER TABLE `accounts`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+
+--
+-- AUTO_INCREMENT for table `document_library`
+--
+ALTER TABLE `document_library`
+  MODIFY `document_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `educational_background`
@@ -645,12 +633,6 @@ ALTER TABLE `friends_table`
   MODIFY `FriendID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT for table `referral`
---
-ALTER TABLE `referral`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
-
---
 -- AUTO_INCREMENT for table `grades`
 --
 ALTER TABLE `grades`
@@ -661,6 +643,12 @@ ALTER TABLE `grades`
 --
 ALTER TABLE `guardian`
   MODIFY `GuardianID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `referral`
+--
+ALTER TABLE `referral`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `reports`
@@ -691,16 +679,25 @@ ALTER TABLE `categories`
   ADD CONSTRAINT `categories_ibfk_1` FOREIGN KEY (`section_id`) REFERENCES `sections` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `document_library`
+--
+ALTER TABLE `document_library`
+  ADD CONSTRAINT `fk_doc_student` FOREIGN KEY (`student_id`) REFERENCES `student_table` (`StudentId`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_doc_uploader` FOREIGN KEY (`uploaded_by`) REFERENCES `accounts` (`id`) ON DELETE RESTRICT;
+
+--
 -- Constraints for table `follow_up`
 --
 ALTER TABLE `follow_up`
   ADD CONSTRAINT `follow_up_ibfk_1` FOREIGN KEY (`StudentID`) REFERENCES `student_table` (`StudentId`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `referral`
+-- Constraints for table `student_table`
 --
-ALTER TABLE `referral`
-  ADD CONSTRAINT `referral_ibfk_1` FOREIGN KEY (`teacher_id`) REFERENCES `teacher` (`TeacherID`);
+SET FOREIGN_KEY_CHECKS=0;
+ALTER TABLE `student_table`
+  ADD CONSTRAINT `student_table_ibfk_1` FOREIGN KEY (`grade_id`) REFERENCES `grades` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+SET FOREIGN_KEY_CHECKS=1;
 
 --
 -- Constraints for table `reports`

@@ -2,6 +2,8 @@
 
 let allStudents = [];
 let currentStudent = null;
+let refreshInterval = null;
+let tableRefreshInterval = null;
 
 function loadStudentRecords() {
     initPage();
@@ -19,6 +21,13 @@ function loadStudentRecords() {
             document.getElementById('statusFilter').addEventListener('change', filterStudents);
             
             displayStudents(allStudents);
+            
+            // Auto-refresh table every 5 seconds for real-time updates
+            tableRefreshInterval = setInterval(() => {
+                fetchStudents(userSchool).then(() => {
+                    displayStudents(allStudents);
+                });
+            }, 5000);
         })
         .catch(error => {
             console.error('Error loading students:', error);
@@ -45,74 +54,270 @@ function displayStudents(students) {
 
     if (students.length === 0) {
         tbody.innerHTML = `<tr>
-            <td colspan="9" style="text-align: center; padding: 30px; color: #999;">No student records found</td>
+            <td colspan="7" style="text-align: center; padding: 30px; color: #999;">No student records found</td>
         </tr>`;
         return;
     }
 
-    tbody.innerHTML = students.map(student => `
-        <tr>
-            <td><strong>${student.first_name || ''} ${student.last_name || ''}</strong></td>
-            <td>${student.email || 'N/A'}</td>
-            <td>N/A</td>
-            <td>N/A</td>
-            <td>N/A</td>
-            <td>${student.referral_count || 0}</td>
-            <td>${student.last_referral_date ? formatDate(student.last_referral_date) : 'Never'}</td>
-            <td>${student.referral_count > 0 ? '<span class="badge" style="background: #ff9800;">Active</span>' : '<span class="badge" style="background: #4caf50;">No Case</span>'}</td>
-            <td>
-                <button class="btn btn-sm btn-primary" onclick="viewStudentRecord(${student.id})">View</button>
+    tbody.innerHTML = students.map((student, index) => {
+        // Convert grade_id to grade name
+        const gradeMap = {
+            '1': 'Grade 7',
+            '2': 'Grade 8',
+            '3': 'Grade 9',
+            '4': 'Grade 10'
+        };
+        const gradeId = String(student.grade_id || '');
+        const gradeName = gradeMap[gradeId] || '';
+        
+        return `<tr style="border-bottom: 1px solid #e5e7eb; transition: background-color 0.2s ease; ${index % 2 === 0 ? 'background-color: #f9fafb;' : ''}">
+            <td style="padding: 14px 15px;"><strong style="color: #1f2937;">${student.first_name || ''} ${student.last_name || ''}</strong></td>
+            <td style="padding: 14px 15px; color: #6b7280; font-size: 14px;">${student.email || 'N/A'}</td>
+            <td style="padding: 14px 15px; color: #6b7280;">${gradeName || 'N/A'}</td>
+            <td style="padding: 14px 15px; color: #6b7280;">${student.Age || 'N/A'}</td>
+            <td style="padding: 14px 15px; color: #6b7280;">N/A</td>
+            <td style="padding: 14px 15px; text-align: center;">
+                ${student.referral_count > 0 ? '<span class="badge" style="background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">active</span>' : '<span class="badge" style="background: #9ca3af; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">inactive</span>'}
             </td>
-        </tr>
-    `).join('');
+            <td style="padding: 14px 15px; text-align: center;">
+                <button class="btn btn-sm btn-primary" onclick="viewStudentRecord(${student.id})" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background-color 0.2s;">View</button>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 function viewStudentRecord(studentId) {
     const userInfo = JSON.parse(sessionStorage.getItem('userInfo')) || {};
     const userSchool = userInfo.school_attended || userInfo.school || '';
     
-    // Fetch student details
-    fetch(`/guidancemanagment/api/get-student-details.php?student_id=${studentId}&school=${encodeURIComponent(userSchool)}`)
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                currentStudent = result.student;
-                displayStudentDetail(result);
-                openModal('studentDetailModal');
-            } else {
-                alert(result.message || 'Error loading student details');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching student details:', error);
-            alert('Error loading student details');
-        });
+    // Clear any existing refresh interval
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    
+    // Function to fetch and display student details
+    const loadStudentDetails = () => {
+        const url = `/guidancemanagment/api/get-student-details.php?student_id=${studentId}&school=${encodeURIComponent(userSchool)}`;
+        console.log('Fetching from URL:', url);
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(result => {
+                console.log('API Response:', result);
+                if (result && result.success && result.student) {
+                    currentStudent = result.student;
+                    document.getElementById('debugInfo').innerHTML = `Name: ${result.student.first_name || 'N/A'}`;
+                    console.log('Calling displayStudentDetail with:', result);
+                    displayStudentDetail(result);
+                } else {
+                    const errMsg = result && result.message ? result.message : 'Unknown error';
+                    document.getElementById('debugInfo').innerHTML = `ERROR: ${errMsg}`;
+                    console.error('Error loading student details:', errMsg);
+                    alert('Error: ' + errMsg);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching student details:', error);
+                document.getElementById('debugInfo').innerHTML = `FETCH ERROR: ${error.message}`;
+                alert('Error fetching student details: ' + error);
+            });
+    };
+    
+    // Initial load
+    loadStudentDetails();
+    
+    // Refresh every 3 seconds while modal is open
+    refreshInterval = setInterval(loadStudentDetails, 3000);
+    
+    openModal('studentDetailModal');
 }
 
 function displayStudentDetail(data) {
-    const student = data.student;
-    const referrals = data.referrals || [];
+    console.log('displayStudentDetail called with:', data);
     
-    // Display student info
-    document.getElementById('modalStudentName').textContent = `${student.first_name} ${student.last_name}`;
-    document.getElementById('modalStudentId').textContent = student.email;
-    document.getElementById('modalStudentGrade').textContent = 'N/A';
-    document.getElementById('modalStudentAge').textContent = 'N/A';
-    document.getElementById('modalStudentGender').textContent = 'N/A';
+    const student = data.student || {};
+    const referrals = data.referrals || [];
+    const families = data.family_status || {};
+    const education = data.education || [];
+    const organizations = data.organizations || [];
+    const siblings = data.siblings || [];
+    const friends = data.friends || [];
+    
+    console.log('Student object:', student);
+    
+    // Debug: Show what we're receiving
+    const debugMsg = `DEBUG - Student: ${JSON.stringify(student).substring(0, 200)}`;
+    console.log(debugMsg);
+    
+    const showValue = (val) => {
+        if (val === null || val === undefined || val === '') {
+            return 'Not provided';
+        }
+        return String(val);
+    };
+    
+    // Helper to safely set field values
+    const setField = (fieldId, value) => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.value = showValue(value);
+            const debugVal = showValue(value).substring(0, 30);
+            console.log(`Set ${fieldId} to: ${debugVal}`);
+        } else {
+            console.warn(`Field ${fieldId} not found!`);
+        }
+    };
+    
+    // Personal Information
+    setField('formFirstName', student.first_name || student.FirstName);
+    setField('formLastName', student.last_name || student.LastName);
+    setField('formStudentId', student.id || student.StudentId);
+    setField('formEmail', student.email);
+    setField('formDateOfBirth', student.DateOfBirth || student.date_of_birth);
+    setField('formGender', student.Sex || student.gender);
+    
+    // Academic Information
+    setField('formSchool', student.school_attended);
+    
+    // Convert grade_id to grade name
+    const gradeMap = {
+        '1': 'Grade 7',
+        '2': 'Grade 8',
+        '3': 'Grade 9',
+        '4': 'Grade 10'
+    };
+    console.log('Student object grade fields:');
+    console.log('  grade_id:', student.grade_id);
+    console.log('  grade_level:', student.grade_level);
+    console.log('  GradeId:', student.GradeId);
+    
+    const gradeId = String(student.grade_id || student.grade_level || student.GradeId || '');
+    console.log('Final gradeId:', gradeId);
+    const gradeName = gradeMap[gradeId] || student.grade_level || gradeId || '';
+    console.log('Final gradeName:', gradeName);
+    setField('formGradeLevel', gradeName);
+    
+    setField('formSection', student.section);
+    
+    // Family Information
+    setField('formFatherName', student.father_name);
+    setField('formMotherName', student.mother_name);
+    setField('formGuardianName', student.guardian_name);
+    setField('formSiblings', student.number_of_siblings || 0);
+    
+    // Family Status
+    let familyStatusText = '';
+    if (families && Object.keys(families).length > 0) {
+        const status = [];
+        if (families.LivingTogether === 'Yes') status.push('Living Together');
+        if (families.MarriedYet === 'Yes') status.push('Married');
+        if (families.MarriedChurch === 'Yes') status.push('Married in Church');
+        if (families.TemporarilySepered === 'Yes') status.push('Temporarily Separated');
+        if (families.PermanentlySepered === 'Yes') status.push('Permanently Separated');
+        if (families.FatherWithPartner === 'Yes') status.push('Father with Partner');
+        if (families.MotherWithPartner === 'Yes') status.push('Mother with Partner');
+        familyStatusText = status.length > 0 ? status.join(', ') : 'Not provided';
+    } else {
+        familyStatusText = 'Not provided';
+    }
+    setField('formFamilyStatus', familyStatusText);
+    setField('formFamilyIncome', student.monthly_family_income);
+    
+    // Health & Issues
+    setField('formHealthCondition', student.health_condition);
+    setField('formBehavioralIssues', student.behavioral_issues);
+    setField('formAcademicStruggles', student.academic_struggles);
+    setField('formSocialIssues', student.social_issues);
+    
+    // Counseling Notes
+    setField('counselingNotes', student.counseling_notes);
+    
+    // Display education history
+    const educationContainer = document.getElementById('educationHistoryContainer');
+    if (education.length === 0) {
+        educationContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; text-align: center; margin: 0;">No education records</p>';
+    } else {
+        educationContainer.innerHTML = `<div style="display: grid; gap: 12px;">
+            ${education.map(edu => `
+                <div style="padding: 14px; background: white; border-left: 4px solid var(--primary); border-radius: 6px;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${edu.SchoolAttended || 'School'}</div>
+                    <div style="font-size: 13px; color: var(--text-muted);">Grade: ${edu.GradeLevel || 'N/A'}</div>
+                    <div style="font-size: 13px; color: var(--text-muted);">Years: ${edu.InclusiveYes || 'N/A'}</div>
+                    ${edu.PlaceAndSchool ? `<div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Plans: ${edu.PlaceAndSchool}</div>` : ''}
+                </div>
+            `).join('')}
+        </div>`;
+    }
+    
+    // Display organizations
+    const organizationContainer = document.getElementById('organizationHistoryContainer');
+    if (organizations.length === 0) {
+        organizationContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; text-align: center; margin: 0;">No organization records</p>';
+    } else {
+        organizationContainer.innerHTML = `<div style="display: grid; gap: 12px;">
+            ${organizations.map(org => `
+                <div style="padding: 14px; background: white; border-left: 4px solid var(--primary); border-radius: 6px;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${org.OrganizationName || 'Organization'}</div>
+                    <div style="font-size: 13px; color: var(--text-muted);">Position: ${org.PositionTitle || 'N/A'}</div>
+                    <div style="font-size: 13px; color: var(--text-muted);">In Campus: ${org.inCampus === 'Yes' ? '✓ Yes' : org.inCampus === 'No' ? '✗ No' : 'N/A'}</div>
+                </div>
+            `).join('')}
+        </div>`;
+    }
+    
+    // Display siblings
+    const siblingsContainer = document.getElementById('siblingsHistoryContainer');
+    if (siblings.length === 0) {
+        siblingsContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; text-align: center; margin: 0;">No sibling records</p>';
+    } else {
+        siblingsContainer.innerHTML = `<div style="display: grid; gap: 12px;">
+            ${siblings.map(sib => `
+                <div style="padding: 14px; background: white; border-left: 4px solid var(--primary); border-radius: 6px;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${sib.FirstName || ''} ${sib.LastName || ''}</div>
+                    <div style="font-size: 13px; color: var(--text-muted);">Age: ${sib.Age || 'N/A'} | Birth Order: ${sib.BirthOrder || 'N/A'}</div>
+                    ${sib.SchoolId ? `<div style="font-size: 13px; color: var(--text-muted);">School ID: ${sib.SchoolId}</div>` : ''}
+                </div>
+            `).join('')}
+        </div>`;
+    }
+    
+    // Display friends
+    const friendsContainer = document.getElementById('friendsHistoryContainer');
+    if (friends.length === 0) {
+        friendsContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; text-align: center; margin: 0;">No friend records</p>';
+    } else {
+        friendsContainer.innerHTML = `<div style="display: grid; gap: 12px;">
+            ${friends.map(friend => `
+                <div style="padding: 14px; background: white; border-left: 4px solid var(--primary); border-radius: 6px;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${friend.FirstName || ''} ${friend.MiddleName || ''} ${friend.LastName || ''}</div>
+                    <div style="font-size: 13px; color: var(--text-muted);">In School: ${friend.In_school === 'Yes' ? '✓ Yes' : friend.In_school === 'No' ? '✗ No' : 'N/A'}</div>
+                </div>
+            `).join('')}
+        </div>`;
+    }
     
     // Display referral history
-    const referralList = document.getElementById('modalReferralList');
+    const referralHistoryContainer = document.getElementById('referralHistoryContainer');
     if (referrals.length === 0) {
-        referralList.innerHTML = '<li style="color: #999;">No referral history</li>';
+        referralHistoryContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; text-align: center; margin: 0;">No referral history</p>';
     } else {
-        referralList.innerHTML = referrals.map(ref => `
-            <li style="margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
-                <strong>${ref.referral_reason}</strong><br>
-                <small>Code: ${ref.referral_code}</small><br>
-                <small>Stage: ${ref.stage}/6 | Status: ${ref.status}</small><br>
-                <small>Submitted: ${formatDate(ref.date_submitted)}</small>
-            </li>
-        `).join('');
+        referralHistoryContainer.innerHTML = `<div style="display: grid; gap: 12px;">
+            ${referrals.map(ref => `
+                <div style="padding: 14px; background: var(--gray-50); border-left: 4px solid var(--primary); border-radius: 6px;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${ref.referral_reason || 'Referral'}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">Code: ${ref.referral_code || 'N/A'}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 12px; color: var(--text-muted);"><strong>Stage:</strong> ${ref.stage || '0'}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);"><strong>Status:</strong> ${ref.status || 'Pending'}</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Submitted: ${formatDate(ref.date_submitted)}</div>
+                </div>
+            `).join('')}
+        </div>`;
     }
 }
 
@@ -130,9 +335,9 @@ function filterStudents() {
         );
     }
 
-    if (statusFilter === 'Active') {
+    if (statusFilter === 'active') {
         filtered = filtered.filter(s => s.referral_count > 0);
-    } else if (statusFilter === 'Closed') {
+    } else if (statusFilter === 'inactive') {
         filtered = filtered.filter(s => s.referral_count === 0);
     }
 
@@ -148,6 +353,15 @@ function clearSearch() {
     document.getElementById('gradeFilter').value = '';
     document.getElementById('statusFilter').value = '';
     displayStudents(allStudents);
+}
+
+function closeStudentDetailModal() {
+    // Stop the refresh interval when modal closes
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+    closeModal('studentDetailModal');
 }
 
 function saveCounselingNotes() {

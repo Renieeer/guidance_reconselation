@@ -56,22 +56,6 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="role">Select Your Role</label>
-                        <div class="input-wrapper">
-                            <i class="bi bi-person-badge"></i>
-                            <select id="role" name="role" required>
-                                <option value="">Choose your role...</option>
-                                <option value="student">Student</option>
-                                <option value="teacher">Teacher</option>
-                                <option value="coordinator">Coordinator</option>
-                                <option value="counselor">Counselor</option>
-                                <option value="other-school">Coordinator & Counselor (Other School)</option>
-                                <option value="sdo">SDO (School District Officer)</option>
-                            </select>
-                        </div>
-                    </div>
-
                     <div id="loginError" class="error-alert"></div>
 
                     <button type="submit" class="btn btn-auth-primary">

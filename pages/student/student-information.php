@@ -112,6 +112,16 @@
                                     <input type="number" name="Age" placeholder="Years" required>
                                 </div>
                                 <div class="field-group">
+                                    <label>Grade <span class="req">*</span></label>
+                                    <select name="grade_id" id="gradeSelect" required>
+                                        <option value="">Select grade</option>
+                                        <option value="1">Grade 7</option>
+                                        <option value="2">Grade 8</option>
+                                        <option value="3">Grade 9</option>
+                                        <option value="4">Grade 10</option>
+                                    </select>
+                                </div>
+                                <div class="field-group">
                                     <label>Date of Birth <span class="req">*</span></label>
                                     <input type="date" name="DateOfBirth" required>
                                 </div>
@@ -437,6 +447,9 @@
                             <div class="progress-bar-fill" id="progressFill" style="width:16.66%"></div>
                         </div>
                     </div>
+                    <button type="button" id="saveChangesBtn" class="btn-nav btn-save" onclick="manualSaveChanges()" style="background-color: #4caf50; color: white; margin: 0 10px; display: none;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
                     <button type="button" class="btn-nav btn-next" id="nextBtn">
                         Next <i class="fas fa-arrow-right"></i>
                     </button>

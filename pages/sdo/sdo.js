@@ -1,5 +1,26 @@
 // SDO Dashboard Script
 
+// Initialize sidebar active state based on current page
+function initSidebarActive() {
+    // Get the current page filename
+    const url = window.location.href;
+    const currentFile = url.substring(url.lastIndexOf('/') + 1);
+    
+    // Get all sidebar menu links
+    const menuLinks = document.querySelectorAll('.sidebar-menu a');
+    
+    // Remove active class from all and add to current page
+    menuLinks.forEach(link => {
+        link.classList.remove('active');
+        const href = link.getAttribute('href');
+        
+        // Match current file with link href
+        if (href && url.includes(href)) {
+            link.classList.add('active');
+        }
+    });
+}
+
 const districts = [
     'District 1', 'District 2', 'District 3', 'District 4', 'District 5',
     'District 6', 'District 7', 'District 8', 'District 9', 'District 10', 'District 11'
@@ -7,6 +28,7 @@ const districts = [
 
 function loadSDODashboard() {
     initPage();
+    initSidebarActive();
     const referrals = getData('referrals') || [];
 
     // Calculate overall stats

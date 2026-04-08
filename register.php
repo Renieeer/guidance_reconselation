@@ -70,25 +70,38 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="school">School Attended *</label>
+                        <label for="school">School <span id="schoolRequired" style="color: #ef4444;">*</span></label>
                         <div class="input-wrapper">
-                         
-                            <input type="text" id="school" name="school" placeholder="e.g., Butucan National High School" required>
+                            <i class="bi bi-building"></i>
+                            <select id="school" name="school">
+                                <option value="">Choose your school...</option>
+                                <option value="personas">Personas National High School</option>
+                                <option value="community-vocational">Community Vocational High Schools</option>
+                                <option value="oriental-mindoro">Oriental Mindoro National High School</option>
+                                <option value="ceriaco-abes">Ceriaco A. Abes Memorial National High School</option>
+                                <option value="nag-iba">Nag-iba National High School</option>
+                                <option value="pedro-panaligan">Pedro V Panaligan National High School</option>
+                                <option value="parang">Parang National High School</option>
+                                <option value="managpi">Managpi National High School</option>
+                                <option value="buvayao">Buvayao National High School</option>
+                                <option value="canubing">Canubing National High School</option>
+                            </select>
                         </div>
                         <small class="error-text"></small>
                     </div>
 
                     <div class="form-group">
-                        <label for="role">Select Your Role *</label>
+                        <label for="role">Your Role *</label>
                         <div class="input-wrapper">
-                        
+                            <i class="bi bi-person-badge"></i>
                             <select id="role" name="role" required>
-                                <option value="">Choose your role...</option>
+                                <option value="">Select your role...</option>
                                 <option value="student">Student</option>
                                 <option value="teacher">Teacher</option>
-                                <option value="coordinator">Coordinator</option>
                                 <option value="counselor">Counselor</option>
-                                <option value="other-school">Coordinator & Counselor (Other School)</option>
+                                <option value="coordinator">Coordinator</option>
+                                <option value="counselor-and-coordinator">Counselor & Coordinator</option>
+                                <!-- <option value="sdo">SDO (School District Officer)</option> -->
                             </select>
                         </div>
                         <small class="error-text"></small>

@@ -4,7 +4,7 @@ const dashboardRoutes = {
     teacher: 'pages/teacher/dashboard.php',
     coordinator: 'pages/coordinator/dashboard.php',
     counselor: 'pages/counselor/dashboard.php',
-    'other-school': 'pages/other-school/dashboard.php',
+    'counselor-and-coordinator': 'pages/other-school/dashboard.php',
     sdo: 'pages/sdo/dashboard.php'
 };
 
@@ -53,11 +53,10 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
 
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const role = document.getElementById('role').value;
     const errorDiv = document.getElementById('loginError');
 
     // Validate
-    if (!email || !password || !role) {
+    if (!email || !password) {
         showError('Please fill all fields');
         return;
     }
@@ -77,8 +76,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
             },
             body: JSON.stringify({
                 email: email,
-                password: password,
-                role: role
+                password: password
             })
         });
 
@@ -96,16 +94,16 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
             sessionStorage.setItem('user', JSON.stringify(userData));
             localStorage.setItem('currentUser', JSON.stringify(userData));
 
-            // Redirect to dashboard
-            window.location.href = dashboardRoutes[role];
+            // Redirect to dashboard based on role
+            window.location.href = dashboardRoutes[data.user.role];
         } else {
             // If database login fails, try demo users as fallback
             const user = demoUsers[email];
-            if (user && user.password === password && user.role === role) {
+            if (user && user.password === password) {
                 // Demo login
                 const userData = {
                     email: email,
-                    role: role,
+                    role: user.role,
                     name: user.name,
                     id: user.id || email.split('@')[0]
                 };
@@ -114,19 +112,19 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
                 localStorage.setItem('currentUser', JSON.stringify(userData));
 
                 // Redirect to dashboard
-                window.location.href = dashboardRoutes[role];
+                window.location.href = dashboardRoutes[user.role];
             } else {
-                showError('Invalid email, password, or role');
+                showError('Invalid email or password');
             }
         }
     } catch (error) {
         console.error('Login error:', error);
         // Fallback to demo login on network error
         const user = demoUsers[email];
-        if (user && user.password === password && user.role === role) {
+        if (user && user.password === password) {
             const userData = {
                 email: email,
-                role: role,
+                role: user.role,
                 name: user.name,
                 id: user.id || email.split('@')[0]
             };
@@ -134,7 +132,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
             sessionStorage.setItem('user', JSON.stringify(userData));
             localStorage.setItem('currentUser', JSON.stringify(userData));
 
-            window.location.href = dashboardRoutes[role];
+            window.location.href = dashboardRoutes[user.role];
         } else {
             showError('Login failed: ' + error.message);
         }
@@ -142,7 +140,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
     }
-});
+});;
 
 function showError(message) {
     const errorDiv = document.getElementById('loginError');
