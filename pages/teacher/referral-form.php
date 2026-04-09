@@ -39,10 +39,8 @@
                             <div class="form-group">
                                 <label for="studentName">Student Name *</label>
                                 <input type="text" id="studentName" name="studentName" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="studentId">Student ID / LRN *</label>
-                                <input type="text" id="studentId" name="studentId" required>
+                                <!-- Hidden field to store student ID -->
+                                <input type="hidden" id="studentId" name="studentId">
                             </div>
                         </div>
 

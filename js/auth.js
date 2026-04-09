@@ -61,6 +61,9 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
         return;
     }
 
+    // Clear all previous user data before logging in
+    clearAllUserData();
+
     // Disable submit button to prevent multiple submissions
     const submitBtn = this.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
@@ -83,19 +86,28 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
         const data = await response.json();
 
         if (data.success) {
-            // Store session
+            // Clear any previous user data
+            clearAllUserData();
+            
+            // Store session with new user data
             const userData = {
                 email: data.user.email,
-                role: data.user.role,
-                name: data.user.name,
-                id: data.user.id
+                role: data.user.role || data.user.user_type,
+                name: data.user.name || `${data.user.firstName} ${data.user.lastName}`,
+                id: data.user.id,
+                first_name: data.user.firstName,
+                last_name: data.user.lastName,
+                user_type: data.user.role || data.user.user_type,
+                school_attended: data.user.school || 'Unknown'
             };
             
+            // Store in sessionStorage for current session
             sessionStorage.setItem('user', JSON.stringify(userData));
+            // Optional: Store in localStorage for persistence across tabs
             localStorage.setItem('currentUser', JSON.stringify(userData));
 
             // Redirect to dashboard based on role
-            window.location.href = dashboardRoutes[data.user.role];
+            window.location.href = dashboardRoutes[userData.role];
         } else {
             // If database login fails, try demo users as fallback
             const user = demoUsers[email];
@@ -105,7 +117,11 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
                     email: email,
                     role: user.role,
                     name: user.name,
-                    id: user.id || email.split('@')[0]
+                    id: user.id || email.split('@')[0],
+                    first_name: user.name.split(' ')[0],
+                    last_name: user.name.split(' ')[1] || 'Demo',
+                    user_type: user.role,
+                    school_attended: 'Demo School'
                 };
                 
                 sessionStorage.setItem('user', JSON.stringify(userData));
@@ -126,7 +142,11 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
                 email: email,
                 role: user.role,
                 name: user.name,
-                id: user.id || email.split('@')[0]
+                id: user.id || email.split('@')[0],
+                first_name: user.name.split(' ')[0],
+                last_name: user.name.split(' ')[1] || 'Demo',
+                user_type: user.role,
+                school_attended: 'Demo School'
             };
             
             sessionStorage.setItem('user', JSON.stringify(userData));
@@ -156,22 +176,53 @@ function showError(message) {
 
 // Check if user is logged in
 function checkAuth() {
-    const user = sessionStorage.getItem('user');
+    const user = sessionStorage.getItem('userInfo') || sessionStorage.getItem('user');
     if (!user) {
         window.location.href = '../../index.php';
     }
     return JSON.parse(user);
 }
 
+// Clear all user data from both sessionStorage and localStorage
+function clearAllUserData() {
+    // Remove from sessionStorage
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('userInfo');
+    sessionStorage.removeItem('studentId');
+    sessionStorage.removeItem('userName');
+    
+    // Remove from localStorage
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('teacherSchool');
+    localStorage.removeItem('referrals');
+    localStorage.removeItem('appointments');
+    localStorage.removeItem('appointmentHistory');
+    
+    // Clear any form data
+    sessionStorage.removeItem('formData');
+    localStorage.removeItem('formData');
+    
+    console.log('All user data cleared');
+}
+
 // Logout function
 function logout() {
-    sessionStorage.removeItem('user');
-    // Optional: Call logout.php if you want server-side logout
+    clearAllUserData();
+    // Call logout.php if you want server-side logout
+    try {
+        fetch('http://localhost/guidancemanagment/api/logout.php', {
+            method: 'POST'
+        }).catch(() => {
+            // Ignore errors, just proceed to logout
+        });
+    } catch (e) {
+        // Ignore
+    }
     window.location.href = '../../index.php';
 }
 
 // Get current user
 function getCurrentUser() {
-    const user = sessionStorage.getItem('user');
+    const user = sessionStorage.getItem('userInfo') || sessionStorage.getItem('user');
     return user ? JSON.parse(user) : null;
 }

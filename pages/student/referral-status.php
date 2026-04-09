@@ -30,8 +30,18 @@
 
             <!-- Page Content -->
             <div class="page-content">
+                <!-- Progress Overview -->
+                <div id="progressContainer" style="display: none; margin-bottom: 25px;">
+                    <div class="card">
+                        <h2 style="margin-top: 0; margin-bottom: 20px;">Referral Progress</h2>
+                        <div id="referralProgressList" style="max-height: 500px; overflow-y: auto;">
+                            <!-- Progress cards will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Referrals Table -->
-                <div class="table-container">
+                <div class="table-container" id="referralsTableContainer">
                     <table>
                         <thead>
                             <tr>
@@ -52,35 +62,126 @@
 
                 <!-- Referral Details Modal -->
                 <div id="referralModal" class="modal">
-                    <div class="modal-content">
+                    <div class="modal-content" style="max-width: 700px; margin: auto; max-height: 90vh; overflow-y: auto;">
                         <div class="modal-header">
-                            <h2>Referral Details</h2>
+                            <h2>Referral Form Details</h2>
                             <button class="modal-close" id="closeReferralModal">&times;</button>
                         </div>
                         <div class="modal-body">
+                            <!-- Student Information -->
+                            <h4 style="margin-top: 20px; margin-bottom: 12px; color: #1f2937; border-bottom: 2px solid #3b82f6; padding-bottom: 8px;">Student Information</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Student Name</label>
+                                    <input type="text" id="refStudentName" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Student ID</label>
+                                    <input type="text" id="refStudentId" readonly>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Grade</label>
+                                    <input type="text" id="refGrade" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Section</label>
+                                    <input type="text" id="refSection" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Age</label>
+                                    <input type="text" id="refAge" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Gender</label>
+                                    <input type="text" id="refGender" readonly>
+                                </div>
+                            </div>
+
+                            <!-- Referral Information -->
+                            <h4 style="margin-top: 20px; margin-bottom: 12px; color: #1f2937; border-bottom: 2px solid #3b82f6; padding-bottom: 8px;">Referral Details</h4>
                             <div class="form-group">
-                                <label>Referral ID</label>
-                                <input type="text" id="referralId" readonly>
+                                <label>Reason for Referral</label>
+                                <textarea id="refReason" readonly rows="3"></textarea>
                             </div>
                             <div class="form-group">
-                                <label>Reason</label>
-                                <textarea id="referralReason" readonly rows="3"></textarea>
+                                <label>Description</label>
+                                <textarea id="refDescription" readonly rows="3"></textarea>
                             </div>
                             <div class="form-group">
-                                <label>Submitted By</label>
-                                <input type="text" id="referralSubmittedBy" readonly>
+                                <label>Intervention Attempts</label>
+                                <textarea id="refIntervention" readonly rows="3"></textarea>
                             </div>
                             <div class="form-group">
-                                <label>Date</label>
-                                <input type="text" id="referralDate" readonly>
+                                <label>Observed Behaviors</label>
+                                <textarea id="refBehaviors" readonly rows="3"></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Urgency Level</label>
+                                    <input type="text" id="refUrgency" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Submitted By</label>
+                                    <input type="text" id="refTeacher" readonly>
+                                </div>
+                            </div>
+
+                            <!-- Parent/Guardian Information -->
+                            <h4 style="margin-top: 20px; margin-bottom: 12px; color: #1f2937; border-bottom: 2px solid #3b82f6; padding-bottom: 8px;">Parent/Guardian Information</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Parent/Guardian Name</label>
+                                    <input type="text" id="refParent" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Contact Number</label>
+                                    <input type="text" id="refParentContact" readonly>
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label>Status</label>
-                                <input type="text" id="referralStatus" readonly>
+                                <label>Email</label>
+                                <input type="text" id="refParentEmail" readonly>
                             </div>
                             <div class="form-group">
-                                <label>Notes</label>
-                                <textarea id="referralNotes" readonly rows="4"></textarea>
+                                <label>Family Background</label>
+                                <textarea id="refFamilyBg" readonly rows="3"></textarea>
+                            </div>
+
+                            <!-- Status and Progress -->
+                            <h4 style="margin-top: 20px; margin-bottom: 12px; color: #1f2937; border-bottom: 2px solid #3b82f6; padding-bottom: 8px;">Status & Progress</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Referral Status</label>
+                                    <input type="text" id="refStatus" readonly style="font-weight: bold;">
+                                </div>
+                                <div class="form-group">
+                                    <label>Current Phase</label>
+                                    <input type="text" id="refPhase" readonly style="font-weight: bold;">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Date Submitted</label>
+                                <input type="text" id="refDateSubmitted" readonly>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div style="margin-top: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+                                <div style="margin-bottom: 10px;">
+                                    <strong style="color: #1f2937;">Referral Progress</strong>
+                                </div>
+                                <div style="height: 10px; background: #e5e7eb; border-radius: 5px; overflow: hidden; margin-bottom: 10px;">
+                                    <div id="refProgressBar" style="height: 100%; width: 16.67%; background: #f59e0b; transition: width 0.3s ease;"></div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; font-size: 12px; text-align: center;">
+                                    <div style="color: #6b7280;">📋 Submitted</div>
+                                    <div style="color: #6b7280;">👀 Under Review</div>
+                                    <div style="color: #6b7280;">📅 Scheduled</div>
+                                    <div style="color: #6b7280;">⚙️ In Progress</div>
+                                    <div style="color: #6b7280;">✅ Follow-up</div>
+                                    <div style="color: #6b7280;">🎯 Completed</div>
+                                </div>
                             </div>
                         </div>
                         <div class="modal-footer">

@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setupUserInfo();
                 setupStepClickListeners();
                 initDynamicSections();
+                setupStudentNameSearch();
                 loadStudentData();
                 updateStepIndicator();
                 updateNavigationButtons();
@@ -409,7 +410,17 @@ function initDynamicSections() {
 // ─── USER INFO (topbar) ────────────────────────────────────────
 function setupUserInfo() {
     let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    if (!currentUser.name) {
+    
+    // Check sessionStorage for userInfo (current session user)
+    if (!currentUser.id) {
+        const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+        if (userInfo.id) {
+            currentUser = userInfo;
+        }
+    }
+    
+    // Fallback to old user format
+    if (!currentUser.id) {
         const user = JSON.parse(sessionStorage.getItem('user') || '{}');
         currentUser = { ...currentUser, ...user };
     }
@@ -428,8 +439,9 @@ function setupUserInfo() {
 
     // Update topbar info
     setTimeout(() => {
-        const userName    = currentUser.name || sessionStorage.getItem('userName');
-        const userRole    = currentUser.role || 'User';
+        const userName    = currentUser.first_name ? `${currentUser.first_name} ${currentUser.last_name}` : 
+                           (currentUser.name || sessionStorage.getItem('userName'));
+        const userRole    = currentUser.user_type || currentUser.role || 'Student';
         const userNameEl  = document.getElementById('userName');
         const userRoleEl  = document.getElementById('userRole');
         const userAvatar  = document.getElementById('userAvatar');
@@ -440,36 +452,190 @@ function setupUserInfo() {
                 userRoleEl.textContent = userRole.charAt(0).toUpperCase() + userRole.slice(1).replace('-', ' ');
             }
             if (userAvatar) {
-                userAvatar.textContent = userName.split(' ')
+                const initials = userName.split(' ')
                     .map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
+                userAvatar.textContent = initials || 'ST';
             }
         }
     }, 100);
+}
+
+// ─── SETUP STUDENT NAME SEARCH AUTO-FILL ──────────────────────
+let searchTimeout;
+function setupStudentNameSearch() {
+    console.log('=== setupStudentNameSearch STARTED ===');
+    
+    // Try to find name fields - could be separate First/Last or combined Student Name
+    const firstNameField = document.querySelector('input[name="FirstName"]');
+    const lastNameField = document.querySelector('input[name="LastName"]');
+    const studentNameField = document.querySelector('input[name="StudentName"]') || 
+                            document.querySelector('input[placeholder*="Student Name" i]') ||
+                            document.querySelector('input[placeholder*="students name" i]');
+    
+    console.log('=== Field Detection ===');
+    console.log('firstNameField:', firstNameField ? 'FOUND' : 'NOT FOUND');
+    console.log('lastNameField:', lastNameField ? 'FOUND' : 'NOT FOUND');
+    console.log('studentNameField:', studentNameField ? 'FOUND' : 'NOT FOUND');
+    
+    if (!firstNameField && !lastNameField && !studentNameField) {
+        console.error('ERROR: No name fields found on the form!');
+        return;
+    }
+    
+    const handleStudentSearch = () => {
+        console.log('=== handleStudentSearch TRIGGERED ===');
+        clearTimeout(searchTimeout);
+        
+        let firstName = '';
+        let lastName = '';
+        
+        if (studentNameField && studentNameField.value.trim()) {
+            // If using combined Student Name field, split it
+            const parts = studentNameField.value.trim().split(' ');
+            firstName = parts[0] || '';
+            lastName = parts.slice(1).join(' ') || '';
+            console.log('Using combined StudentName field');
+        } else {
+            // Use separate fields
+            firstName = firstNameField?.value?.trim() || '';
+            lastName = lastNameField?.value?.trim() || '';
+            console.log('Using separate FirstName/LastName fields');
+        }
+        
+        console.log('Current input:', { firstName, lastName });
+        
+        // Need at least 2 characters to search
+        if (firstName.length < 2 && lastName.length < 2) {
+            console.log('Search skipped - not enough characters');
+            return;
+        }
+        
+        // Build search query
+        const searchQuery = `${firstName} ${lastName}`.trim();
+        
+        // Get school from current logged-in user
+        const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+        const school = currentUser.school_attended || 'Default School';
+        
+        console.log('Search parameters:', { searchQuery, school });
+        
+        // Debounce search - wait 500ms after user stops typing
+        searchTimeout = setTimeout(() => {
+            const url = `${getApiUrl()}/get-students.php?search=${encodeURIComponent(searchQuery)}&school=${encodeURIComponent(school)}&limit=5`;
+            console.log('Fetching from URL:', url);
+            
+            fetch(url)
+                .then(r => {
+                    console.log('Response status:', r.status, r.statusText);
+                    if (!r.ok) {
+                        throw new Error(`HTTP ${r.status}`);
+                    }
+                    return r.json();
+                })
+                .then(data => {
+                    console.log('=== API Response ===');
+                    console.log('Full response:', data);
+                    console.log('Success:', data.success);
+                    console.log('Students:', data.students);
+                    console.log('Student count:', data.students?.length || 0);
+                    
+                    if (data.success && Array.isArray(data.students) && data.students.length > 0) {
+                        // Auto-fill with the first matching student
+                        const student = data.students[0];
+                        console.log('=== Auto-filling with ===', student);
+                        
+                        // Populate StudentId / LRN field
+                        const lrnField = document.querySelector('input[name="LRN"]');
+                        if (lrnField && student.id) {
+                            lrnField.value = student.id;
+                            console.log('✓ Set LRN to:', student.id);
+                        }
+                        
+                        const studentIdField = document.querySelector('input[name="StudentId"]');
+                        if (studentIdField && student.id) {
+                            studentIdField.value = student.id;
+                            console.log('✓ Set StudentId to:', student.id);
+                        }
+                        
+                        // Auto-fill Age
+                        if (student.Age) {
+                            const ageField = document.querySelector('input[name="Age"]');
+                            if (ageField) {
+                                ageField.value = student.Age;
+                                console.log('✓ Set Age to:', student.Age);
+                            }
+                        }
+                        
+                        // Auto-fill Sex/Gender
+                        if (student.Sex) {
+                            const sexField = document.querySelector('select[name="Sex"]');
+                            if (sexField) {
+                                sexField.value = student.Sex;
+                                console.log('✓ Set Sex to:', student.Sex);
+                            }
+                        }
+                        
+                        // Auto-fill Date of Birth
+                        if (student.DateOfBirth) {
+                            const dobField = document.querySelector('input[name="DateOfBirth"]');
+                            if (dobField) {
+                                dobField.value = student.DateOfBirth;
+                                console.log('✓ Set DateOfBirth to:', student.DateOfBirth);
+                            }
+                        }
+                        
+                        // Auto-fill Grade
+                        if (student.grade_id) {
+                            const gradeField = document.querySelector('select[name="grade_id"]');
+                            if (gradeField) {
+                                gradeField.value = student.grade_id;
+                                console.log('✓ Set grade_id to:', student.grade_id);
+                            }
+                        }
+                        
+                        showNotification('✓ Student found and auto-filled!', 'success');
+                    } else {
+                        console.log('No students found matching:', searchQuery);
+                    }
+                })
+                .catch(err => {
+                    console.error('=== FETCH ERROR ===', err);
+                });
+        }, 500);
+    };
+    
+    // Add event listeners for real-time search
+    if (firstNameField) {
+        console.log('✓ Adding input listener to FirstName field');
+        firstNameField.addEventListener('input', handleStudentSearch);
+    }
+    if (lastNameField) {
+        console.log('✓ Adding input listener to LastName field');
+        lastNameField.addEventListener('input', handleStudentSearch);
+    }
+    if (studentNameField) {
+        console.log('✓ Adding input listener to StudentName field');
+        studentNameField.addEventListener('input', handleStudentSearch);
+    }
+    
+    console.log('=== setupStudentNameSearch COMPLETED ===');
 }
 
 // ─── LOAD DATA (on page load) ──────────────────────────────────
 function loadStudentData() {
     let studentId = null;
 
-    // Try to get StudentId from localStorage (currentUser)
+    // Get StudentId from current logged-in user (from session or auth)
     try {
-        const cu = JSON.parse(localStorage.getItem('currentUser') || '{}');
-        if (cu.id) studentId = cu.id;
-    } catch (e) {
-        console.error('Error parsing currentUser:', e);
-    }
-
-    // Try sessionStorage if not found
-    if (!studentId) {
-        try {
-            const u = JSON.parse(sessionStorage.getItem('user') || '{}');
-            if (u.id) studentId = u.id;
-        } catch (e) {
-            console.error('Error parsing user:', e);
+        const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+        if (user.id) {
+            studentId = user.id;
         }
+    } catch (e) {
+        console.error('Error parsing user:', e);
     }
 
-    // Try direct session key
+    // Fallback: Try sessionStorage if not found
     if (!studentId) {
         studentId = sessionStorage.getItem('studentId');
     }
@@ -482,27 +648,54 @@ function loadStudentData() {
     console.log('Loading student data for StudentId:', studentId);
 
     setTimeout(() => {
-        fetch(`${getApiUrl()}/save-student.php?StudentId=${encodeURIComponent(studentId)}`)
-            .then(r => r.json())
+        // First try the merged API endpoint which gets data from both accounts and student_table
+        fetch(`${getApiUrl()}/get-student-details.php?student_id=${encodeURIComponent(studentId)}`)
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                }
+                return r.json();
+            })
             .then(data => {
-                if (data.success && data.data) {
-                    console.log('Student data loaded successfully');
-                    // Pre-fill StudentId in the form
-                    const studentIdField = document.querySelector('input[name="StudentId"]');
-                    if (studentIdField) {
-                        studentIdField.value = studentId;
-                    }
+                console.log('API Response from get-student-details:', data);
+                
+                if (data.success && data.student) {
+                    console.log('Student data loaded from get-student-details');
+                    console.log('Education records:', data.education);
+                    console.log('Organization records:', data.organizations);
+                    console.log('Sibling records:', data.siblings);
+                    console.log('Friend records:', data.friends);
                     
-                    populateFormWithData(data.data);
+                    // Pass the full response object
+                    populateFormWithStudentDetails(data);
                     markStepsAsComplete();
                     enterUpdateMode();
                     showNotification('✓ Your previous information has been loaded.', 'success');
                 } else {
-                    console.log('No data found for StudentId:', studentId);
+                    console.log('No student data found, trying fallback API');
+                    // Fallback to save-student.php if get-student-details fails
+                    return fetch(`${getApiUrl()}/save-student.php?StudentId=${encodeURIComponent(studentId)}`);
+                }
+            })
+            .then(r => {
+                if (!r) return null;
+                if (!r.ok) {
+                    throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                }
+                return r.json();
+            })
+            .then(data => {
+                if (data && data.success && data.data) {
+                    console.log('Student data loaded from save-student.php');
+                    populateFormWithData(data.data);
+                    markStepsAsComplete();
+                    enterUpdateMode();
+                    showNotification('✓ Your previous information has been loaded.', 'success');
                 }
             })
             .catch(err => {
-                console.error('Error loading student data:', err);
+                console.error('Error loading student data:', err.message);
+                console.error('Full error:', err);
                 // Still pre-fill the StudentId even if fetch fails
                 const studentIdField = document.querySelector('input[name="StudentId"]');
                 if (studentIdField && !studentIdField.value) {
@@ -510,6 +703,153 @@ function loadStudentData() {
                 }
             });
     }, 200);
+}
+
+// ─── POPULATE FORM FROM get-student-details.php ─────────────────
+function populateFormWithStudentDetails(response) {
+    console.log('populateFormWithStudentDetails called with response:', response);
+    const student = response.student || {};
+    
+    // ── Step 1: Basic student info (from merged account + student_table data) ──
+    const basicMap = {
+        'StudentId': 'input[name="StudentId"]',
+        'id': 'input[name="StudentId"]',  // Fallback to account id
+        'LRN': 'input[name="LRN"]',
+        'first_name': 'input[name="FirstName"]',
+        'FirstName': 'input[name="FirstName"]',
+        'last_name': 'input[name="LastName"]',
+        'LastName': 'input[name="LastName"]',
+        'MiddleName': 'input[name="MiddleName"]',
+        'NickName': 'input[name="NickName"]',
+        'Sex': 'select[name="Sex"]',
+        'Age': 'input[name="Age"]',
+        'grade_id': 'select[name="grade_id"]',
+        'DateOfBirth': 'input[name="DateOfBirth"]',
+        'PlaceOfBirth': 'input[name="PlaceOfBirth"]',
+        'ReligionFromBirth': 'input[name="ReligionFromBirth"]',
+        'CurrentReligion': 'input[name="CurrentReligion"]',
+        'CurrentAddress': 'input[name="CurrentAddress"]',
+        'PermanentAddress': 'input[name="PermanentAddress"]',
+        'CellphoneNumber': 'input[name="CellphoneNumber"]'
+    };
+    
+    Object.entries(basicMap).forEach(([key, sel]) => {
+        const el = document.querySelector(sel);
+        if (el && student[key] && student[key] !== '' && student[key] !== null) {
+            el.value = student[key];
+        }
+    });
+
+    // ── Step 2: Education ──
+    console.log('Processing education data:', response.education);
+    if (Array.isArray(response.education) && response.education.length) {
+        const container = document.getElementById('educationContainer');
+        container.innerHTML = '';
+        eduCount = 0;
+        response.education.forEach(edu => {
+            console.log('Adding education record:', edu);
+            const i = eduCount++;
+            container.appendChild(buildEducationCard(i, edu));
+        });
+        updateRemoveButtons('educationContainer');
+    }
+
+    // ── Step 3: Organizations ──
+    console.log('Processing organization data:', response.organizations);
+    if (Array.isArray(response.organizations) && response.organizations.length) {
+        const container = document.getElementById('organizationContainer');
+        container.innerHTML = '';
+        orgCount = 0;
+        response.organizations.forEach(org => {
+            console.log('Adding organization record:', org);
+            const i = orgCount++;
+            container.appendChild(buildOrganizationCard(i, org));
+        });
+        updateRemoveButtons('organizationContainer');
+    }
+
+    // ── Step 4: Parents ──
+    console.log('Processing parent data:', response.parents);
+    if (Array.isArray(response.parents) && response.parents.length) {
+        const parentMap = {
+            'father': 0,
+            'mother': 1
+        };
+        
+        response.parents.forEach((parent, idx) => {
+            const parentType = idx === 0 ? 'father' : 'mother';
+            const fields = ['FirstName', 'MiddleName', 'LastName', 'NickName', 'BirthDate',
+                           'PlaceOfBirth', 'Occupation', 'ContactNumber', 'Address',
+                           'HighestEducationalAttainment', 'isDeceased'];
+            
+            fields.forEach(field => {
+                const key = `${parentType}_${field}`;
+                const el = document.querySelector(`[name="${key}"]`);
+                if (el && parent[field]) {
+                    el.value = parent[field];
+                }
+            });
+        });
+    }
+
+    // ── Step 5: Family Status ──
+    console.log('Processing family status data:', response.family_status);
+    if (response.family_status && typeof response.family_status === 'object') {
+        const familyFields = ['LivingTogether', 'MarriedYet', 'MarriedChurch',
+            'TemporarilySepered', 'PermanentlySepered',
+            'FatherWithPartner', 'MotherWithPartner'];
+        
+        familyFields.forEach(f => {
+            const el = document.querySelector(`[name="${f}"]`);
+            if (el && response.family_status[f]) {
+                el.value = response.family_status[f];
+            }
+        });
+    }
+
+    // ── Step 6: Siblings ──
+    console.log('Processing sibling data:', response.siblings);
+    if (Array.isArray(response.siblings) && response.siblings.length) {
+        const container = document.getElementById('siblingsContainer');
+        container.innerHTML = '';
+        sibCount = 0;
+        response.siblings.forEach(sib => {
+            console.log('Adding sibling record:', sib);
+            const i = sibCount++;
+            container.appendChild(buildSiblingCard(i, sib));
+        });
+        updateRemoveButtons('siblingsContainer');
+    }
+
+    // ── Step 6: Guardian ──
+    console.log('Processing guardian data:', response.guardians);
+    if (Array.isArray(response.guardians) && response.guardians.length > 0) {
+        const guardian = response.guardians[0];
+        const guardianFields = ['FirstName', 'MiddleName', 'LastName', 'Relationship',
+                                'Address', 'Landline', 'MobileNumber'];
+        guardianFields.forEach(f => {
+            const el = document.querySelector(`[name="guardian_${f}"]`);
+            if (el && guardian[f]) el.value = guardian[f];
+        });
+    }
+
+    // ── Step 6: Friends ──
+    console.log('Processing friend data:', response.friends);
+    if (Array.isArray(response.friends) && response.friends.length) {
+        const container = document.getElementById('friendsContainer');
+        container.innerHTML = '';
+        friendCount = 0;
+        response.friends.forEach(fr => {
+            console.log('Adding friend record:', fr);
+            const i = friendCount++;
+            container.appendChild(buildFriendCard(i, fr));
+        });
+        updateRemoveButtons('friendsContainer');
+    }
+
+    // Re-apply family status dependencies after populating data
+    setupFamilyStatusDependencies();
+    console.log('Form populated with student details');
 }
 
 // ─── LOAD DATA (manual StudentId change) ──────────────────────

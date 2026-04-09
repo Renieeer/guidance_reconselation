@@ -38,7 +38,10 @@
                             <h3 style="margin: 0;"><i class="bi bi-clipboard-data"></i> Referral Status</h3>
                             <span class="badge" id="referralCount" style="background: #3b82f6; padding: 6px 12px; border-radius: 20px; color: white; font-size: 0.85em;">0</span>
                         </div>
-                        <p style="color: #64748b; margin-bottom: 12px;">View your referral status</p>
+                        <p style="color: #64748b; margin-bottom: 12px;">View your referral progress</p>
+                        <div id="referralProgressPreview" style="margin-bottom: 12px; font-size: 0.9em;">
+                            <!-- Quick progress preview will appear here -->
+                        </div>
                         <a href="referral-status.php" class="btn btn-primary" style="width: 100%;">View Referrals</a>
                     </div>
 
