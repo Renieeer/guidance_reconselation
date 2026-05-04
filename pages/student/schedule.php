@@ -31,10 +31,78 @@
             <!-- Page Content -->
             <div class="page-content">
                 <!-- Calendar View -->
-                <div class="card">
-                    <h2 class="card-title"><i class="bi bi-calendar-event"></i> My Schedule</h2>
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
-                        <div id="calendar"></div>
+                <div class="schedule-calendar-card">
+                    <div class="schedule-calendar-header">
+                        <div class="schedule-calendar-title">
+                            <div class="schedule-calendar-icon">
+                                <i class="bi bi-calendar-event"></i>
+                            </div>
+                            <div>
+                                <h2>Appointment Calendar</h2>
+                                <p>Review counseling sessions and add events by day.</p>
+                            </div>
+                        </div>
+                        <div class="schedule-calendar-actions">
+                            <button type="button" class="schedule-calendar-nav" id="schedulePrevMonth" aria-label="Previous month">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <div class="schedule-calendar-month" id="scheduleCalendarMonth">May 2026</div>
+                            <button type="button" class="schedule-calendar-nav" id="scheduleNextMonth" aria-label="Next month">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+
+                            <select class="schedule-calendar-view" id="scheduleViewSelect" disabled>
+                                <option>Month View</option>
+                            </select>
+
+                            <button type="button" class="btn btn-outline-primary" id="scheduleTodayBtn">Today</button>
+                            <button type="button" class="btn btn-primary" id="requestAppointmentBtn" style="margin-left: auto;">
+                                <i class="bi bi-plus-circle"></i> Request Appointment
+                            </button>
+                        </div>
+                    </div>
+                    <div style="padding: 20px; background: #f8f9fa; display: flex; gap: 20px; min-height: 600px;">
+                        <!-- Appointment Request Form Panel (Left) -->
+                        <div id="appointmentFormPanel" style="flex: 0 0 35%; display: none; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background: white; overflow-y: auto;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h3 style="margin: 0;">Request Appointment</h3>
+                                <button type="button" id="closeFormPanel" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
+                            </div>
+                            <form id="appointmentRequestForm">
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1e293b;">Preferred Date</label>
+                                    <input type="date" id="appointmentDateInput" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px;">
+                                    <small style="color: #64748b; display: block; margin-top: 5px;">Select a date without scheduled events</small>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1e293b;">Preferred Time</label>
+                                    <input type="time" id="appointmentTimeInput" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px;">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1e293b;">Reason</label>
+                                    <select id="appointmentReasonSelect" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px;">
+                                        <option value="">Select a reason...</option>
+                                        <option value="academic-concerns">Academic Concerns</option>
+                                        <option value="behavioral-issues">Behavioral Issues</option>
+                                        <option value="personal-issues">Personal Issues</option>
+                                        <option value="college-planning">College Planning</option>
+                                        <option value="general-consultation">General Consultation</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1e293b;">Additional Notes</label>
+                                    <textarea id="appointmentNotesInput" rows="4" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; resize: vertical;"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; margin-top: 10px;">
+                                    <i class="bi bi-check-lg"></i> Request Appointment
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Calendar (Right) -->
+                        <div style="flex: 1; overflow-y: auto;">
+                            <div id="scheduleCalendar"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -73,6 +141,90 @@
                         </div>
                         <div class="modal-footer">
                             <button class="btn btn-primary" id="closeAppointmentBtn">Close</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- View Event Modal (New Design) -->
+                <div id="viewEventModal" class="modal" style="display:none;">
+                    <div class="modal-content view-event-modal-new">
+                        <div class="view-modal-header">
+                            <h2 id="viewEventTitle">Meeting</h2>
+                            <span class="modal-close" id="closeViewEventModal">&times;</span>
+                        </div>
+                        <div class="view-modal-body">
+                            <div class="event-detail-section" id="descriptionSection">
+                                <div class="event-detail-icon">
+                                    <i class="bi bi-card-text"></i>
+                                </div>
+                                <div class="event-detail-content">
+                                    <h3 class="event-detail-title">Description</h3>
+                                    <p id="viewEventDescription" class="event-detail-text"></p>
+                                </div>
+                            </div>
+                            <div class="event-detail-section">
+                                <div class="event-detail-icon">
+                                    <i class="bi bi-calendar-event"></i>
+                                </div>
+                                <div class="event-detail-content">
+                                    <h3 class="event-detail-title">Date and Time</h3>
+                                    <p id="viewEventDateTime" class="event-detail-text"><span id="viewEventRange"></span><br><span id="viewEventTime"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="view-modal-footer">
+                            <button class="btn btn-outline-primary" id="editEventBtn" style="display:none;">
+                                <i class="bi bi-pencil"></i> Edit
+                            </button>
+                            <button class="btn btn-primary" id="seeMoreDetailsBtn" style="display:none;">See more details →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View Appointment Request Modal -->
+                <div id="viewAppointmentRequestModal" class="modal" style="display:none;">
+                    <div class="modal-content view-event-modal-new">
+                        <div class="view-modal-header">
+                            <h2>Appointment Request</h2>
+                            <span class="modal-close" id="closeAppointmentRequestModal" style="cursor: pointer;">&times;</span>
+                        </div>
+                        <div class="view-modal-body">
+                            <div class="event-detail-section">
+                                <div class="event-detail-icon">
+                                    <i class="bi bi-card-text"></i>
+                                </div>
+                                <div class="event-detail-content">
+                                    <h3 class="event-detail-title">Reason</h3>
+                                    <p id="requestReason" class="event-detail-text"></p>
+                                </div>
+                            </div>
+                            <div class="event-detail-section">
+                                <div class="event-detail-icon">
+                                    <i class="bi bi-calendar-event"></i>
+                                </div>
+                                <div class="event-detail-content">
+                                    <h3 class="event-detail-title">Requested Date & Time</h3>
+                                    <p id="requestDateTime" class="event-detail-text"></p>
+                                </div>
+                            </div>
+                            <div class="event-detail-section">
+                                <div class="event-detail-icon">
+                                    <i class="bi bi-info-circle"></i>
+                                </div>
+                                <div class="event-detail-content">
+                                    <h3 class="event-detail-title">Status</h3>
+                                    <p id="requestStatus" class="event-detail-text"></p>
+                                </div>
+                            </div>
+                            <div class="event-detail-section" id="requestNotesSection" style="display:none;">
+                                <div class="event-detail-icon">
+                                    <i class="bi bi-file-text"></i>
+                                </div>
+                                <div class="event-detail-content">
+                                    <h3 class="event-detail-title">Notes</h3>
+                                    <p id="requestNotes" class="event-detail-text"></p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

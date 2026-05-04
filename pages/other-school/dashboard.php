@@ -32,77 +32,64 @@
             <div class="page-content">
                 <!-- Quick Stats Grid -->
                 <div class="dashboard-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon"><i class="bi bi-clipboard-data"></i></div>
-                        <div>
-                            <h3 id="totalReferrals">0</h3>
-                            <p>Total Referrals</p>
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Active Cases</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-arrow-repeat"></i></div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="activeCases">0</div>
+                            <p>Currently under counseling</p>
+                        </div>
+                        <div class="card-footer">
+                            <a href="referrals.php" class="btn btn-primary btn-sm">Manage</a>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-                        <div>
-                            <h3 id="pendingReferrals">0</h3>
-                            <p>Pending Review</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><i class="bi bi-chat-dots"></i></div>
-                        <div>
-                            <h3 id="activeCases">0</h3>
-                            <p>Active Cases</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><i class="bi bi-check-circle"></i></div>
-                        <div>
-                            <h3 id="closedCases">0</h3>
-                            <p>Closed Cases</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><i class="bi bi-person-check"></i></div>
-                        <div>
-                            <h3 id="totalStudents">0</h3>
-                            <p>Students Served</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><i class="bi bi-calendar-check"></i></div>
-                        <div>
-                            <h3 id="weekSessions">0</h3>
-                            <p>Sessions This Week</p>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Stage Distribution -->
-                <div class="content-section">
-                    <h2>Referral Pipeline</h2>
-                    <div class="pipeline-grid">
-                        <div class="pipeline-stage">
-                            <div class="stage-label">Submitted</div>
-                            <div class="stage-count" id="stageSub">0</div>
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">This Week</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-calendar3"></i></div>
                         </div>
-                        <div class="pipeline-stage">
-                            <div class="stage-label">Under Review</div>
-                            <div class="stage-count" id="stageReview">0</div>
+                        <div class="card-content">
+                            <div class="card-stats" id="weekSessions">0</div>
+                            <p>Sessions scheduled</p>
                         </div>
-                        <div class="pipeline-stage">
-                            <div class="stage-label">Follow Up</div>
-                            <div class="stage-count" id="stageFollowUp">0</div>
+                        <div class="card-footer">
+                            <a href="schedule.php" class="btn btn-primary btn-sm">View Schedule</a>
                         </div>
-                        <div class="pipeline-stage">
-                            <div class="stage-label">Counseling</div>
-                            <div class="stage-count" id="stageCounseling">0</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Total Students</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-people"></i></div>
                         </div>
-                        <div class="pipeline-stage">
-                            <div class="stage-label">In Progress</div>
-                            <div class="stage-count" id="stageProgress">0</div>
+                        <div class="card-content">
+                            <div class="card-stats" id="totalStudents">0</div>
+                            <p>in your caseload</p>
                         </div>
-                        <div class="pipeline-stage">
-                            <div class="stage-label">Closed</div>
-                            <div class="stage-count" id="stageClosed">0</div>
+                        <div class="card-footer">
+                            <a href="student-record.php" class="btn btn-primary btn-sm">Records</a>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Follow-ups</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-file-earmark-text"></i></div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="followUps">0</div>
+                            <p>Pending follow-ups</p>
                         </div>
                     </div>
                 </div>

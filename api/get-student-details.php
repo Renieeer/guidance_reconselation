@@ -1,7 +1,7 @@
 <?php
 // Enable CORS for frontend
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
@@ -11,253 +11,270 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-session_start();
+require_once 'conn.php';
+
+function tableExists(mysqli $conn, string $tableName): bool {
+    $result = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($tableName) . "'");
+    return $result && $result->num_rows > 0;
+}
+
+function getColumns(mysqli $conn, string $tableName): array {
+    $columns = [];
+    $result = $conn->query("SHOW COLUMNS FROM `{$tableName}`");
+
+    if (!$result) {
+        return $columns;
+    }
+
+    while ($row = $result->fetch_assoc()) {
+        $columns[$row['Field']] = true;
+    }
+
+    return $columns;
+}
 
 try {
-    // Include database connection
-    require_once 'conn.php';
+    $studentColumns = getColumns($conn, 'student_table');
+    $studentIdColumn = isset($studentColumns['StudentId']) ? 'StudentId' : (isset($studentColumns['id']) ? 'id' : null);
 
-    // Get query parameters
-    $student_id = intval($_GET['student_id'] ?? 0);
+    if (!$studentIdColumn) {
+        throw new Exception('student_table is missing both StudentId and id columns');
+    }
 
-    if ($student_id === 0) {
+    // Get student_id from query parameters
+    $student_id = isset($_GET['student_id']) ? trim($_GET['student_id']) : null;
+    
+    if (!$student_id) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Missing student_id parameter']);
+        echo json_encode(['success' => false, 'message' => 'student_id is required']);
         exit;
     }
 
-    // Get student information from accounts table
-    $student_query = "SELECT * FROM accounts WHERE id = ? AND user_type = 'student'";
-    $stmt = $conn->prepare($student_query);
-    $stmt->bind_param("i", $student_id);
-    $stmt->execute();
-    $student_result = $stmt->get_result();
+    // Fetch student main information from student_table
+    $query = "SELECT * FROM student_table WHERE `{$studentIdColumn}` = ?";
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
     
-    if ($student_result->num_rows === 0) {
+    $stmt->bind_param("s", $student_id);
+    if (!$stmt->execute()) {
+        throw new Exception("Execute failed: " . $stmt->error);
+    }
+    
+    $result = $stmt->get_result();
+    $student = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$student) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Student not found']);
         exit;
     }
 
-    $student = $student_result->fetch_assoc();
-    $student['id'] = (int) $student['id'];
-    $stmt->close();
+    if (isset($student['Grade']) && !isset($student['grade_id'])) {
+        $student['grade_id'] = $student['Grade'];
+    }
 
-    // Find StudentId in student_table - try multiple strategies
-    $studentTableData = [];
-    $possibleStudentIds = [];
-    
-    // Strategy 1: Look up by FirstName
-    if (!empty($student['first_name'])) {
-        $student_detail_query = "SELECT StudentId FROM student_table WHERE FirstName LIKE ? LIMIT 1";
-        $stmt = $conn->prepare($student_detail_query);
+    if (isset($student['Sex']) && !isset($student['sex'])) {
+        $student['sex'] = $student['Sex'];
+    }
+
+    // Fetch education records
+    $education = [];
+    $educationColumns = getColumns($conn, 'educational_background');
+    if (isset($educationColumns['StudentId'])) {
+        $query = "SELECT * FROM educational_background WHERE StudentId = ?";
+        $stmt = $conn->prepare($query);
         if ($stmt) {
-            $searchName = '%' . $student['first_name'] . '%';
-            $stmt->bind_param("s", $searchName);
-            $stmt->execute();
-            $detail_result = $stmt->get_result();
-            if ($detail_result->num_rows > 0) {
-                while ($row = $detail_result->fetch_assoc()) {
-                    $possibleStudentIds[] = $row['StudentId'];
+            $stmt->bind_param("s", $student_id);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $education[] = $row;
+                }
+            }
+            $stmt->close();
+        }
+    } elseif (isset($student['EducationalBackground_EducationalBgId']) && $student['EducationalBackground_EducationalBgId'] !== null && $student['EducationalBackground_EducationalBgId'] !== '') {
+        $query = "SELECT * FROM educational_background WHERE EducationalBgId = ?";
+        $stmt = $conn->prepare($query);
+        if ($stmt) {
+            $eduId = $student['EducationalBackground_EducationalBgId'];
+            $stmt->bind_param("i", $eduId);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $education[] = $row;
                 }
             }
             $stmt->close();
         }
     }
-    
-    // Strategy 2: Try the account ID as a string
-    $possibleStudentIds[] = (string)$student_id;
-    
-    // Fetch full student table data using first found StudentId
-    if (!empty($possibleStudentIds)) {
-        foreach ($possibleStudentIds as $tryStudentId) {
-            $student_detail_query = "SELECT * FROM student_table WHERE StudentId = ? LIMIT 1";
-            $stmt = $conn->prepare($student_detail_query);
+
+    // Fetch organization records
+    $organizations = [];
+    if (tableExists($conn, 'organization')) {
+        $query = "SELECT * FROM organization WHERE StudentId = ?";
+        $stmt = $conn->prepare($query);
+        if ($stmt) {
+            $stmt->bind_param("s", $student_id);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $organizations[] = $row;
+                }
+            }
+            $stmt->close();
+        }
+    }
+
+    // Fetch sibling records (if there's a siblings table, otherwise return empty)
+    $siblings = [];
+    if (tableExists($conn, 'sibling')) {
+        $query = "SELECT * FROM sibling WHERE StudentId = ?";
+        $stmt = $conn->prepare($query);
+        if ($stmt) {
+            $stmt->bind_param("s", $student_id);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $siblings[] = $row;
+                }
+            }
+            $stmt->close();
+        }
+    }
+
+    // Fetch friend records (supports either friend or friends_table)
+    $friends = [];
+    $friendTable = tableExists($conn, 'friend') ? 'friend' : (tableExists($conn, 'friends_table') ? 'friends_table' : null);
+    if ($friendTable) {
+        $query = "SELECT * FROM `{$friendTable}` WHERE StudentId = ?";
+        $stmt = $conn->prepare($query);
+        if ($stmt) {
+            $stmt->bind_param("s", $student_id);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $friends[] = $row;
+                }
+            }
+            $stmt->close();
+        }
+    }
+
+    // Fetch family status records
+    $familyStatus = [];
+    if (tableExists($conn, 'family_status')) {
+        $familyColumns = getColumns($conn, 'family_status');
+        $familyStudentColumn = isset($familyColumns['StudentId']) ? 'StudentId' : (isset($familyColumns['StudentID']) ? 'StudentID' : null);
+
+        if ($familyStudentColumn) {
+            $query = "SELECT * FROM family_status WHERE `{$familyStudentColumn}` = ? LIMIT 1";
+            $stmt = $conn->prepare($query);
             if ($stmt) {
-                $stmt->bind_param("s", $tryStudentId);
-                $stmt->execute();
-                $detail_result = $stmt->get_result();
-                if ($detail_result->num_rows > 0) {
-                    $studentTableData = $detail_result->fetch_assoc();
-                    // Found data, break the loop
-                    break;
+                $stmt->bind_param("s", $student_id);
+                if ($stmt->execute()) {
+                    $result = $stmt->get_result();
+                    $familyStatus = $result->fetch_assoc() ?: [];
                 }
                 $stmt->close();
             }
         }
     }
 
-    // Use the StudentId we found, with fallback to account ID
-    $studentId = !empty($studentTableData['StudentId']) ? 
-                 $studentTableData['StudentId'] : (string)$student_id;
-    
-    // All remaining data queries will use this $studentId
-
-    
-    // Get parent information using correct StudentId
+    // Fetch parent records
     $parents = [];
-    $parent_query = "SELECT * FROM parent_table WHERE StudentId = ?";
-    $stmt = $conn->prepare($parent_query);
-    if ($stmt) {
-        $stmt->bind_param("s", $studentId);
-        $stmt->execute();
-        $parent_result = $stmt->get_result();
-        while ($row = $parent_result->fetch_assoc()) {
-            $parents[] = $row;
-        }
-        $stmt->close();
-    }
-
-    // Get guardian information using correct StudentId
-    $guardians = [];
-    $guardian_query = "SELECT * FROM guardian WHERE StudentId = ?";
-    $stmt = $conn->prepare($guardian_query);
-    if ($stmt) {
-        $stmt->bind_param("s", $studentId);
-        $stmt->execute();
-        $guardian_result = $stmt->get_result();
-        while ($row = $guardian_result->fetch_assoc()) {
-            $guardians[] = $row;
-        }
-        $stmt->close();
-    }
-
-    // Get sibling information using correct StudentId
-    $siblings = [];
-    $sibling_query = "SELECT * FROM sibling WHERE StudentId = ?";
-    $stmt = $conn->prepare($sibling_query);
-    if ($stmt) {
-        $stmt->bind_param("s", $studentId);
-        $stmt->execute();
-        $sibling_result = $stmt->get_result();
-        while ($row = $sibling_result->fetch_assoc()) {
-            $siblings[] = $row;
-        }
-        $stmt->close();
-    }
-
-    // Get education information using correct StudentId
-    $education = [];
-    $education_query = "SELECT * FROM educational_background WHERE StudentId = ?";
-    $stmt = $conn->prepare($education_query);
-    if ($stmt) {
-        $stmt->bind_param("s", $studentId);
-        $stmt->execute();
-        $education_result = $stmt->get_result();
-        while ($row = $education_result->fetch_assoc()) {
-            $education[] = $row;
-        }
-        $stmt->close();
-    }
-
-    // Get organization information using correct StudentId
-    $organizations = [];
-    $org_query = "SELECT * FROM oraganization WHERE StudentId = ?";
-    $stmt = $conn->prepare($org_query);
-    if ($stmt) {
-        $stmt->bind_param("s", $studentId);
-        $stmt->execute();
-        $org_result = $stmt->get_result();
-        while ($row = $org_result->fetch_assoc()) {
-            $organizations[] = $row;
-        }
-        $stmt->close();
-    }
-
-    // Get friends information using correct StudentId
-    $friends = [];
-    $friends_query = "SELECT * FROM friends_table WHERE StudentId = ?";
-    $stmt = $conn->prepare($friends_query);
-    if ($stmt) {
-        $stmt->bind_param("s", $studentId);
-        $stmt->execute();
-        $friends_result = $stmt->get_result();
-        while ($row = $friends_result->fetch_assoc()) {
-            $friends[] = $row;
-        }
-        $stmt->close();
-    }
-
-    // Get family status using correct StudentId
-    $familyStatus = [];
-    $family_query = "SELECT * FROM family_status WHERE StudentId = ? LIMIT 1";
-    $stmt = $conn->prepare($family_query);
-    if ($stmt) {
-        $stmt->bind_param("s", $studentId);
-        $stmt->execute();
-        $family_result = $stmt->get_result();
-        if ($family_result->num_rows > 0) {
-            $familyStatus = $family_result->fetch_assoc();
-        }
-        $stmt->close();
-    }
-
-    // Get referrals by student_id (lowercase) and student_name
-    $referrals = [];
-    $referral_query = "SELECT * FROM referral WHERE student_id = ? OR student_name LIKE ? ORDER BY date_submitted DESC";
-    $stmt = $conn->prepare($referral_query);
-    if ($stmt) {
-        $studentIdStr = (string)$student_id;
-        $name = '%' . $student['first_name'] . '%';
-        $stmt->bind_param("ss", $studentIdStr, $name);
-        $stmt->execute();
-        $referral_result = $stmt->get_result();
-        while ($row = $referral_result->fetch_assoc()) {
-            $referrals[] = $row;
-        }
-        $stmt->close();
-    }
-
-    // Merge all student information
-    $mergedStudent = array_merge($student, $studentTableData);
-    
-    // Add parent info
-    if (!empty($parents)) {
-        $mergedStudent['father_name'] = '';
-        $mergedStudent['mother_name'] = '';
-        
-        foreach ($parents as $parent) {
-            if ($parent['isDeceased'] !== 'Yes') {
-                // Simplified: assign based on order
-                if (empty($mergedStudent['father_name'])) {
-                    $mergedStudent['father_name'] = $parent['FirstName'] . ' ' . $parent['LastName'];
-                } else if (empty($mergedStudent['mother_name'])) {
-                    $mergedStudent['mother_name'] = $parent['FirstName'] . ' ' . $parent['LastName'];
+    if (tableExists($conn, 'parent_table')) {
+        $parentQuery = "SELECT * FROM parent_table WHERE ParentId IN (?, ?) ORDER BY ParentId";
+        $stmt = $conn->prepare($parentQuery);
+        if ($stmt) {
+            $fatherParentId = 'father_' . $student_id;
+            $motherParentId = 'mother_' . $student_id;
+            $stmt->bind_param("ss", $fatherParentId, $motherParentId);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $parents[] = $row;
                 }
             }
+            $stmt->close();
         }
     }
 
-    // Add guardian info
-    if (!empty($guardians)) {
-        $mergedStudent['guardian_name'] = $guardians[0]['FirstName'] . ' ' . $guardians[0]['LastName'];
-    } else {
-        $mergedStudent['guardian_name'] = '';
+    $father = $parents[0] ?? [];
+    $mother = $parents[1] ?? [];
+
+    // Fetch guardian records
+    $guardians = [];
+    if (tableExists($conn, 'guardian')) {
+        $query = "SELECT * FROM guardian WHERE StudentId = ? ORDER BY GuardianID ASC";
+        $stmt = $conn->prepare($query);
+        if ($stmt) {
+            $stmt->bind_param("s", $student_id);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $guardians[] = $row;
+                }
+            }
+            $stmt->close();
+        }
     }
 
-    // Add sibling count
-    $mergedStudent['number_of_siblings'] = count($siblings);
+    $guardian = $guardians[0] ?? [];
 
+    // Return success response with all data
     echo json_encode([
         'success' => true,
-        'debug' => ['studentId_used' => $studentId, 'account_id' => $student_id],
-        'student' => $mergedStudent,
-        'parents' => $parents,
-        'guardians' => $guardians,
-        'siblings' => $siblings,
+        'student' => $student,
         'education' => $education,
         'organizations' => $organizations,
+        'siblings' => $siblings,
         'friends' => $friends,
         'family_status' => $familyStatus,
-        'referrals' => $referrals
+        'parents' => $parents,
+        'guardians' => $guardians,
+        'father_name' => trim(($father['FirstName'] ?? '') . ' ' . ($father['MiddleName'] ?? '') . ' ' . ($father['LastName'] ?? '')),
+        'mother_name' => trim(($mother['FirstName'] ?? '') . ' ' . ($mother['MiddleName'] ?? '') . ' ' . ($mother['LastName'] ?? '')),
+        'guardian_name' => trim(($guardian['FirstName'] ?? '') . ' ' . ($guardian['MiddleName'] ?? '') . ' ' . ($guardian['LastName'] ?? '')),
+        'father_FirstName' => $father['FirstName'] ?? '',
+        'father_MiddleName' => $father['MiddleName'] ?? '',
+        'father_LastName' => $father['LastName'] ?? '',
+        'father_NickName' => $father['NickName'] ?? '',
+        'father_BirthDate' => $father['BirthDate'] ?? '',
+        'father_PlaceOfBirth' => $father['PlaceOfBirth'] ?? '',
+        'father_Occupation' => $father['Occupation'] ?? '',
+        'father_ContactNumber' => $father['ContactNumber'] ?? '',
+        'father_Address' => $father['Address'] ?? '',
+        'father_HighestEducationalAttainment' => $father['HighestEducationAttained'] ?? '',
+        'father_isDeceased' => $father['IsDeceased'] ?? '',
+        'mother_FirstName' => $mother['FirstName'] ?? '',
+        'mother_MiddleName' => $mother['MiddleName'] ?? '',
+        'mother_LastName' => $mother['LastName'] ?? '',
+        'mother_NickName' => $mother['NickName'] ?? '',
+        'mother_BirthDate' => $mother['BirthDate'] ?? '',
+        'mother_PlaceOfBirth' => $mother['PlaceOfBirth'] ?? '',
+        'mother_Occupation' => $mother['Occupation'] ?? '',
+        'mother_ContactNumber' => $mother['ContactNumber'] ?? '',
+        'mother_Address' => $mother['Address'] ?? '',
+        'mother_HighestEducationalAttainment' => $mother['HighestEducationAttained'] ?? '',
+        'mother_isDeceased' => $mother['IsDeceased'] ?? '',
+        'guardian_FirstName' => $guardian['FirstName'] ?? '',
+        'guardian_MiddleName' => $guardian['MiddleName'] ?? '',
+        'guardian_LastName' => $guardian['LastName'] ?? '',
+        'guardian_Relationship' => $guardian['Relationship'] ?? '',
+        'guardian_Address' => $guardian['Address'] ?? '',
+        'guardian_Landline' => $guardian['Landline'] ?? '',
+        'guardian_MobileNumber' => $guardian['MobileNumber'] ?? ''
     ]);
 
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
-        'success' => false, 
+        'success' => false,
         'message' => 'An error occurred: ' . $e->getMessage()
     ]);
 }
 ?>
-

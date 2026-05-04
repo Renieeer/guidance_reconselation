@@ -24,19 +24,63 @@ function validateEmail(email) {
     return emailRegex.test(email);
 }
 
+async function loadSchoolOptions() {
+    const schoolSelect = document.getElementById('school');
+    if (!schoolSelect) {
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost/guidancemanagment/api/school-config.php?action=list');
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Unable to load schools');
+        }
+
+        const schools = Array.isArray(data.schools) ? data.schools : [];
+        schoolSelect.innerHTML = '<option value="">Choose your school...</option>';
+
+        schools.forEach((school) => {
+            const option = document.createElement('option');
+            option.value = school.school_name || school.schoolName || school.label || '';
+            option.textContent = school.school_name || school.schoolName || school.label || option.value;
+            schoolSelect.appendChild(option);
+        });
+
+        if (!schools.length) {
+            schoolSelect.innerHTML = '<option value="">No schools available</option>';
+            schoolSelect.disabled = true;
+            showError('No schools are available yet. Please contact the SDO.');
+        } else {
+            schoolSelect.disabled = false;
+        }
+    } catch (error) {
+        schoolSelect.innerHTML = '<option value="">Choose your school...</option>';
+        schoolSelect.disabled = false;
+        console.error('Failed to load school list:', error);
+    }
+}
+
 // Show password requirements
 function showPasswordRequirements(password) {
     const requirements = validatePassword(password);
-    const hints = document.querySelectorAll('.password-hint');
+    const items = document.querySelectorAll('.requirement-item');
     
-    hints.forEach(hint => {
-        let text = '<div style="color: #ef4444; font-weight: 600; font-size: 11px; margin-bottom: 4px;">Requirements:</div>';
-        text += `<span style="${requirements.length ? 'color: #10b981' : 'color: #ef4444'}">✓ 8+ chars</span> `;
-        text += `<span style="${requirements.uppercase ? 'color: #10b981' : 'color: #ef4444'}">✓ Uppercase</span> `;
-        text += `<span style="${requirements.lowercase ? 'color: #10b981' : 'color: #ef4444'}">✓ Lowercase</span><br>`;
-        text += `<span style="${requirements.number ? 'color: #10b981' : 'color: #ef4444'}">✓ Number</span> `;
-        text += `<span style="${requirements.special ? 'color: #10b981' : 'color: #ef4444'}">✓ Special char (!@#$%^&*)</span>`;
-        hint.innerHTML = text;
+    items.forEach((item, index) => {
+        const met = index === 0 ? requirements.length : 
+                    index === 1 ? requirements.uppercase :
+                    index === 2 ? requirements.lowercase :
+                    index === 3 ? requirements.number :
+                    index === 4 ? requirements.special : false;
+        
+        if (met) {
+            item.classList.add('met');
+            item.querySelector('.requirement-icon').style.color = '#10b981';
+        } else {
+            item.classList.remove('met');
+            item.querySelector('.requirement-icon').style.color = '#ef4444';
+        }
     });
 }
 
@@ -73,10 +117,34 @@ document.getElementById('toggleConfirmPassword')?.addEventListener('click', func
     }
 });
 
+// Password requirements modal
+const passwordModal = document.getElementById('passwordModal');
+const passwordHelpBtn = document.getElementById('passwordHelpBtn');
+const closePasswordModal = document.getElementById('closePasswordModal');
+
+passwordHelpBtn?.addEventListener('click', function(e) {
+    e.preventDefault();
+    passwordModal.classList.add('show');
+});
+
+closePasswordModal?.addEventListener('click', function(e) {
+    e.preventDefault();
+    passwordModal.classList.remove('show');
+});
+
+// Close modal when clicking outside
+passwordModal?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.classList.remove('show');
+    }
+});
+
 // Real-time password validation feedback
 document.getElementById('password')?.addEventListener('input', function(e) {
     showPasswordRequirements(this.value);
 });
+
+loadSchoolOptions();
 
 // Handle registration form submission
 document.getElementById('registerForm')?.addEventListener('submit', async function(e) {
@@ -245,6 +313,10 @@ function showError(message) {
         errorDiv.classList.add('show');
         // Scroll to error
         errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Auto-hide error after 5 seconds
+        setTimeout(() => {
+            errorDiv.classList.remove('show');
+        }, 5000);
     }
 }
 

@@ -1,0 +1,488 @@
+[2026-05-01 17:18:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:18:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:19:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:19:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:20:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:20:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:21:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:21:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:21:57] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:21:57] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:22:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:22:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:23:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:23:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:24:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:24:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:24:40] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:24:40] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:24:50] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:24:50] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:25:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:25:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:26:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:26:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:27:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:27:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:28:08] GET request: {"school":"Unknown","month":"2026-05"}
+[2026-05-01 17:28:08] GET returned 0 rows for school=Unknown month=2026-05
+[2026-05-01 17:28:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:28:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:29:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:29:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:30:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:30:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:31:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:31:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:32:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:32:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:33:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:33:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:34:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:34:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:35:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:35:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:35:23] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:23] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:31] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:31] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:32] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:32] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:32] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:32] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:33] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:33] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:33] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:33] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:33] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:33] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:33] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:33] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:34] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:35:34] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:35:38] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:35:38] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:35:39] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:35:39] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:35:42] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:35:42] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:35:42] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:35:42] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:35:43] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:35:43] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:36:10] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:36:10] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:36:40] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:36:40] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:37:10] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:37:10] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:37:40] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:37:40] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:38:10] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:38:10] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:38:40] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:38:40] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:39:10] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:39:10] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:40:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:40:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:41:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:41:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:42:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:42:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:43:05] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:43:05] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:43:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:43:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:43:10] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:43:10] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:43:31] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:43:31] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:43:39] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:43:39] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:43:50] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:43:50] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:44:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:44:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:44:40] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:44:40] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:45:10] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:45:10] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:46:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:46:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:47:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:47:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:47:12] GET request: {"school":"Demo School","month":"2026-05"}
+[2026-05-01 17:47:12] GET returned 0 rows for school=Demo School month=2026-05
+[2026-05-01 17:47:36] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:47:36] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:47:37] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:47:37] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:47:38] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:47:38] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:47:38] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:47:38] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:47:38] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:47:38] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:47:39] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:47:39] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:47:39] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:47:39] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:47:39] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:47:39] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:48:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:48:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:49:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:49:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:49:12] GET request: {"month":"2026-05"}
+[2026-05-01 17:49:12] GET returned 1 rows for school= month=2026-05
+[2026-05-01 17:50:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:50:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:50:46] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:50:46] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:50:48] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:50:48] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:51:09] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:51:09] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:51:13] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:51:13] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:51:16] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:51:16] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:51:17] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:51:17] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:51:40] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:51:40] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:52:10] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:52:10] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:52:19] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:52:19] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:52:20] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:52:20] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:52:23] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:52:23] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:52:23] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:52:23] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:52:24] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:52:24] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:52:51] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:52:51] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:53:21] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:53:21] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:53:28] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:53:28] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:53:45] GET request: {"school":"canubing","month":"2026-05"}
+[2026-05-01 17:53:45] GET returned 0 rows for school=canubing month=2026-05
+[2026-05-01 17:53:51] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:53:51] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:54:14] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:54:14] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 17:54:21] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 17:54:21] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:23:34] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:23:34] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:23:48] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:23:48] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:24:49] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:24:49] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:25:50] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:25:50] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:26:51] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:26:51] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:27:52] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:27:52] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:28:53] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:28:53] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:29:54] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:29:54] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:30:55] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:30:55] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:31:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:31:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:32:57] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:32:57] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:33:58] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:33:58] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:34:59] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:34:59] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:36:00] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:36:00] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:37:01] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:37:01] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:38:02] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:38:02] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:39:03] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:39:03] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:40:04] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:40:04] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:41:05] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:41:05] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:42:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:42:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:43:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:43:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:44:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:44:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:45:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:45:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:46:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:46:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:47:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:47:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:48:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:48:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:49:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:49:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:50:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:50:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:51:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:51:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:52:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:52:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:53:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:53:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:54:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:54:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:55:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:55:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:56:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:56:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:57:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:57:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:58:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:58:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-01 23:59:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-01 23:59:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:00:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:00:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:01:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:01:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:02:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:02:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:03:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:03:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:04:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:04:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:05:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:05:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:06:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:06:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:07:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:07:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:08:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:08:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:09:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:09:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:10:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:10:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:11:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:11:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:12:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:12:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:13:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:13:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:14:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:14:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:15:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:15:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:16:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:16:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:17:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:17:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:18:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:18:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:19:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:19:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:20:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:20:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:21:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:21:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:22:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:22:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:23:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:23:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:24:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:24:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:25:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:25:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:26:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:26:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:27:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:27:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:28:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:28:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:29:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:29:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:30:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:30:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:31:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:31:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 00:32:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 00:32:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-02 05:21:13] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-02 05:21:13] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:35:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:35:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:35:31] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:35:31] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:35:36] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:35:36] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:35:41] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:35:41] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:35:42] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:35:42] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:35:42] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:35:42] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:35:43] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:35:43] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:35:44] GET request: {"school":"oriental-mindoro","month":"2026-06"}
+[2026-05-04 15:35:44] GET returned 0 rows for school=oriental-mindoro month=2026-06
+[2026-05-04 15:35:46] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:35:46] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:36:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:36:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:36:36] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:36:36] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:37:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:37:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:37:36] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:37:36] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:38:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:38:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:38:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:38:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:39:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:39:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:40:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:40:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:41:15] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:41:15] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:41:16] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:41:16] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:41:17] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:41:17] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:41:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:41:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:42:21] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:42:21] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:42:39] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:42:39] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:42:46] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:42:46] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:43:17] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:43:17] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:43:47] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:43:47] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:44:17] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:44:17] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:44:47] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:44:47] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:45:17] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:45:17] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:45:47] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:45:47] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:45:59] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:45:59] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:46:19] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:46:19] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:46:29] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:46:29] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:46:59] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:46:59] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:47:29] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:47:29] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:47:59] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:47:59] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:48:22] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:48:22] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:48:22] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:48:22] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:48:23] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:48:23] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:48:53] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:48:53] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:49:23] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:49:23] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:49:53] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:49:53] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:50:23] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:50:23] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:50:53] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:50:53] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:51:23] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:51:23] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:51:53] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:51:53] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:52:39] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:52:39] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:52:40] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:52:40] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:03] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:03] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:03] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:03] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:04] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:04] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:04] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:04] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:06] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:06] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:17] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:17] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:18] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:18] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:18] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:18] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:53:31] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:53:31] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:54:01] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:54:01] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:54:31] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:54:31] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:55:01] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:55:01] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:55:31] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:55:31] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:56:01] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:56:01] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:56:31] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:56:31] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:57:01] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:57:01] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:57:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:57:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:58:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:58:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 15:59:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 15:59:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:00:56] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:00:56] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:01:23] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:01:23] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:01:25] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:01:25] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:01:25] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:01:25] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:01:26] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:01:26] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:01:31] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:01:31] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:01:32] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:01:32] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:01:33] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:01:33] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:01:42] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:01:42] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:02:12] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:02:12] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:02:39] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:02:39] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:02:39] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:02:39] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:02:39] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:02:39] GET returned 1 rows for school=oriental-mindoro month=2026-05
+[2026-05-04 16:02:40] GET request: {"school":"oriental-mindoro","month":"2026-05"}
+[2026-05-04 16:02:40] GET returned 1 rows for school=oriental-mindoro month=2026-05

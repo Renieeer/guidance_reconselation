@@ -2,6 +2,7 @@
 
 let allStudents = [];
 let currentStudent = null;
+let filteredStudents = [];
 
 function loadStudentRecords() {
     initPage();
@@ -13,7 +14,10 @@ function loadStudentRecords() {
     // Fetch students from database
     fetchStudents(userSchool)
         .then(() => {
-            document.getElementById('searchStudent').addEventListener('keyup', filterStudents);
+            // Add event listeners for filters
+            document.getElementById('searchStudent').addEventListener('keyup', applyFilters);
+            document.getElementById('gradeFilter').addEventListener('change', applyFilters);
+            document.getElementById('statusFilter').addEventListener('change', applyFilters);
             displayStudentRecords(allStudents);
         })
         .catch(error => {
@@ -36,28 +40,72 @@ function fetchStudents(school) {
         });
 }
 
+function applyFilters() {
+    const searchTerm = document.getElementById('searchStudent').value.toLowerCase();
+    const gradeFilter = document.getElementById('gradeFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+
+    filteredStudents = allStudents.filter(student => {
+        // Search filter
+        const matchesSearch = !searchTerm || 
+            student.first_name.toLowerCase().includes(searchTerm) ||
+            student.last_name.toLowerCase().includes(searchTerm) ||
+            student.email.toLowerCase().includes(searchTerm);
+        
+        // Grade filter
+        const studentGrade = student.grade_level ? String(student.grade_level) : '';
+        const matchesGrade = !gradeFilter || studentGrade === gradeFilter;
+        
+        // Status filter
+        let studentStatus = 'Active';
+        if (student.referral_count > 0) {
+            studentStatus = 'Has Cases';
+        } else {
+            studentStatus = 'No Cases';
+        }
+        const matchesStatus = !statusFilter || studentStatus === statusFilter;
+        
+        return matchesSearch && matchesGrade && matchesStatus;
+    });
+
+    displayStudentRecords(filteredStudents);
+}
+
+function clearFilters() {
+    document.getElementById('searchStudent').value = '';
+    document.getElementById('gradeFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    filteredStudents = allStudents;
+    displayStudentRecords(allStudents);
+}
+
 function displayStudentRecords(students) {
     const tbody = document.getElementById('studentRecordsBody');
 
     if (students.length === 0) {
         tbody.innerHTML = `<tr>
-            <td colspan="6" style="text-align: center; padding: 30px; color: #999;">No student records found</td>
+            <td colspan="4" style="text-align: center; padding: 30px; color: #999;">No student records found</td>
         </tr>`;
         return;
     }
 
-    tbody.innerHTML = students.map(student => `
-        <tr>
-            <td><strong>${student.email || 'N/A'}</strong></td>
-            <td>${student.first_name} ${student.last_name}</td>
-            <td>N/A</td>
-            <td>${student.email || 'N/A'}</td>
-            <td>${student.referral_count > 0 ? '<span class="badge badge-warning">Has Cases</span>' : '<span class="badge badge-success">No Cases</span>'}</td>
-            <td>
-                <button class="btn btn-sm btn-primary" onclick="viewStudent(${student.id})">View Profile</button>
-            </td>
-        </tr>`
-    ).join('');
+    tbody.innerHTML = students.map(student => {
+        const status = student.referral_count > 0 ? 'Has Cases' : 'No Cases';
+        const section = student.section || 'N/A';
+        
+        return `
+            <tr>
+                <td><strong>${student.first_name} ${student.last_name}</strong></td>
+                <td>${student.email || 'N/A'}</td>
+                <td>${section}</td>
+                <td>
+                    <span class="badge ${status === 'Has Cases' ? 'badge-warning' : 'badge-success'}">
+                        ${status}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function viewStudent(studentId) {
@@ -114,25 +162,6 @@ function displayStudentProfile(data) {
     
     // Display in an alert or modal if you have one
     alert('Detailed view for: ' + student.first_name + ' ' + student.last_name + '\n\nReferrals: ' + referrals.length);
-}
-
-function filterStudents() {
-    const searchTerm = document.getElementById('searchStudent').value.toLowerCase();
-    
-    let filtered = allStudents;
-    
-    if (searchTerm) {
-        filtered = allStudents.filter(s => 
-            (s.first_name + ' ' + s.last_name).toLowerCase().includes(searchTerm) ||
-            s.email.toLowerCase().includes(searchTerm)
-        );
-    }
-    
-    displayStudentRecords(filtered);
-}
-
-function setupSearch() {
-    document.getElementById('searchStudent').addEventListener('keyup', filterStudents);
 }
 
 // Initialize on page load

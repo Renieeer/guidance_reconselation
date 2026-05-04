@@ -302,8 +302,22 @@ function populateTeacherSchool() {
     const schoolField = document.getElementById('studentSchool');
     if (schoolField) {
         schoolField.value = teacherSchool || 'Default School';
-        schoolField.readOnly = true;  // Make read-only
         console.log('✓ Set student school field to:', schoolField.value);
+    }
+
+    const teacherNameField = document.getElementById('teacherName');
+    if (teacherNameField) {
+        teacherNameField.value = user?.name || user?.first_name || user?.email || 'Teacher';
+    }
+
+    const teacherDesignationField = document.getElementById('teacherDesignation');
+    if (teacherDesignationField) {
+        teacherDesignationField.value = user?.type || user?.role || 'Teacher';
+    }
+
+    const teacherContactField = document.getElementById('teacherContact');
+    if (teacherContactField) {
+        teacherContactField.value = user?.contact || user?.phone || user?.contact_number || '';
     }
 }
 

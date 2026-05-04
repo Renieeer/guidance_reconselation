@@ -66,17 +66,9 @@ try {
         exit;
     }
 
-    // For schools with combined role, auto-assign counselor-and-coordinator
-    // For other schools, validate that selected role is available
-    if ($schoolConfig['type'] === 'counselor') {
-        // School has combined role only
-        $role = 'counselor-and-coordinator';
-    } else {
-        // Validate role is available for this school
-        if (!in_array($role, $schoolConfig['availableRoles'])) {
-            echo json_encode(['success' => false, 'message' => 'This role is not available for the selected school']);
-            exit;
-        }
+    if (!in_array($role, $schoolConfig['availableRoles'], true)) {
+        echo json_encode(['success' => false, 'message' => 'This role is not available for the selected school']);
+        exit;
     }
 
     // Validate role
@@ -93,8 +85,8 @@ try {
         exit;
     }
 
-    // Check if email already exists
-    $checkQuery = "SELECT id FROM accounts WHERE email = ?";
+    // Check if email already exists in users_tables
+    $checkQuery = "SELECT AccountID FROM users_tables WHERE email = ?";
     $stmt = $conn->prepare($checkQuery);
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
@@ -114,15 +106,15 @@ try {
     // Hash password
     $hashedPassword = password_hash($plainPassword, PASSWORD_BCRYPT);
 
-    // Insert new account
-    $insertQuery = "INSERT INTO accounts (email, password, user_type, first_name, last_name, school_attended, created_at, updated_at) 
+    // Insert new account into users_tables
+    $insertQuery = "INSERT INTO users_tables (First_name, Last_name, Password, Type, email, school_attended, created_at, updated_at) 
                     VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
     $stmt = $conn->prepare($insertQuery);
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
     }
-
-    $stmt->bind_param("ssssss", $email, $hashedPassword, $role, $firstName, $lastName, $school);
+    
+    $stmt->bind_param("ssssss", $firstName, $lastName, $hashedPassword, $role, $email, $school);
     
     if ($stmt->execute()) {
         echo json_encode(['success' => true, 'message' => 'Account created successfully']);

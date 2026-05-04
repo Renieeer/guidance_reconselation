@@ -34,8 +34,8 @@
 
         <!-- Page Content -->
         <div class="page-content">
-            <div class="wizard">
-            
+                <div class="wizard">
+                
             <!-- STEP TRACK -->
             <div class="step-track">
                 <div class="step-item active" data-step="1">
@@ -78,52 +78,54 @@
                             <div class="field-grid">
                                 <!-- Student ID (hidden - auto-filled from login) -->
                                 <input type="hidden" name="StudentId">
-                                
-                                <div class="field-group">
+                                <div class="field-group span-2">
                                     <label>LRN <span class="req">*</span></label>
                                     <input type="text" name="LRN" placeholder="12-digit LRN" required>
                                 </div>
-                                <div class="field-group">
-                                    <label>First Name <span class="req">*</span></label>
-                                    <input type="text" name="FirstName" placeholder="Given name" required>
+
+                                <div class="identity-row span-2">
+                                    <div class="field-group">
+                                        <label>First Name <span class="req">*</span></label>
+                                        <input type="text" name="FirstName" placeholder="Given name" required>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Last Name <span class="req">*</span></label>
+                                        <input type="text" name="LastName" placeholder="Family name" required>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Middle Name</label>
+                                        <input type="text" name="MiddleName" placeholder="Optional">
+                                    </div>
                                 </div>
-                                <div class="field-group">
-                                    <label>Middle Name</label>
-                                    <input type="text" name="MiddleName" placeholder="Optional">
-                                </div>
-                                <div class="field-group">
-                                    <label>Last Name <span class="req">*</span></label>
-                                    <input type="text" name="LastName" placeholder="Family name" required>
-                                </div>
-                                <div class="field-group">
-                                    <label>Nickname</label>
-                                    <input type="text" name="NickName" placeholder="Optional">
-                                </div>
-                                <div class="field-group">
-                                    <label>Sex <span class="req">*</span></label>
-                                    <select name="Sex" required>
-                                        <option value="">Select sex</option>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                    </select>
-                                </div>
-                                <div class="field-group">
-                                    <label>Age <span class="req">*</span></label>
-                                    <input type="number" name="Age" placeholder="Years" required>
-                                </div>
-                                <div class="field-group">
-                                    <label>Grade <span class="req">*</span></label>
-                                    <select name="grade_id" id="gradeSelect" required>
-                                        <option value="">Select grade</option>
-                                        <option value="1">Grade 7</option>
-                                        <option value="2">Grade 8</option>
-                                        <option value="3">Grade 9</option>
-                                        <option value="4">Grade 10</option>
-                                    </select>
-                                </div>
-                                <div class="field-group">
-                                    <label>Date of Birth <span class="req">*</span></label>
-                                    <input type="date" name="DateOfBirth" required>
+
+                                <div class="info-row span-2">
+                                    <div class="field-group">
+                                        <label>Sex <span class="req">*</span></label>
+                                        <select name="Sex" required>
+                                            <option value="">Select sex</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                    </div>
+                                      <div class="field-group">
+                                        <label>Date of Birth <span class="req">*</span></label>
+                                        <input type="date" name="DateOfBirth" required>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Grade <span class="req">*</span></label>
+                                        <select name="grade_id" id="gradeSelect" required>
+                                            <option value="">Select grade</option>
+                                            <option value="1">Grade 7</option>
+                                            <option value="2">Grade 8</option>
+                                            <option value="3">Grade 9</option>
+                                            <option value="4">Grade 10</option>
+                                        </select>
+                                    </div>
+                                  
+                                     <div class="field-group">
+                                        <label>Age</label>
+                                        <input type="number" name="Age" placeholder="Auto-calculated" readonly aria-readonly="true">
+                                    </div>
                                 </div>
                                 <div class="field-group">
                                     <label>Place of Birth</label>
@@ -137,15 +139,17 @@
                                     <label>Current Religion</label>
                                     <input type="text" name="CurrentReligion" placeholder="If different">
                                 </div>
-                                <div class="field-group span-2">
-                                    <label>Current Address</label>
-                                    <input type="text" name="CurrentAddress" placeholder="House/Unit No., Street, Barangay, City">
+                                <div class="address-row span-2">
+                                    <div class="field-group">
+                                        <label>Current Address</label>
+                                        <input type="text" name="CurrentAddress" placeholder="House/Unit No., Street, Barangay, City">
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Permanent Address</label>
+                                        <input type="text" name="PermanentAddress" placeholder="Same as current if applicable">
+                                    </div>
                                 </div>
                                 <div class="field-group span-2">
-                                    <label>Permanent Address</label>
-                                    <input type="text" name="PermanentAddress" placeholder="Same as current if applicable">
-                                </div>
-                                <div class="field-group">
                                     <label>Cellphone Number</label>
                                     <input type="text" name="CellphoneNumber" placeholder="+63 9XX XXX XXXX">
                                 </div>
@@ -159,11 +163,11 @@
                             <div class="section-header">
                                 <div class="section-icon"><i class="fas fa-graduation-cap"></i></div>
                                 <div class="section-title">Educational Background</div>
+                                <button type="button" class="btn-add btn-add-inline" onclick="addEducation()">
+                                    <i class="fas fa-plus"></i> Add School Record
+                                </button>
                             </div>
                             <div id="educationContainer"></div>
-                            <button type="button" class="btn-add" onclick="addEducation()">
-                                <i class="fas fa-plus"></i> Add School Record
-                            </button>
                         </div>
                     </div>
 
@@ -173,11 +177,11 @@
                             <div class="section-header">
                                 <div class="section-icon"><i class="fas fa-building"></i></div>
                                 <div class="section-title">Organization Background</div>
+                                <button type="button" class="btn-add btn-add-inline" onclick="addOrganization()">
+                                    <i class="fas fa-plus"></i> Add Organization
+                                </button>
                             </div>
                             <div id="organizationContainer"></div>
-                            <button type="button" class="btn-add" onclick="addOrganization()">
-                                <i class="fas fa-plus"></i> Add Organization
-                            </button>
                         </div>
                     </div>
 
@@ -376,11 +380,11 @@
                             <div class="section-header">
                                 <div class="section-icon"><i class="fas fa-children"></i></div>
                                 <div class="section-title">Siblings Information</div>
+                                <button type="button" class="btn-add btn-add-inline" onclick="addSibling()">
+                                    <i class="fas fa-plus"></i> Add Sibling
+                                </button>
                             </div>
                             <div id="siblingsContainer"></div>
-                            <button type="button" class="btn-add" onclick="addSibling()">
-                                <i class="fas fa-plus"></i> Add Sibling
-                            </button>
                         </div>
 
                         <!-- Guardian -->
@@ -390,23 +394,25 @@
                                 <div class="section-title">Guardian Information <span style="font-size:12px;font-weight:400;color:var(--text-muted)">(if applicable)</span></div>
                             </div>
                             <div class="field-grid">
-                                <div class="field-group">
-                                    <label>First Name</label>
-                                    <input type="text" name="guardian_FirstName">
-                                </div>
-                                <div class="field-group">
-                                    <label>Middle Name</label>
-                                    <input type="text" name="guardian_MiddleName">
-                                </div>
-                                <div class="field-group">
-                                    <label>Last Name</label>
-                                    <input type="text" name="guardian_LastName">
+                                <div class="identity-row span-2">
+                                    <div class="field-group">
+                                        <label>First Name</label>
+                                        <input type="text" name="guardian_FirstName">
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Last Name</label>
+                                        <input type="text" name="guardian_LastName">
+                                    </div>
+                                    <div class="field-group">
+                                        <label>Middle Name</label>
+                                        <input type="text" name="guardian_MiddleName">
+                                    </div>
                                 </div>
                                 <div class="field-group">
                                     <label>Relationship</label>
                                     <input type="text" name="guardian_Relationship" placeholder="e.g., Aunt, Grandparent">
                                 </div>
-                                <div class="field-group span-2">
+                                <div class="field-group">
                                     <label>Address</label>
                                     <input type="text" name="guardian_Address">
                                 </div>
@@ -426,11 +432,11 @@
                             <div class="section-header">
                                 <div class="section-icon"><i class="fas fa-user-group"></i></div>
                                 <div class="section-title">Friends Information</div>
+                                <button type="button" class="btn-add btn-add-inline" onclick="addFriend()">
+                                    <i class="fas fa-plus"></i> Add Friend
+                                </button>
                             </div>
                             <div id="friendsContainer"></div>
-                            <button type="button" class="btn-add" onclick="addFriend()">
-                                <i class="fas fa-plus"></i> Add Friend
-                            </button>
                         </div>
                     </div>
 
@@ -447,9 +453,6 @@
                             <div class="progress-bar-fill" id="progressFill" style="width:16.66%"></div>
                         </div>
                     </div>
-                    <button type="button" id="saveChangesBtn" class="btn-nav btn-save" onclick="manualSaveChanges()" style="background-color: #4caf50; color: white; margin: 0 10px; display: none;">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
                     <button type="button" class="btn-nav btn-next" id="nextBtn">
                         Next <i class="fas fa-arrow-right"></i>
                     </button>

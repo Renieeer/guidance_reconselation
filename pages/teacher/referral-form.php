@@ -30,31 +30,21 @@
 
             <!-- Page Content -->
             <div class="page-content">
-                <div class="card">
-                    <form id="referralForm">
-                        <!-- Student Information Section -->
-                        <h3 class="text-primary mt-0 mb-4">Student Information</h3>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="studentName">Student Name *</label>
-                                <input type="text" id="studentName" name="studentName" required>
-                                <!-- Hidden field to store student ID -->
-                                <input type="hidden" id="studentId" name="studentId">
-                            </div>
+                <div class="referral-paper">
+                    <form id="referralForm" class="referral-sheet">
+                        <div class="referral-sheet-title">Counseling Referral Form</div>
+                        <div class="referral-sheet-intro">
+                            Please complete this form with clear, respectful details so the counselor can respond promptly and appropriately.
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="studentSchool">School *</label>
-                                <input type="text" id="studentSchool" name="studentSchool" readonly placeholder="Your school will appear here">
-                                <small style="color: #999; font-size: 12px;">Students must be from your school</small>
-                            </div>
+                        <div class="referral-table-row">
+                            <div class="referral-label">Name of Student:</div>
+                            <div class="referral-field"><input type="text" id="studentName" name="studentName" required><input type="hidden" id="studentId" name="studentId"><input type="hidden" id="studentSchool" name="studentSchool"></div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="grade">Grade Level *</label>
+                        <div class="referral-table-row referral-two-col">
+                            <div class="referral-label">Grade &amp; Level:</div>
+                            <div class="referral-field">
                                 <select id="grade" name="grade" required>
                                     <option value="">Select Grade</option>
                                     <option value="Grade 7">Grade 7</option>
@@ -65,19 +55,8 @@
                                     <option value="Grade 12">Grade 12</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label for="section">Section *</label>
-                                <input type="text" id="section" name="section" placeholder="e.g., A, B, C" required>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="age">Age *</label>
-                                <input type="number" id="age" name="age" min="1" max="30" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="gender">Gender *</label>
+                            <div class="referral-label">Gender:</div>
+                            <div class="referral-field">
                                 <select id="gender" name="gender" required>
                                     <option value="">Select Gender</option>
                                     <option value="Male">Male</option>
@@ -87,94 +66,70 @@
                             </div>
                         </div>
 
-                        <!-- Referral Information -->
-                        <h3 class="text-primary mt-5 mb-4">Referral Details</h3>
-
-                        <div class="form-group">
-                            <label for="referralReason">Reason for Referral *</label>
-                            <select id="referralReason" name="referralReason" required>
-                                <option value="">Select Reason</option>
-                                <option value="Allergic Reaction">Allergic Reaction</option>
-                                <option value="Traumatic Injury">Traumatic Injury</option>
-                                <option value="Breathing difficulty">Breathing difficulty</option>
-                                <option value="Fracture">Fracture</option>
-                                <option value="Heade Injury">Heade Injury</option>
-                                <option value="Seizure">Seizure</option>
-                                <option value="Laceration / Uncontrolled Bleeding">Laceration / Uncontrolled Bleeding</option>
-                                <option value="Dental Problem">Dental Problem</option>
-                                <option value="Psychiatric Emergency">Psychiatric Emergency</option>
-                                <option value="Change in mental Status / loos consciousness">Change in mental Status / loos consciousness</option>
-                                <option value="substance Abuse">substance Abuse</option>
-                                <option value="teenage Pregnancy ">teenage Pregnancy </option>
-                                <option value="Other">Other</option>
-                            </select>
+                        <div class="referral-table-row">
+                            <div class="referral-label">Date of Referral:</div>
+                            <div class="referral-field"><input type="date" id="referralDate" name="referralDate" required></div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="description">Detailed Description of Concern *</label>
-                            <textarea id="description" name="description" placeholder="Please provide specific examples and observations..." required></textarea>
+                        <div class="referral-table-row referral-text-row">
+                            <div class="referral-label">Reason/s for Referral:</div>
+                            <div class="referral-field"><textarea id="referralReason" name="referralReason" required></textarea></div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="interventionAttempts">Previous Interventions Attempted</label>
-                            <textarea id="interventionAttempts" name="interventionAttempts" placeholder="Describe any steps you have already taken to address this concern"></textarea>
+                        <div class="referral-table-row referral-text-row">
+                            <div class="referral-label">Initial Actions Taken:</div>
+                            <div class="referral-field"><textarea id="interventionAttempts" name="interventionAttempts"></textarea></div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="observedBehaviors">Observed Behaviors/Symptoms</label>
-                            <textarea id="observedBehaviors" name="observedBehaviors" placeholder="List specific behaviors or symptoms you have observed"></textarea>
-                        </div>
-
-                        <!-- Family/Home Information -->
-                        <h3 class="text-primary mt-5 mb-4">Family Information</h3>
-
-                        <div class="form-group">
-                            <label for="parentGuardian">Parent/Guardian Name *</label>
-                            <input type="text" id="parentGuardian" name="parentGuardian" required>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="parentContact">Contact Number *</label>
-                                <input type="tel" id="parentContact" name="parentContact" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="parentEmail">Email Address</label>
-                                <input type="email" id="parentEmail" name="parentEmail">
+                        <div class="referral-table-row referral-agreement-row">
+                            <div class="referral-label">Did the student agree to be referred to GCO:</div>
+                            <div class="referral-field">
+                                <label class="referral-inline-option"><input type="radio" name="agreement" value="YES"> YES</label>
+                                <label class="referral-inline-option"><input type="radio" name="agreement" value="NO"> NO</label>
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="familyBackground">Family Background Notes</label>
-                            <textarea id="familyBackground" name="familyBackground" placeholder="Any relevant family or home situation information"></textarea>
+                        <div class="referral-table-row">
+                            <div class="referral-label">Parent/Guardian’s Name:</div>
+                            <div class="referral-field"><input type="text" id="parentGuardian" name="parentGuardian"></div>
                         </div>
 
-                        <!-- Additional Information -->
-                        <h3 class="text-primary mt-5 mb-4">Additional Information</h3>
-
-                        <div class="form-group">
-                            <label for="referralDate">Date of Referral *</label>
-                            <input type="date" id="referralDate" name="referralDate" required>
+                        <div class="referral-table-row">
+                            <div class="referral-label">Parent/Guardian’s Contact Number:</div>
+                            <div class="referral-field"><input type="tel" id="parentContact" name="parentContact"></div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="urgency">Urgency Level *</label>
-                            <select id="urgency" name="urgency" required>
-                                <option value="">Select Urgency</option>
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
-                                <option value="Crisis">Crisis/Immediate</option>
-                            </select>
+                        <div class="referral-table-row">
+                            <div class="referral-label">Referred by:</div>
+                            <div class="referral-field"><input type="text" id="teacherName" name="teacherName" readonly></div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="attachments">Additional Notes/Comments</label>
-                            <textarea id="attachments" name="attachments" placeholder="Any other relevant information"></textarea>
+                        <div class="referral-table-row">
+                            <div class="referral-label">Designation:</div>
+                            <div class="referral-field"><input type="text" id="teacherDesignation" name="teacherDesignation" readonly></div>
                         </div>
 
-                        <!-- Form Actions -->
-                        <div class="form-actions">
+                        <div class="referral-table-row">
+                            <div class="referral-label">Contact Number:</div>
+                            <div class="referral-field"><input type="tel" id="teacherContact" name="teacherContact" readonly></div>
+                        </div>
+
+                        <div class="referral-table-row referral-text-row">
+                            <div class="referral-label">Description of Concern:</div>
+                            <div class="referral-field"><textarea id="description" name="description" required></textarea></div>
+                        </div>
+
+                        <div class="referral-table-row referral-text-row">
+                            <div class="referral-label">Observed Behaviors/Symptoms:</div>
+                            <div class="referral-field"><textarea id="observedBehaviors" name="observedBehaviors"></textarea></div>
+                        </div>
+
+                        <div class="referral-table-row referral-text-row">
+                            <div class="referral-label">Additional Notes/Comments:</div>
+                            <div class="referral-field"><textarea id="attachments" name="attachments"></textarea></div>
+                        </div>
+
+                        <div class="form-actions referral-actions">
                             <button type="submit" class="btn btn-success">Submit Referral</button>
                             <button type="reset" class="btn btn-secondary">Clear Form</button>
                             <a href="dashboard.php" class="btn btn-secondary">Cancel</a>

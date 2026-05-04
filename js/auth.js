@@ -5,48 +5,11 @@ const dashboardRoutes = {
     coordinator: 'pages/coordinator/dashboard.php',
     counselor: 'pages/counselor/dashboard.php',
     'counselor-and-coordinator': 'pages/other-school/dashboard.php',
+    admin: 'pages/sdo/dashboard.php',
     sdo: 'pages/sdo/dashboard.php'
 };
 
-// Demo credentials for fallback login
-const demoUsers = {
-    'student@school.com': {
-        name: 'Demo Student',
-        password: 'password123',
-        role: 'student',
-        id: 'STU001'
-    },
-    'teacher@school.com': {
-        name: 'Demo Teacher',
-        password: 'password123',
-        role: 'teacher',
-        id: 'TCH001'
-    },
-    'coordinator@school.com': {
-        name: 'Demo Coordinator',
-        password: 'password123',
-        role: 'coordinator',
-        id: 'COORD001'
-    },
-    'counsilor@school.com': {
-        name: 'Demo Counselor',
-        password: 'password123',
-        role: 'counselor',
-        id: 'COUN001'
-    },
-    'otherschool@school.com': {
-        name: 'Demo Other School',
-        password: 'password123',
-        role: 'other-school',
-        id: 'OS001'
-    },
-    'sdo@school.com': {
-        name: 'Demo SDO',
-        password: 'password123',
-        role: 'sdo',
-        id: 'SDO001'
-    }
-};
+
 
 document.getElementById('loginForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -107,55 +70,19 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
             localStorage.setItem('currentUser', JSON.stringify(userData));
 
             // Redirect to dashboard based on role
-            window.location.href = dashboardRoutes[userData.role];
-        } else {
-            // If database login fails, try demo users as fallback
-            const user = demoUsers[email];
-            if (user && user.password === password) {
-                // Demo login
-                const userData = {
-                    email: email,
-                    role: user.role,
-                    name: user.name,
-                    id: user.id || email.split('@')[0],
-                    first_name: user.name.split(' ')[0],
-                    last_name: user.name.split(' ')[1] || 'Demo',
-                    user_type: user.role,
-                    school_attended: 'Demo School'
-                };
-                
-                sessionStorage.setItem('user', JSON.stringify(userData));
-                localStorage.setItem('currentUser', JSON.stringify(userData));
-
-                // Redirect to dashboard
-                window.location.href = dashboardRoutes[user.role];
-            } else {
-                showError('Invalid email or password');
+            const targetRoute = dashboardRoutes[userData.role];
+            if (!targetRoute) {
+                showError('Your account role has no dashboard route configured.');
+                return;
             }
+
+            window.location.href = targetRoute;
+        } else {
+            showError(data.message || 'Invalid email or password');
         }
     } catch (error) {
         console.error('Login error:', error);
-        // Fallback to demo login on network error
-        const user = demoUsers[email];
-        if (user && user.password === password) {
-            const userData = {
-                email: email,
-                role: user.role,
-                name: user.name,
-                id: user.id || email.split('@')[0],
-                first_name: user.name.split(' ')[0],
-                last_name: user.name.split(' ')[1] || 'Demo',
-                user_type: user.role,
-                school_attended: 'Demo School'
-            };
-            
-            sessionStorage.setItem('user', JSON.stringify(userData));
-            localStorage.setItem('currentUser', JSON.stringify(userData));
-
-            window.location.href = dashboardRoutes[user.role];
-        } else {
-            showError('Login failed: ' + error.message);
-        }
+        showError('Login failed: ' + error.message);
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
@@ -220,6 +147,23 @@ function logout() {
     }
     window.location.href = '../../index.php';
 }
+
+// Toggle password visibility
+document.getElementById('togglePassword')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    const passwordInput = document.getElementById('password');
+    const icon = this.querySelector('i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+    }
+});
 
 // Get current user
 function getCurrentUser() {

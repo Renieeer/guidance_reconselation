@@ -1,132 +1,219 @@
 <?php
-/**
- * School Configuration
- * Defines which schools have coordinator and/or counselor roles
- * 
- * 'counselor' - Only counselor role (combined with coordinator duties in dashboard)
- * 'coordinator' - Only coordinator role  
- * 'both' - Both coordinator and counselor roles available (separate dashboards)
- */
 
-$schoolConfig = [
-    'personas' => [
-        'name' => 'Personas National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'], // Combined role only
-        'type' => 'counselor' // Counselor shows combined dashboard
-    ],
-    'community-vocational' => [
-        'name' => 'Community Vocational High Schools',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'],
-        'type' => 'counselor'
-    ],
-    'oriental-mindoro' => [
-        'name' => 'Oriental Mindoro National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor' , 'coordinator'],
-        'type' => 'both'
-    ],
-    'ceriaco-abes' => [
-        'name' => 'Ceriaco A. Abes Memorial National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'],
-        'type' => 'counselor'
-    ],
-    'nag-iba' => [
-        'name' => 'Nag-iba National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'],
-        'type' => 'counselor'
-    ],
-    'pedro-panaligan' => [
-        'name' => 'Pedro V Panaligan National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'],
-        'type' => 'counselor'
-    ],
-    'parang' => [
-        'name' => 'Parang National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'],
-        'type' => 'counselor'
-    ],
-    'managpi' => [
-        'name' => 'Managpi National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'],
-        'type' => 'counselor'
-    ],
-    'buvayao' => [
-        'name' => 'Buvayao National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'],
-        'type' => 'counselor'
-    ],
-    'canubing' => [
-        'name' => 'Canubing National High School',
-        'availableRoles' => ['student', 'teacher', 'counselor-and-coordinator'],
-        'type' => 'counselor'
-    ]
-];
+require_once __DIR__ . '/conn.php';
 
-/**
- * Get the configuration for a school
- */
-function getSchoolConfig($schoolId) {
-    global $schoolConfig;
-    return isset($schoolConfig[$schoolId]) ? $schoolConfig[$schoolId] : null;
+function getDefaultSchoolSeeds(): array {
+    return [
+        ['school_code' => 'personas', 'school_name' => 'Personas National High School', 'assignment_type' => 'both'],
+        ['school_code' => 'community-vocational', 'school_name' => 'Community Vocational High Schools', 'assignment_type' => 'both'],
+        ['school_code' => 'oriental-mindoro', 'school_name' => 'Oriental Mindoro National High School', 'assignment_type' => 'both'],
+        ['school_code' => 'ceriaco-abes', 'school_name' => 'Ceriaco A. Abes Memorial National High School', 'assignment_type' => 'both'],
+        ['school_code' => 'nag-iba', 'school_name' => 'Nag-iba National High School', 'assignment_type' => 'both'],
+        ['school_code' => 'pedro-panaligan', 'school_name' => 'Pedro V Panaligan National High School', 'assignment_type' => 'both'],
+        ['school_code' => 'parang', 'school_name' => 'Parang National High School', 'assignment_type' => 'both'],
+        ['school_code' => 'managpi', 'school_name' => 'Managpi National High School', 'assignment_type' => 'both'],
+        ['school_code' => 'buvayao', 'school_name' => 'Buvayao National High School', 'assignment_type' => 'both'],
+        ['school_code' => 'canubing', 'school_name' => 'Canubing National High School', 'assignment_type' => 'both']
+    ];
 }
 
-/**
- * Get available roles for a school
- */
-function getAvailableRolesForSchool($schoolId) {
-    $config = getSchoolConfig($schoolId);
-    return $config ? $config['availableRoles'] : ['student', 'teacher'];
+function normalizeSchoolCode(string $schoolName): string {
+    $code = strtolower(trim($schoolName));
+    $code = preg_replace('/[^a-z0-9]+/', '-', $code) ?? '';
+    $code = trim($code, '-');
+
+    return $code !== '' ? $code : 'school';
 }
 
-/**
- * Determine if school has combined counselor-coordinator role
- */
-function schoolHasCombinedRole($schoolId) {
-    $config = getSchoolConfig($schoolId);
-    return $config && $config['type'] === 'counselor';
-}
+function ensureSchoolsTable(mysqli $conn): void {
+    $createTable = "CREATE TABLE IF NOT EXISTS schools (
+        school_code varchar(120) NOT NULL,
+        school_name varchar(255) NOT NULL,
+        assignment_type enum('coordinator','counselor','both') NOT NULL DEFAULT 'both',
+        is_active tinyint(1) NOT NULL DEFAULT '1',
+        created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+        updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (school_code),
+        UNIQUE KEY unique_school_name (school_name),
+        KEY idx_school_active (is_active)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
 
-/**
- * Get the appropriate role when registering for a school
- */
-function getDefaultRoleForSchool($schoolId, $selectedRole) {
-    $config = getSchoolConfig($schoolId);
-    
-    if (!$config) {
-        return $selectedRole;
+    $conn->query($createTable);
+
+    $stmt = $conn->prepare('INSERT IGNORE INTO schools (school_code, school_name, assignment_type, is_active) VALUES (?, ?, ?, 1)');
+    if (!$stmt) {
+        return;
     }
-    
-    // If school has combined role only, override to combined
-    if ($config['type'] === 'counselor' && in_array('counselor-and-coordinator', $config['availableRoles'])) {
-        return 'counselor-and-coordinator';
+
+    foreach (getDefaultSchoolSeeds() as $school) {
+        $stmt->bind_param('sss', $school['school_code'], $school['school_name'], $school['assignment_type']);
+        $stmt->execute();
     }
-    
-    // Return selected role if available for this school
-    if (in_array($selectedRole, $config['availableRoles'])) {
-        return $selectedRole;
-    }
-    
-    // Fallback to first available role
-    return $config['availableRoles'][0] ?? $selectedRole;
+
+    $stmt->close();
 }
 
-// Handle GET request for grades
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'getGrades') {
-    include 'conn.php';
-    
-    $query = "SELECT id, grade_name FROM grades ORDER BY id";
-    $result = $conn->query($query);
-    
-    $grades = [];
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $grades[] = $row;
+function buildAvailableRoles(string $assignmentType): array {
+    $roles = ['student', 'teacher'];
+
+    if ($assignmentType === 'coordinator' || $assignmentType === 'both') {
+        $roles[] = 'coordinator';
+    }
+
+    if ($assignmentType === 'counselor' || $assignmentType === 'both') {
+        $roles[] = 'counselor';
+    }
+
+    if ($assignmentType === 'both') {
+        $roles[] = 'counselor-and-coordinator';
+    }
+
+    return array_values(array_unique($roles));
+}
+
+function getSchoolList(): array {
+    global $conn;
+
+    ensureSchoolsTable($conn);
+
+    $result = $conn->query('SELECT school_code, school_name, assignment_type FROM schools WHERE is_active = 1 ORDER BY school_name ASC');
+    if (!$result) {
+        return getDefaultSchoolSeeds();
+    }
+
+    $schools = [];
+    while ($row = $result->fetch_assoc()) {
+        $schools[] = [
+            'school_code' => $row['school_code'],
+            'school_name' => $row['school_name'],
+            'assignment_type' => $row['assignment_type'],
+            'availableRoles' => buildAvailableRoles((string)$row['assignment_type'])
+        ];
+    }
+
+    return $schools ?: getDefaultSchoolSeeds();
+}
+
+function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignmentType): array {
+    ensureSchoolsTable($conn);
+
+    $schoolName = trim($schoolName);
+    $assignmentType = in_array($assignmentType, ['coordinator', 'counselor', 'both'], true) ? $assignmentType : 'both';
+
+    $lookup = $conn->prepare('SELECT school_code, school_name FROM schools WHERE school_name = ? OR school_code = ? LIMIT 1');
+    if ($lookup) {
+        $baseCode = normalizeSchoolCode($schoolName);
+        $lookup->bind_param('ss', $schoolName, $baseCode);
+        $lookup->execute();
+        $existing = $lookup->get_result()->fetch_assoc();
+        $lookup->close();
+
+        if ($existing) {
+            $update = $conn->prepare('UPDATE schools SET assignment_type = ?, is_active = 1, updated_at = NOW() WHERE school_code = ?');
+            if ($update) {
+                $update->bind_param('ss', $assignmentType, $existing['school_code']);
+                $update->execute();
+                $update->close();
+            }
+
+            return [
+                'school_code' => $existing['school_code'],
+                'school_name' => $existing['school_name'],
+                'assignment_type' => $assignmentType
+            ];
         }
     }
-    
-    echo json_encode([
-        'success' => true,
-        'grades' => $grades
-    ]);
+
+    $baseCode = normalizeSchoolCode($schoolName);
+    $schoolCode = $baseCode;
+    $suffix = 1;
+
+    $check = $conn->prepare('SELECT school_code FROM schools WHERE school_code = ? LIMIT 1');
+    if ($check) {
+        while (true) {
+            $check->bind_param('s', $schoolCode);
+            $check->execute();
+            $exists = $check->get_result()->fetch_assoc();
+
+            if (!$exists) {
+                break;
+            }
+
+            $schoolCode = $baseCode . '-' . $suffix;
+            $suffix++;
+        }
+        $check->close();
+    }
+
+    $insert = $conn->prepare('INSERT INTO schools (school_code, school_name, assignment_type, is_active) VALUES (?, ?, ?, 1)');
+    if (!$insert) {
+        throw new RuntimeException('Failed to prepare school insert statement');
+    }
+
+    $insert->bind_param('sss', $schoolCode, $schoolName, $assignmentType);
+    if (!$insert->execute()) {
+        $insert->close();
+        throw new RuntimeException('Failed to save school record');
+    }
+    $insert->close();
+
+    return [
+        'school_code' => $schoolCode,
+        'school_name' => $schoolName,
+        'assignment_type' => $assignmentType
+    ];
+}
+
+function getSchoolConfig(string $school): ?array {
+    global $conn;
+
+    ensureSchoolsTable($conn);
+
+    $school = trim($school);
+    if ($school === '') {
+        return null;
+    }
+
+    $stmt = $conn->prepare('SELECT school_code, school_name, assignment_type FROM schools WHERE school_code = ? OR school_name = ? LIMIT 1');
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param('ss', $school, $school);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row) {
+        return null;
+    }
+
+    return [
+        'schoolCode' => $row['school_code'],
+        'schoolName' => $row['school_name'],
+        'assignmentType' => $row['assignment_type'],
+        'type' => 'school',
+        'availableRoles' => buildAvailableRoles((string)($row['assignment_type'] ?? 'both'))
+    ];
+}
+
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+    $action = $_GET['action'] ?? 'list';
+
+    if ($action === 'config') {
+        $school = trim((string)($_GET['school'] ?? ''));
+        $config = $school !== '' ? getSchoolConfig($school) : null;
+
+        if (!$config) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'School not found']);
+            exit;
+        }
+
+        echo json_encode(['success' => true, 'school' => $config]);
+        exit;
+    }
+
+    echo json_encode(['success' => true, 'schools' => getSchoolList()]);
     exit;
 }
-?>

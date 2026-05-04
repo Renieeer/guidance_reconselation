@@ -6,6 +6,93 @@ function getApiUrl() {
     return '/guidancemanagment/api';
 }
 
+function parseStoredJson(storage, key) {
+    try {
+        return JSON.parse(storage.getItem(key) || '{}');
+    } catch (error) {
+        return {};
+    }
+}
+
+function getCurrentUserProfile() {
+    const sources = [
+        parseStoredJson(localStorage, 'currentUser'),
+        parseStoredJson(sessionStorage, 'userInfo'),
+        parseStoredJson(sessionStorage, 'user')
+    ];
+
+    const merged = sources.reduce((acc, src) => ({ ...acc, ...src }), {});
+    const firstName = (merged.first_name || merged.firstName || merged.First_name || merged.FirstName || '').trim();
+    const lastName = (merged.last_name || merged.lastName || merged.Last_name || merged.LastName || '').trim();
+    const fullName = (merged.name || `${firstName} ${lastName}` || sessionStorage.getItem('userName') || '').trim();
+
+    return {
+        id: merged.id || merged.AccountID || merged.accountId || merged.student_id || merged.StudentId || '',
+        firstName,
+        lastName,
+        fullName,
+        role: merged.user_type || merged.role || merged.Type || 'Student'
+    };
+}
+
+function renderTopbarUserInfo(fullName, role) {
+    const userNameEl = document.getElementById('userName');
+    const userRoleEl = document.getElementById('userRole');
+    const userAvatar = document.getElementById('userAvatar');
+
+    if (!userNameEl || !fullName) {
+        return;
+    }
+
+    userNameEl.textContent = fullName;
+
+    if (userRoleEl) {
+        const normalizedRole = String(role || 'Student');
+        userRoleEl.textContent = normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1).replace('-', ' ');
+    }
+
+    if (userAvatar) {
+        const initials = fullName
+            .split(' ')
+            .filter(Boolean)
+            .map(part => part.charAt(0))
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+        userAvatar.textContent = initials || 'ST';
+    }
+}
+
+function prefillStudentNameFields(firstName, lastName) {
+    const firstNameField = document.querySelector('input[name="FirstName"]');
+    const lastNameField = document.querySelector('input[name="LastName"]');
+
+    if (firstNameField && !firstNameField.value.trim() && firstName) {
+        firstNameField.value = firstName;
+    }
+
+    if (lastNameField && !lastNameField.value.trim() && lastName) {
+        lastNameField.value = lastName;
+    }
+}
+
+function updateTopbarNameFromStudentRecord(student) {
+    if (!student || typeof student !== 'object') {
+        return;
+    }
+
+    const firstName = (student.FirstName || student.first_name || '').trim();
+    const lastName = (student.LastName || student.last_name || '').trim();
+
+    if (!firstName && !lastName) {
+        return;
+    }
+
+    const profile = getCurrentUserProfile();
+    const fullName = `${firstName} ${lastName}`.trim();
+    renderTopbarUserInfo(fullName, profile.role);
+}
+
 let currentStep   = 1;
 const totalSteps  = 6;
 let completedSteps = new Set();
@@ -34,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setupStepClickListeners();
                 initDynamicSections();
                 setupStudentNameSearch();
+                setupAgeAutoCalculate();
                 loadStudentData();
                 updateStepIndicator();
                 updateNavigationButtons();
@@ -51,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadGrades() {
     const gradeSelect = document.getElementById('gradeSelect');
     if (!gradeSelect) return;
+    const selectedValue = gradeSelect.value;
     
     fetch(`${getApiUrl()}/school-config.php?action=getGrades`)
         .then(r => r.json())
@@ -65,17 +154,20 @@ function loadGrades() {
                     option.textContent = grade.grade_name;
                     gradeSelect.appendChild(option);
                 });
+                if (selectedValue) {
+                    gradeSelect.value = selectedValue;
+                }
             } else {
-                addFallbackGrades(gradeSelect);
+                addFallbackGrades(gradeSelect, selectedValue);
             }
         })
         .catch(err => {
-            addFallbackGrades(gradeSelect);
+            addFallbackGrades(gradeSelect, selectedValue);
         });
 }
 
 // ─── FALLBACK GRADES ───────────────────────────────────────────
-function addFallbackGrades(gradeSelect) {
+function addFallbackGrades(gradeSelect, selectedValue = '') {
     const fallbackGrades = [
         { id: 1, grade_name: 'Grade 7' },
         { id: 2, grade_name: 'Grade 8' },
@@ -93,6 +185,53 @@ function addFallbackGrades(gradeSelect) {
         option.textContent = grade.grade_name;
         gradeSelect.appendChild(option);
     });
+
+    if (selectedValue) {
+        gradeSelect.value = selectedValue;
+    }
+}
+
+function calculateAgeFromBirthDate(birthDateValue) {
+    if (!birthDateValue) {
+        return '';
+    }
+
+    const birthDate = new Date(birthDateValue);
+    if (Number.isNaN(birthDate.getTime())) {
+        return '';
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDifference = today.getMonth() - birthDate.getMonth();
+
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+
+    return age >= 0 ? String(age) : '';
+}
+
+function syncAgeFromDateOfBirth() {
+    const dobField = document.querySelector('input[name="DateOfBirth"]');
+    const ageField = document.querySelector('input[name="Age"]');
+
+    if (!dobField || !ageField) {
+        return;
+    }
+
+    ageField.value = calculateAgeFromBirthDate(dobField.value);
+}
+
+function setupAgeAutoCalculate() {
+    const dobField = document.querySelector('input[name="DateOfBirth"]');
+    if (!dobField) {
+        return;
+    }
+
+    dobField.addEventListener('input', syncAgeFromDateOfBirth);
+    dobField.addEventListener('change', syncAgeFromDateOfBirth);
+    syncAgeFromDateOfBirth();
 }
 
 // ─── MANUAL SAVE BUTTON (no auto-save) ──────────────────────
@@ -409,21 +548,7 @@ function initDynamicSections() {
 
 // ─── USER INFO (topbar) ────────────────────────────────────────
 function setupUserInfo() {
-    let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    
-    // Check sessionStorage for userInfo (current session user)
-    if (!currentUser.id) {
-        const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-        if (userInfo.id) {
-            currentUser = userInfo;
-        }
-    }
-    
-    // Fallback to old user format
-    if (!currentUser.id) {
-        const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-        currentUser = { ...currentUser, ...user };
-    }
+    const currentUser = getCurrentUserProfile();
 
     // Pre-fill hidden StudentId field with logged-in user's ID (for data linking)
     const studentIdField = document.querySelector('input[name="StudentId"]');
@@ -437,25 +562,13 @@ function setupUserInfo() {
         studentIdField.addEventListener('change', loadStudentDataByInputId);
     }
 
+    prefillStudentNameFields(currentUser.firstName, currentUser.lastName);
+
     // Update topbar info
     setTimeout(() => {
-        const userName    = currentUser.first_name ? `${currentUser.first_name} ${currentUser.last_name}` : 
-                           (currentUser.name || sessionStorage.getItem('userName'));
-        const userRole    = currentUser.user_type || currentUser.role || 'Student';
-        const userNameEl  = document.getElementById('userName');
-        const userRoleEl  = document.getElementById('userRole');
-        const userAvatar  = document.getElementById('userAvatar');
-
-        if (userName && userNameEl) {
-            userNameEl.textContent = userName;
-            if (userRoleEl) {
-                userRoleEl.textContent = userRole.charAt(0).toUpperCase() + userRole.slice(1).replace('-', ' ');
-            }
-            if (userAvatar) {
-                const initials = userName.split(' ')
-                    .map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
-                userAvatar.textContent = initials || 'ST';
-            }
+        if (currentUser.fullName) {
+            renderTopbarUserInfo(currentUser.fullName, currentUser.role);
+            sessionStorage.setItem('userName', currentUser.fullName);
         }
     }, 100);
 }
@@ -583,6 +696,8 @@ function setupStudentNameSearch() {
                                 console.log('✓ Set DateOfBirth to:', student.DateOfBirth);
                             }
                         }
+
+                        syncAgeFromDateOfBirth();
                         
                         // Auto-fill Grade
                         if (student.grade_id) {
@@ -668,6 +783,7 @@ function loadStudentData() {
                     
                     // Pass the full response object
                     populateFormWithStudentDetails(data);
+                    updateTopbarNameFromStudentRecord(data.student);
                     markStepsAsComplete();
                     enterUpdateMode();
                     showNotification('✓ Your previous information has been loaded.', 'success');
@@ -687,7 +803,11 @@ function loadStudentData() {
             .then(data => {
                 if (data && data.success && data.data) {
                     console.log('Student data loaded from save-student.php');
-                    populateFormWithData(data.data);
+                        populateFormWithData({
+                            ...data.data,
+                            family_status: data.family_status || {}
+                        });
+                    updateTopbarNameFromStudentRecord(data.data);
                     markStepsAsComplete();
                     enterUpdateMode();
                     showNotification('✓ Your previous information has been loaded.', 'success');
@@ -709,6 +829,7 @@ function loadStudentData() {
 function populateFormWithStudentDetails(response) {
     console.log('populateFormWithStudentDetails called with response:', response);
     const student = response.student || {};
+    const familyStatus = response.family_status || student.family_status || {};
     
     // ── Step 1: Basic student info (from merged account + student_table data) ──
     const basicMap = {
@@ -739,6 +860,20 @@ function populateFormWithStudentDetails(response) {
             el.value = student[key];
         }
     });
+
+    const sexField = document.querySelector('select[name="Sex"]');
+    const sexValue = student.Sex ?? student.sex ?? student.gender ?? '';
+    if (sexField && sexValue !== '') {
+        sexField.value = String(sexValue);
+    }
+
+    const gradeField = document.querySelector('select[name="grade_id"]');
+    const gradeValue = student.grade_id ?? student.Grade ?? student.grade_level ?? student.GradeId ?? student.grade ?? '';
+    if (gradeField && gradeValue !== '') {
+        gradeField.value = String(gradeValue);
+    }
+
+    syncAgeFromDateOfBirth();
 
     // ── Step 2: Education ──
     console.log('Processing education data:', response.education);
@@ -775,6 +910,10 @@ function populateFormWithStudentDetails(response) {
             'father': 0,
             'mother': 1
         };
+        const parentFieldMap = {
+            'HighestEducationalAttainment': 'HighestEducationAttained',
+            'isDeceased': 'IsDeceased'
+        };
         
         response.parents.forEach((parent, idx) => {
             const parentType = idx === 0 ? 'father' : 'mother';
@@ -785,8 +924,9 @@ function populateFormWithStudentDetails(response) {
             fields.forEach(field => {
                 const key = `${parentType}_${field}`;
                 const el = document.querySelector(`[name="${key}"]`);
-                if (el && parent[field]) {
-                    el.value = parent[field];
+                const sourceKey = parentFieldMap[field] || field;
+                if (el && parent[sourceKey]) {
+                    el.value = parent[sourceKey];
                 }
             });
         });
@@ -794,15 +934,15 @@ function populateFormWithStudentDetails(response) {
 
     // ── Step 5: Family Status ──
     console.log('Processing family status data:', response.family_status);
-    if (response.family_status && typeof response.family_status === 'object') {
+    if (familyStatus && typeof familyStatus === 'object') {
         const familyFields = ['LivingTogether', 'MarriedYet', 'MarriedChurch',
             'TemporarilySepered', 'PermanentlySepered',
             'FatherWithPartner', 'MotherWithPartner'];
         
         familyFields.forEach(f => {
             const el = document.querySelector(`[name="${f}"]`);
-            if (el && response.family_status[f]) {
-                el.value = response.family_status[f];
+            if (el && familyStatus[f] !== undefined && familyStatus[f] !== null && familyStatus[f] !== '') {
+                el.value = familyStatus[f];
             }
         });
     }
@@ -861,7 +1001,10 @@ function loadStudentDataByInputId() {
         .then(r => r.json())
         .then(data => {
             if (data.success && data.data) {
-                populateFormWithData(data.data);
+                    populateFormWithData({
+                        ...data.data,
+                        family_status: data.family_status || {}
+                    });
                 markStepsAsComplete();
                 enterUpdateMode();
                 showNotification('✓ Student information loaded successfully!', 'success');
@@ -873,6 +1016,8 @@ function loadStudentDataByInputId() {
 // ─── POPULATE FORM ─────────────────────────────────────────────
 function populateFormWithData(d) {
     // ── Step 1: basic fields ──
+    const sexValue = d.Sex ?? d.sex ?? d.gender ?? '';
+    const gradeValue = d.grade_id ?? d.Grade ?? d.grade_level ?? d.GradeId ?? d.grade ?? '';
     const basicMap = {
         StudentId: 'input[name="StudentId"]',
         LRN:       'input[name="LRN"]',
@@ -880,9 +1025,7 @@ function populateFormWithData(d) {
         MiddleName:'input[name="MiddleName"]',
         LastName:  'input[name="LastName"]',
         NickName:  'input[name="NickName"]',
-        Sex:       'select[name="Sex"]',
         Age:       'input[name="Age"]',
-        grade_id:  'select[name="grade_id"]',
         DateOfBirth:       'input[name="DateOfBirth"]',
         PlaceOfBirth:      'input[name="PlaceOfBirth"]',
         ReligionFromBirth: 'input[name="ReligionFromBirth"]',
@@ -897,6 +1040,18 @@ function populateFormWithData(d) {
             el.value = d[key];
         }
     });
+
+    const sexField = document.querySelector('select[name="Sex"]');
+    if (sexField && sexValue !== '') {
+        sexField.value = String(sexValue);
+    }
+
+    const gradeField = document.querySelector('select[name="grade_id"]');
+    if (gradeField && gradeValue !== '') {
+        gradeField.value = String(gradeValue);
+    }
+
+    syncAgeFromDateOfBirth();
 
     // ── Step 2: education ──
     if (Array.isArray(d.education) && d.education.length) {
@@ -940,12 +1095,13 @@ function populateFormWithData(d) {
     });
 
     // ── Step 5: family status ──
+    const familySource = d.family_status || d;
     const familyFields = ['LivingTogether','MarriedYet','MarriedChurch',
         'TemporarilySepered','PermanentlySepered',
         'FatherWithPartner','MotherWithPartner'];
     familyFields.forEach(f => {
         const el = document.querySelector(`[name="${f}"]`);
-        if (el && d[f]) el.value = d[f];
+        if (el && familySource[f] !== undefined && familySource[f] !== null && familySource[f] !== '') el.value = familySource[f];
     });
 
     // ── Step 6: siblings ──
@@ -987,12 +1143,6 @@ function populateFormWithData(d) {
 // ─── UPDATE MODE UI ────────────────────────────────────────────
 function enterUpdateMode() {
     isUpdateMode = true;
-
-    // Show "Save Changes" button
-    const saveBtn = document.getElementById('saveChangesBtn');
-    if (saveBtn) {
-        saveBtn.style.display = 'flex'; // or 'inline-block' depending on layout
-    }
 
     // Show persistent "saved" banner in topbar area
     if (!document.querySelector('.saved-banner')) {
@@ -1357,7 +1507,10 @@ function submitForm(e) {
                     .then(r => r.json())
                     .then(data => {
                         if (data.success && data.data) {
-                            populateFormWithData(data.data);
+                            populateFormWithData({
+                                ...data.data,
+                                family_status: data.family_status || {}
+                            });
                             markStepsAsComplete();
                             // Go to Step 1
                             currentStep = 1;
@@ -1518,7 +1671,7 @@ function buildEducationCard(i, data = {}) {
                 <i class="fas fa-trash"></i> Remove
             </button>
         </div>
-        <div class="field-grid">
+        <div class="field-grid education-grid">
             <div class="field-group">
                 <label>Grade Level</label>
                 <input type="text" name="education[${i}][GradeLevel]" placeholder="e.g., Grade 7" value="${data.GradeLevel || ''}">
@@ -1531,7 +1684,7 @@ function buildEducationCard(i, data = {}) {
                 <label>Inclusive Years</label>
                 <input type="text" name="education[${i}][InclusiveYes]" placeholder="e.g., 2020–2024" value="${data.InclusiveYes || ''}">
             </div>
-            <div class="field-group">
+            <div class="field-group education-plan-field">
                 <label>Plan After High School</label>
                 <textarea name="education[${i}][PlaceAndSchool]">${data.PlaceAndSchool || ''}</textarea>
             </div>
@@ -1557,7 +1710,7 @@ function buildOrganizationCard(i, data = {}) {
                 <i class="fas fa-trash"></i> Remove
             </button>
         </div>
-        <div class="field-grid">
+        <div class="field-grid organization-grid">
             <div class="field-group">
                 <label>Organization Name</label>
                 <input type="text" name="organization[${i}][OrganizationName]" value="${data.OrganizationName || ''}">
@@ -1596,7 +1749,7 @@ function buildSiblingCard(i, data = {}) {
                 <i class="fas fa-trash"></i> Remove
             </button>
         </div>
-        <div class="field-grid">
+        <div class="sibling-row">
             <div class="field-group">
                 <label>First Name</label>
                 <input type="text" name="sibling[${i}][FirstName]" value="${data.FirstName || ''}">
@@ -1621,7 +1774,7 @@ function buildSiblingCard(i, data = {}) {
                 <label>Birth Order</label>
                 <input type="text" name="sibling[${i}][BirthOrder]" placeholder="e.g., 1st, 2nd" value="${data.BirthOrder || ''}">
             </div>
-            <div class="field-group span-2">
+            <div class="field-group">
                 <label>School ID</label>
                 <input type="text" name="sibling[${i}][SchoolId]" value="${data.SchoolId || ''}">
             </div>
@@ -1647,7 +1800,7 @@ function buildFriendCard(i, data = {}) {
                 <i class="fas fa-trash"></i> Remove
             </button>
         </div>
-        <div class="field-grid">
+        <div class="friend-row">
             <div class="field-group">
                 <label>In School?</label>
                 <select name="friend[${i}][In_school]">

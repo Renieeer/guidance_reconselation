@@ -3,81 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guidance Management System - Login</title>
+    <title>Guidance Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
-<body class="auth-page">
-    <div class="auth-container">
-        <div class="auth-left">
-            <div class="auth-brand">
-                <div class="brand-icon">
-                    <i class="bi bi-heart-handshake"></i>
-                </div>
-                <h2>Guidance Management</h2>
-                <p>Comprehensive Student Counselling & Referral System</p>
+<body>
+
+    <!-- NAVBAR -->
+    <nav id="navbar">
+        <a class="nav-brand" href="index.php">
+            <span class="nav-dot"></span> Guidance Portal
+        </a>
+        <button class="nav-toggle" id="navToggle" aria-label="Menu">
+            <i class="bi bi-list"></i>
+        </button>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#roles">Roles</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="login.php">Log In</a></li>
+            <li><a href="register.php" class="btn-nav">Register</a></li>
+        </ul>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-watermark">GMS</div>
+        <div class="hero-inner">
+            <div class="hero-badge">
+                <i class="bi bi-circle-fill" style="font-size:7px;"></i>
+                Academic Guidance &nbsp;·&nbsp; School Management System
             </div>
-            
-            <div class="auth-features">
-                <div class="feature">
-                    <i class="bi bi-shield-check"></i>
-                    <span>Secure & Private</span>
-                </div>
-                <div class="feature">
-                    <i class="bi bi-people-fill"></i>
-                    <span>Student Support</span>
-                </div>
-                <div class="feature">
-                    <i class="bi bi-graph-up"></i>
-                    <span>Track Progress</span>
-                </div>
+            <h1 class="hero-title">
+                Shaping <em>futures</em><br>through guidance
+            </h1>
+            <p class="hero-subtitle">
+                A unified platform connecting students, teachers, and coordinators — streamlining every aspect of school counseling and academic support.
+            </p>
+            <div class="hero-cta">
+                <a href="login.php" class="btn-white">
+                    <i class="bi bi-box-arrow-in-right"></i> Sign In
+                </a>
+                <a href="register.php" class="btn-ghost">
+                    <i class="bi bi-person-plus"></i> Create Account
+                </a>
             </div>
         </div>
+        <div class="scroll-hint">
+            <div class="scroll-line"></div>
+            Scroll
+        </div>
+    </section>
 
-        <div class="auth-right">
-            <div class="auth-box">
-                <h1>Welcome Back</h1>
-                <p class="auth-subtitle">Sign in to your account to continue</p>
-
-                <form id="loginForm" class="auth-form">
-                    <div class="form-group">
-                        <label for="email">Email Address</label>
-                        <div class="input-wrapper">
-                            <i class="bi bi-envelope"></i>
-                            <input type="email" id="email" name="email" placeholder="your@email.com" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <div class="input-wrapper">
-                            <i class="bi bi-lock"></i>
-                            <input type="password" id="password" name="password" placeholder="••••••••" required>
-                        </div>
-                    </div>
-
-                    <div id="loginError" class="error-alert"></div>
-
-                    <button type="submit" class="btn btn-auth-primary">
-                        <span>Sign In</span>
-                        <i class="bi bi-arrow-right"></i>
-                    </button>
-                </form>
-
-                <div class="auth-divider">
-                    <span>Don't have an account?</span>
-                </div>
-
-                <a href="register.php" class="btn btn-auth-secondary">
-                    <span>Create New Account</span>
-                    <i class="bi bi-arrow-right"></i>
-                </a>
-
-               
-            </div>
+    <!-- STATS -->
+    <div class="stats-bar reveal">
+        <div class="stat-item">
+            <div class="stat-num">4</div>
+            <div class="stat-label">User Roles</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">6</div>
+            <div class="stat-label">Core Modules</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">100%</div>
+            <div class="stat-label">Secure Access</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">24/7</div>
+            <div class="stat-label">Availability</div>
         </div>
     </div>
 
-    <script src="js/auth.js"></script>
+    <!-- FEATURES -->
+    <section id="features" class="section-features">
+        <div class="s-header reveal">
+            <div>
+                <p class="s-eyebrow">What we offer</p>
+                <h2 class="s-title">Built for every<br>stakeholder</h2>
+            </div>
+            <p class="s-desc">Six purpose-built modules that cover the full lifecycle of student guidance and counseling.</p>
+        </div>
+        <div class="features-grid">
+            <div class="f-item reveal">
+                <div class="f-num">01</div>
+                <div class="f-icon"><i class="bi bi-calendar-check"></i></div>
+                <div class="f-name">Appointment Management</div>
+                <div class="f-desc">Schedule and manage counseling sessions with real-time availability and automated reminders.</div>
+            </div>
+            <div class="f-item reveal" style="transition-delay:.1s">
+                <div class="f-num">02</div>
+                <div class="f-icon"><i class="bi bi-graph-up"></i></div>
+                <div class="f-name">Progress Tracking</div>
+                <div class="f-desc">Monitor student achievements, milestones, and development over time with visual dashboards.</div>
+            </div>
+            <div class="f-item reveal" style="transition-delay:.2s">
+                <div class="f-num">03</div>
+                <div class="f-icon"><i class="bi bi-file-earmark-text"></i></div>
+                <div class="f-name">Case Management</div>
+                <div class="f-desc">Organize, categorize, and track student cases from referral through resolution efficiently.</div>
+            </div>
+            <div class="f-item reveal" style="transition-delay:.05s">
+                <div class="f-num">04</div>
+                <div class="f-icon"><i class="bi bi-chat-dots"></i></div>
+                <div class="f-name">Communication Hub</div>
+                <div class="f-desc">Seamless, secure interaction between students, parents, teachers, and coordinators.</div>
+            </div>
+            <div class="f-item reveal" style="transition-delay:.15s">
+                <div class="f-num">05</div>
+                <div class="f-icon"><i class="bi bi-shield-lock"></i></div>
+                <div class="f-name">Secure Access</div>
+                <div class="f-desc">Role-based permissions ensure every user sees only what they're authorized to access.</div>
+            </div>
+            <div class="f-item reveal" style="transition-delay:.25s">
+                <div class="f-num">06</div>
+                <div class="f-icon"><i class="bi bi-bar-chart"></i></div>
+                <div class="f-name">Analytics & Reports</div>
+                <div class="f-desc">Generate comprehensive statistical insights to inform decisions and improve outcomes.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ROLES -->
+    <section id="roles" class="section-roles">
+        <div class="reveal">
+            <p class="s-eyebrow">Who it's for</p>
+            <h2 class="s-title">Four distinct<br>user roles</h2>
+        </div>
+        <div class="roles-grid">
+            <div class="r-card reveal">
+                <div class="r-watermark">01</div>
+                <div class="r-icon"><i class="bi bi-person-gear"></i></div>
+                <div class="r-name">SDO</div>
+                <div class="r-desc">School Development Officer with full system administration privileges and oversight.</div>
+            </div>
+            <div class="r-card reveal" style="transition-delay:.1s">
+                <div class="r-watermark">02</div>
+                <div class="r-icon"><i class="bi bi-book"></i></div>
+                <div class="r-name">Student</div>
+                <div class="r-desc">Access personal guidance records, schedule sessions, and track academic progress.</div>
+            </div>
+            <div class="r-card reveal" style="transition-delay:.2s">
+                <div class="r-watermark">03</div>
+                <div class="r-icon"><i class="bi bi-mortarboard"></i></div>
+                <div class="r-name">Teacher</div>
+                <div class="r-desc">Monitor student development, submit referrals, and communicate with coordinators.</div>
+            </div>
+            <div class="r-card reveal" style="transition-delay:.3s">
+                <div class="r-watermark">04</div>
+                <div class="r-icon"><i class="bi bi-people"></i></div>
+                <div class="r-name">Guidance Office H       andler</div>
+                <div class="r-desc">Oversee all counseling services, manage cases, and generate institutional reports.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" class="section-about">
+        <div class="reveal">
+            <span class="about-eyebrow">About the system</span>
+            <h2 class="about-title">Designed for<br>schools that care</h2>
+            <p class="about-body">The Guidance Management System bridges the gap between students in need and the support structures around them — creating a connected, transparent, and secure environment for academic and personal growth.</p>
+            <ul class="about-list">
+                <li>
+                    <i class="bi bi-arrow-right"></i>
+                    <span><strong>Efficient Management</strong> — Streamlined processes for every school stakeholder</span>
+                </li>
+                <li>
+                    <i class="bi bi-arrow-right"></i>
+                    <span><strong>Data Security</strong> — End-to-end protected student records and confidential information</span>
+                </li>
+                <li>
+                    <i class="bi bi-arrow-right"></i>
+                    <span><strong>Real-time Updates</strong> — Instant notifications keep everyone informed and aligned</span>
+                </li>
+                <li>
+                    <i class="bi bi-arrow-right"></i>
+                    <span><strong>User-Friendly</strong> — Intuitive interface designed for all digital skill levels</span>
+                </li>
+            </ul>
+        </div>
+        <div class="about-visual reveal" style="transition-delay:.2s">
+            <div class="deco-tl"></div>
+            <div class="about-card">
+                <i class="bi bi-building"></i>
+                <div class="about-card-label">Guidance Management System</div>
+            </div>
+            <div class="deco-br"></div>
+        </div>
+    </section>
+
+    <!-- CTA BAND -->
+    <div class="cta-band reveal">
+        <div>
+            <p class="cta-label">Get started today</p>
+            <h2 class="cta-title">Ready to transform<br>your guidance program?</h2>
+        </div>
+        <div class="cta-btns">
+            <a href="register.php" class="btn-dark">
+                <i class="bi bi-person-plus"></i> Create Account
+            </a>
+            <a href="login.php" class="btn-outline-dark">
+                <i class="bi bi-box-arrow-in-right"></i> Sign In
+            </a>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-brand">Guidance Portal</div>
+        <div class="footer-copy">&copy; <?php echo date('Y'); ?> Guidance Management System. All rights reserved.</div>
+        <ul class="footer-nav">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#roles">Roles</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="login.php">Login</a></li>
+        </ul>
+    </footer>
+
+    <script>
+        // Scroll reveal
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('visible');
+                    observer.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // Mobile nav
+        document.getElementById('navToggle').addEventListener('click', () => {
+            document.getElementById('navLinks').classList.toggle('open');
+        });
+
+        // Navbar shrink on scroll
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            navbar.style.padding = window.scrollY > 50
+                ? '13px 60px' : '20px 60px';
+        });
+    </script>
 </body>
 </html>

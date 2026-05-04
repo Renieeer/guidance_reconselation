@@ -47,8 +47,8 @@ try {
         exit;
     }
 
-    // Query user from database
-    $query = "SELECT id, email, password, user_type, first_name, last_name, school_attended FROM accounts WHERE email = ?";
+    // Query user from database (users_tables)
+    $query = "SELECT AccountID, email, Password, Type, First_name, Last_name, school_attended FROM users_tables WHERE email = ?";
     $stmt = $conn->prepare($query);
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
@@ -70,19 +70,19 @@ try {
     }
 
     // Verify password
-    if (!password_verify($plainPassword, $user['password'])) {
+    if (!password_verify($plainPassword, $user['Password'])) {
         echo json_encode(['success' => false, 'message' => 'Invalid email or password']);
         exit;
     }
 
     // Login successful - role is retrieved from database
     $userData = [
-        'id' => $user['id'],
+        'id' => $user['AccountID'],
         'email' => $user['email'],
-        'name' => $user['first_name'] . ' ' . $user['last_name'],
-        'firstName' => $user['first_name'],
-        'lastName' => $user['last_name'],
-        'role' => $user['user_type'],
+        'name' => $user['First_name'] . ' ' . $user['Last_name'],
+        'firstName' => $user['First_name'],
+        'lastName' => $user['Last_name'],
+        'role' => $user['Type'],
         'school' => $user['school_attended']
     ];
 

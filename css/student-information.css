@@ -200,6 +200,33 @@ body {
     border-bottom: 2px solid var(--gray-100);
 }
 
+.section-header .btn-add-inline {
+    margin-left: auto;
+    margin-top: 0;
+    padding: 9px 14px;
+    font-size: 12px;
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
+    background: linear-gradient(135deg, var(--success), #059669);
+}
+
+.section-header .btn-add-inline:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #059669, #047857);
+}
+
+@media (max-width: 768px) {
+    .section-header {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .section-header .btn-add-inline {
+        margin-left: 0;
+    }
+}
+
 .section-icon {
     width: 40px;
     height: 40px;
@@ -257,6 +284,69 @@ body {
     }
 }
 
+.identity-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    width: 100%;
+    grid-column: span 2;
+}
+
+.identity-row .field-group {
+    min-width: 0;
+}
+
+.address-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    width: 100%;
+    grid-column: span 2;
+}
+
+.address-row .field-group {
+    min-width: 0;
+}
+
+.info-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+    width: 100%;
+    grid-column: span 2;
+}
+
+.info-row .field-group {
+    min-width: 0;
+}
+
+@media (max-width: 1280px) {
+    .identity-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .info-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .identity-row {
+        grid-template-columns: 1fr;
+        grid-column: span 1;
+    }
+
+    .address-row {
+        grid-template-columns: 1fr;
+        grid-column: span 1;
+    }
+
+    .info-row {
+        grid-template-columns: 1fr;
+        grid-column: span 1;
+    }
+}
+
 .field-group label {
     font-size: 13px;
     font-weight: 600;
@@ -296,6 +386,19 @@ body {
 
 .field-group input::placeholder {
     color: var(--text-muted);
+}
+
+.field-group input[readonly],
+.field-group input[readonly]:focus {
+    background: #f8fafc;
+    color: var(--text-secondary);
+    border-color: var(--gray-200);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.field-group input[readonly]::placeholder {
+    color: var(--gray-400);
 }
 
 .field-group textarea {
@@ -439,6 +542,82 @@ body {
     padding: 20px;
 }
 
+.education-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.organization-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.education-plan-field {
+    grid-column: span 3;
+}
+
+.sibling-row {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1.1fr 1fr 0.7fr 0.9fr 1fr;
+    gap: 16px;
+    padding: 18px 20px 20px;
+}
+
+.sibling-row .field-group {
+    min-width: 0;
+}
+
+.friend-row {
+    display: grid;
+    grid-template-columns: 0.8fr 1.1fr 1fr 1.1fr;
+    gap: 16px;
+    padding: 18px 20px 20px;
+}
+
+.friend-row .field-group {
+    min-width: 0;
+}
+
+@media (max-width: 1400px) {
+    .education-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .organization-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .education-plan-field {
+        grid-column: span 2;
+    }
+
+    .sibling-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .friend-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .sibling-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .friend-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .sibling-row {
+        grid-template-columns: 1fr;
+    }
+
+    .friend-row {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ────── BUTTONS ──────────────────────────────────────────────── */
 
 .btn-add {
@@ -557,6 +736,10 @@ body {
 /* ────── RESPONSIVE DESIGN ───────────────────────────────────── */
 
 @media (max-width: 768px) {
+    .education-plan-field {
+        grid-column: span 1;
+    }
+
     .page-content {
         padding: 20px 16px;
     }
