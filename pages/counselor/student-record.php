@@ -14,19 +14,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-counselor.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Student Records</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CM</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Counselor</div>
-                            <small class="text-muted" id="userRole">Counselor</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-file-person"></i> Information</div>
+                    <h2 class="page-hero-title">Student Records</h2>
+                    <p class="page-hero-text">View detailed student information, personal data, and guidance history.</p>
                 </div>
             </div>
 

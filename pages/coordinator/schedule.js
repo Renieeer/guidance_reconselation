@@ -66,6 +66,11 @@ async function refreshScheduleEventsSafely() {
     } catch (error) {
         console.error('Error loading schedule events:', error);
         showAlert(error.message || 'Unable to load schedule events', 'error');
+    
+        if (ev.kind === 'appointment' || ev.student_id || ev.student_name) {
+            viewRequestDetails(ev.id);
+            return;
+        }
     }
 }
 
@@ -77,6 +82,7 @@ async function initSchedulePage() {
     loadAppointmentRequests();
     document.getElementById('scheduleForm').addEventListener('submit', addScheduleEvent);
     setupCreateScheduleModal();
+    setupRequestModal();
 }
 
 function setupCalendarControls() {
@@ -109,6 +115,21 @@ function setupCreateScheduleModal() {
     });
 
     document.getElementById('createScheduleModalForm')?.addEventListener('submit', submitCreateScheduleModal);
+}
+
+function setupRequestModal() {
+    const requestModal = document.getElementById('requestModal');
+    if (!requestModal) return;
+
+    // Close modal when clicking the X button
+    requestModal.querySelector('.modal-close')?.addEventListener('click', closeRequestModal);
+
+    // Close modal when clicking outside the modal content
+    requestModal.addEventListener('click', (event) => {
+        if (event.target === requestModal) {
+            closeRequestModal();
+        }
+    });
 }
 
 function getScheduleEvents() {
@@ -222,9 +243,13 @@ function renderScheduleCalendar() {
             <div class="schedule-event-list">`;
 
         dayEvents.forEach(event => {
-            const title = escapeHtml(event.title || 'Schedule');
+            const isAppointment = event.kind === 'appointment' || !!event.student_id || !!event.student_name;
+            const title = escapeHtml(isAppointment ? `Appointment: ${event.title || 'Student'}` : (event.title || 'Schedule'));
             const color = getEventColor(event.id);
-            html += `<div class="schedule-event-block" data-event-id="${event.id}" onclick="openViewEventModal('${event.id}')" title="${title}" style="background: ${color.bg}; color: ${color.text};">${title}</div>`;
+            const style = isAppointment
+                ? `background: linear-gradient(135deg, ${color.bg} 0%, #ffffff 100%); color: ${color.text}; border-left: 4px solid ${color.text}; font-weight: 700;`
+                : `background: ${color.bg}; color: ${color.text};`;
+            html += `<div class="schedule-event-block" data-event-id="${event.id}" onclick="openViewEventModal('${event.id}')" title="${title}" style="${style}">${title}</div>`;
         });
 
         html += '</div></div>';
@@ -540,6 +565,23 @@ function loadAppointmentRequests() {
 
             // Filter for pending, proposed_change, and approved statuses (keep approved as history)
             const allRequests = result.data.filter(r => r.status === 'pending' || r.status === 'proposed_change' || r.status === 'approved');
+            appointmentCalendarEvents = allRequests.map(request => ({
+                id: request.id,
+                kind: 'appointment',
+                date: request.preferred_date,
+                title: request.student_name,
+                type: request.status,
+                time: request.preferred_time,
+                student_id: request.student_id,
+                student_name: request.student_name,
+                reason: request.reason,
+                notes: request.notes,
+                status: request.status,
+                counselor_notes: request.counselor_notes,
+                preferred_date: request.preferred_date,
+                preferred_time: request.preferred_time,
+                school_attended: request.school_attended
+            }));
 
             if (allRequests.length === 0) {
                 tbody.innerHTML = `<tr>

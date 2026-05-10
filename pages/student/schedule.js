@@ -38,6 +38,51 @@ function getCurrentSchool() {
     return user.school || user.school_attended || '';
 }
 
+// Expose weekend helpers on window so they're available in runtime evaluations
+window.isWeekend = function(dateStr) {
+    // dateStr format: YYYY-MM-DD
+    const date = new Date((dateStr || '') + 'T00:00:00');
+    const dayOfWeek = isNaN(date.getTime()) ? -1 : date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
+};
+
+window.getWeekendName = function(dateStr) {
+    const date = new Date((dateStr || '') + 'T00:00:00');
+    const dayOfWeek = isNaN(date.getTime()) ? -1 : date.getDay();
+    return dayOfWeek === 0 ? 'Sunday' : 'Saturday';
+};
+
+function getBookedDates() {
+    // Return a Set of dates that have scheduled events or appointment requests
+    const booked = new Set();
+    
+    // Add dates with scheduled events
+    if (scheduleEventsCache && Array.isArray(scheduleEventsCache)) {
+        scheduleEventsCache.forEach(event => {
+            if (event.date) {
+                // Add start date and all dates in range if multi-day
+                const startDate = new Date(event.date);
+                const endDate = event.endDate ? new Date(event.endDate) : startDate;
+                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                    const dateStr = d.toISOString().split('T')[0];
+                    booked.add(dateStr);
+                }
+            }
+        });
+    }
+    
+    // Add dates with student appointment requests
+    if (studentAppointmentRequests && Array.isArray(studentAppointmentRequests)) {
+        studentAppointmentRequests.forEach(req => {
+            if (req.preferred_date) {
+                booked.add(req.preferred_date);
+            }
+        });
+    }
+    
+    return booked;
+}
+
 async function refreshScheduleEvents() {
     const school = getCurrentSchool();
     const month = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}`;
@@ -52,6 +97,8 @@ async function refreshScheduleEvents() {
 
     scheduleEventsCache = Array.isArray(result.data) ? result.data : [];
 }
+// end of file
+// end of file
 function loadUserInfo() {
     const user = getCurrentUser();
     if (user) {
@@ -445,7 +492,6 @@ function setupAppointmentForm() {
     requestBtn?.addEventListener('click', () => {
         formPanel.style.display = 'block';
         dateInput.focus();
-        updateDisabledDates();
     });
 
     closeBtn?.addEventListener('click', () => {
@@ -453,40 +499,37 @@ function setupAppointmentForm() {
     });
 
     form?.addEventListener('submit', submitAppointmentRequest);
-    dateInput?.addEventListener('change', updateDisabledDates);
-}
-
-function getBookedDates() {
-    const events = getScheduleEvents();
-    const booked = new Set();
     
-    events.forEach(event => {
-        const start = new Date(event.date);
-        const end = new Date(event.endDate || event.date);
+    // Add validation for date input using both input and change events for reliability
+    const validateDateInput = function() {
+        const selectedDate = this.value;
+        if (!selectedDate) return;
         
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
-            booked.add(dateStr);
+        // Check if weekend
+        if (isWeekend(selectedDate)) {
+            const dayName = getWeekendName(selectedDate);
+            showAlert(`${dayName} is not available. Please select a weekday.`, 'error');
+            this.value = '';
+            return;
         }
-    });
+        
+        // Check if booked
+        const booked = getBookedDates();
+        if (booked.has(selectedDate)) {
+            showAlert('This date already has scheduled events. Please choose another date.', 'error');
+            this.value = '';
+            return;
+        }
+    };
     
-    return booked;
+    dateInput?.addEventListener('input', validateDateInput);
+    dateInput?.addEventListener('change', validateDateInput);
+    dateInput?.addEventListener('blur', validateDateInput);
 }
 
 function updateDisabledDates() {
-    const dateInput = document.getElementById('appointmentDateInput');
-    if (!dateInput) return;
-
-    const booked = getBookedDates();
-    
-    // Use the invalid attribute for unavailable dates
-    dateInput.addEventListener('input', function() {
-        const selectedDate = this.value;
-        if (selectedDate && booked.has(selectedDate)) {
-            showAlert('This date has scheduled events. Please choose another date.', 'error');
-            this.value = '';
-        }
-    });
+    // This function is kept for compatibility but the actual validation
+    // is now handled in setupAppointmentForm()
 }
 
 async function submitAppointmentRequest(e) {
@@ -502,9 +545,17 @@ async function submitAppointmentRequest(e) {
         return;
     }
 
+    // Check if weekend
+    if (isWeekend(dateInput)) {
+        const dayName = getWeekendName(dateInput);
+        showAlert(`${dayName} is not available. Please select a weekday.`, 'error');
+        return;
+    }
+
+    // Check if booked
     const booked = getBookedDates();
     if (booked.has(dateInput)) {
-        showAlert('This date has scheduled events. Please choose another date.', 'error');
+        showAlert('This date already has scheduled events. Please choose another date.', 'error');
         return;
     }
 

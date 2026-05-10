@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-other-school.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Combined Dashboard</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CC</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Staff</div>
-                            <small class="text-muted" id="userRole">Coordinator & Counselor</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-speedometer2"></i> Overview</div>
+                    <h2 class="page-hero-title">Dashboard</h2>
+                    <p class="page-hero-text">Monitor guidance activities and coordination with your school's counselor and district office.</p>
                 </div>
             </div>
 

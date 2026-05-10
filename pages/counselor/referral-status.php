@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-counselor.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Referral Status Tracking</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CM</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Counselor</div>
-                            <small class="text-muted" id="userRole">Counselor</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-diagram-3"></i> Case Management</div>
+                    <h2 class="page-hero-title">Referral Status</h2>
+                    <p class="page-hero-text">Track the status of all student referrals assigned to you and monitor case progress.</p>
                 </div>
             </div>
 

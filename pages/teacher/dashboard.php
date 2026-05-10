@@ -11,20 +11,13 @@
     <div class="main-wrapper">
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-teacher.php'; ?><!-- Main Content -->
-        <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Dashboard</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">TJ</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Teacher</div>
-                            <small class="text-muted" id="userRole">Teacher</small>
-                        </div>
-                    </div>
+        <div class="main-content teacher-page">
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-speedometer2"></i> Overview</div>
+                    <h2 class="page-hero-title">Teacher Dashboard</h2>
+                    <p class="page-hero-text">Submit referrals, track referral status, and manage student guidance communications.</p>
                 </div>
             </div>
 

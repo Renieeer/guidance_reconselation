@@ -140,7 +140,7 @@ function initLogout() {
 // Set user info in topbar
 function setUserInfo() {
     const user = getCurrentUser();
-    if (user) {
+    if (user && user.name) {
         const nameEl = document.getElementById('userName');
         const roleEl = document.getElementById('userRole');
         const avatarEl = document.getElementById('userAvatar');
@@ -149,9 +149,9 @@ function setUserInfo() {
         if (roleEl && user.role) {
             roleEl.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('-', ' ');
         }
-        if (avatarEl) {
-            const initials = user.name.split(' ').map(n => n[0]).join('');
-            avatarEl.textContent = initials;
+        if (avatarEl && typeof user.name === 'string') {
+            const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+            avatarEl.textContent = initials || 'U';
         }
     }
 }

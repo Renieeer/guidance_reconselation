@@ -13,19 +13,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-counselor.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Analytics & Reports</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CM</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Counselor</div>
-                            <small class="text-muted" id="userRole">Counselor</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-graph-up"></i> Insights</div>
+                    <h2 class="page-hero-title">Analytics</h2>
+                    <p class="page-hero-text">View performance metrics and analytics on your counseling activities and student outcomes.</p>
                 </div>
             </div>
 

@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-sdo.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>School Reports</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">SD</div>
-                        <div>
-                            <div class="fw-bold" id="userName">SDO</div>
-                            <small class="text-muted" id="userRole">School District Officer</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-file-earmark-bar-graph"></i> Analytics</div>
+                    <h2 class="page-hero-title">School Reports</h2>
+                    <p class="page-hero-text">View comprehensive reports on school performance, guidance metrics, and student outcomes.</p>
                 </div>
             </div>
 

@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-coordinator.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Schedule Management</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CJ</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Coordinator</div>
-                            <small class="text-muted" id="userRole">Coordinator</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-calendar3-week"></i> Calendar</div>
+                    <h2 class="page-hero-title">Schedule Management</h2>
+                    <p class="page-hero-text">Plan meetings, coordinate training sessions, and schedule case reviews for your team.</p>
                 </div>
             </div>
 
@@ -219,7 +212,7 @@
                 <h2 id="requestModalTitle">Appointment Request</h2>
                 <span class="modal-close" onclick="closeRequestModal()" style="cursor: pointer;">&times;</span>
             </div>
-            <div class="view-modal-body">
+                <div class="view-modal-body">
                 <div class="event-detail-section">
                     <div class="event-detail-icon">
                         <i class="bi bi-person"></i>
@@ -231,7 +224,7 @@
                 </div>
                 <div class="event-detail-section">
                     <div class="event-detail-icon">
-                        <i class="bi bi-card-text"></i>
+                        <i class="bi bi-pen"></i>
                     </div>
                     <div class="event-detail-content">
                         <h3 class="event-detail-title">Reason</h3>
@@ -240,7 +233,7 @@
                 </div>
                 <div class="event-detail-section">
                     <div class="event-detail-icon">
-                        <i class="bi bi-calendar-event"></i>
+                        <i class="bi bi-clock"></i>
                     </div>
                     <div class="event-detail-content">
                         <h3 class="event-detail-title">Requested Date & Time</h3>
@@ -249,7 +242,7 @@
                 </div>
                 <div class="event-detail-section">
                     <div class="event-detail-icon">
-                        <i class="bi bi-info-circle"></i>
+                        <i class="bi bi-hourglass-split"></i>
                     </div>
                     <div class="event-detail-content">
                         <h3 class="event-detail-title">Status</h3>
@@ -258,7 +251,7 @@
                 </div>
                 <div class="event-detail-section" id="requestNotesSection" style="display:none;">
                     <div class="event-detail-icon">
-                        <i class="bi bi-file-text"></i>
+                        <i class="bi bi-journal-text"></i>
                     </div>
                     <div class="event-detail-content">
                         <h3 class="event-detail-title">Student Notes</h3>
@@ -271,7 +264,7 @@
                     <i class="bi bi-check-lg"></i> Approve
                 </button>
                 <button type="button" class="btn btn-warning" id="proposeChangeBtn" onclick="proposeChangesFromModal()">
-                    <i class="bi bi-pencil"></i> Propose Changes
+                    <i class="bi bi-pencil-square"></i> Propose Changes
                 </button>
                 <button type="button" class="btn btn-danger" id="rejectRequestBtn" onclick="rejectRequestFromModal()">
                     <i class="bi bi-x-lg"></i> Reject

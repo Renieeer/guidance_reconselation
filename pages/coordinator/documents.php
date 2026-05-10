@@ -367,19 +367,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-coordinator.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Student Documents</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CO</div>
-                        <div>
-                            <div style="font-weight: 600;" id="userName">Coordinator</div>
-                            <small style="color: #64748b;" id="userRole">Coordinator</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-folder-check"></i> Resources</div>
+                    <h2 class="page-hero-title">Document Library</h2>
+                    <p class="page-hero-text">Access and manage guidance documents, forms, and resources for your school.</p>
                 </div>
             </div>
 

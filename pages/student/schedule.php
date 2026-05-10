@@ -12,17 +12,19 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-student.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>My Schedule</h1>
+            <!-- Page Hero -->
+            <div class="page-hero" style="display:flex; align-items:center; justify-content:space-between; gap:20px;">
+                <div style="flex:1;">
+                    <div class="page-hero-eyebrow"><i class="bi bi-calendar3-week"></i> Calendar</div>
+                    <h2 class="page-hero-title">My Schedule</h2>
+                    <p class="page-hero-text">View your scheduled appointments with your counselor and request new sessions.</p>
                 </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">ST</div>
-                        <div>
-                            <div style="font-weight: 600;" id="userName">Student</div>
-                            <small style="color: #64748b;" id="userRole">Student</small>
+                <div style="min-width:180px; display:flex; align-items:center; justify-content:flex-end; gap:12px;">
+                    <div class="user-info" style="display:flex; align-items:center; gap:10px;">
+                        <div class="user-avatar" id="userAvatar" style="background:#2563eb; color:white; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700;">ST</div>
+                        <div style="text-align:right;">
+                            <div id="userName" style="font-weight:700;">Student</div>
+                            <small id="userRole" style="color: #64748b;">Student</small>
                         </div>
                     </div>
                 </div>
@@ -35,7 +37,7 @@
                     <div class="schedule-calendar-header">
                         <div class="schedule-calendar-title">
                             <div class="schedule-calendar-icon">
-                                <i class="bi bi-calendar-event"></i>
+                                <i class="bi bi-calendar3"></i>
                             </div>
                             <div>
                                 <h2>Appointment Calendar</h2>
@@ -57,7 +59,7 @@
 
                             <button type="button" class="btn btn-outline-primary" id="scheduleTodayBtn">Today</button>
                             <button type="button" class="btn btn-primary" id="requestAppointmentBtn" style="margin-left: auto;">
-                                <i class="bi bi-plus-circle"></i> Request Appointment
+                                <i class="bi bi-person-plus"></i> Request Appointment
                             </button>
                         </div>
                     </div>
@@ -94,7 +96,7 @@
                                     <textarea id="appointmentNotesInput" rows="4" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; resize: vertical;"></textarea>
                                 </div>
                                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; margin-top: 10px;">
-                                    <i class="bi bi-check-lg"></i> Request Appointment
+                                    <i class="bi bi-send"></i> Request Appointment
                                 </button>
                             </form>
                         </div>
@@ -155,7 +157,7 @@
                         <div class="view-modal-body">
                             <div class="event-detail-section" id="descriptionSection">
                                 <div class="event-detail-icon">
-                                    <i class="bi bi-card-text"></i>
+                                    <i class="bi bi-chat-left-text"></i>
                                 </div>
                                 <div class="event-detail-content">
                                     <h3 class="event-detail-title">Description</h3>
@@ -164,7 +166,7 @@
                             </div>
                             <div class="event-detail-section">
                                 <div class="event-detail-icon">
-                                    <i class="bi bi-calendar-event"></i>
+                                    <i class="bi bi-clock"></i>
                                 </div>
                                 <div class="event-detail-content">
                                     <h3 class="event-detail-title">Date and Time</h3>
@@ -174,7 +176,7 @@
                         </div>
                         <div class="view-modal-footer">
                             <button class="btn btn-outline-primary" id="editEventBtn" style="display:none;">
-                                <i class="bi bi-pencil"></i> Edit
+                                <i class="bi bi-pencil-square"></i> Edit
                             </button>
                             <button class="btn btn-primary" id="seeMoreDetailsBtn" style="display:none;">See more details →</button>
                         </div>
@@ -191,7 +193,7 @@
                         <div class="view-modal-body">
                             <div class="event-detail-section">
                                 <div class="event-detail-icon">
-                                    <i class="bi bi-card-text"></i>
+                                    <i class="bi bi-pen"></i>
                                 </div>
                                 <div class="event-detail-content">
                                     <h3 class="event-detail-title">Reason</h3>
@@ -200,7 +202,7 @@
                             </div>
                             <div class="event-detail-section">
                                 <div class="event-detail-icon">
-                                    <i class="bi bi-calendar-event"></i>
+                                    <i class="bi bi-clock"></i>
                                 </div>
                                 <div class="event-detail-content">
                                     <h3 class="event-detail-title">Requested Date & Time</h3>
@@ -209,7 +211,7 @@
                             </div>
                             <div class="event-detail-section">
                                 <div class="event-detail-icon">
-                                    <i class="bi bi-info-circle"></i>
+                                    <i class="bi bi-hourglass-split"></i>
                                 </div>
                                 <div class="event-detail-content">
                                     <h3 class="event-detail-title">Status</h3>
@@ -218,7 +220,7 @@
                             </div>
                             <div class="event-detail-section" id="requestNotesSection" style="display:none;">
                                 <div class="event-detail-icon">
-                                    <i class="bi bi-file-text"></i>
+                                    <i class="bi bi-journal-text"></i>
                                 </div>
                                 <div class="event-detail-content">
                                     <h3 class="event-detail-title">Notes</h3>

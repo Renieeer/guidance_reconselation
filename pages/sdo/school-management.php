@@ -12,18 +12,12 @@
         <?php include '../../includes/sidebar-sdo.php'; ?>
 
         <div class="main-content">
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>School Management</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">SD</div>
-                        <div>
-                            <div class="fw-bold" id="userName">SDO</div>
-                            <small class="text-muted" id="userRole">School District Officer</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-building"></i> Administration</div>
+                    <h2 class="page-hero-title">School Management</h2>
+                    <p class="page-hero-text">Oversee all schools in the district, manage staff accounts, and coordinate district activities.</p>
                 </div>
             </div>
 

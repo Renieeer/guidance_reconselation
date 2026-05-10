@@ -16,19 +16,12 @@
     
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Topbar -->
-        <div class="topbar">
-            <div class="topbar-left">
-                <h1>My Information</h1>
-            </div>
-            <div class="topbar-right">
-                <div class="user-info">
-                    <div class="user-avatar" id="userAvatar">ST</div>
-                    <div>
-                        <div style="font-weight: 600;" id="userName">Student</div>
-                        <small style="color: #64748b;" id="userRole">Student</small>
-                    </div>
-                </div>
+        <!-- Page Hero -->
+        <div class="page-hero">
+            <div>
+                <div class="page-hero-eyebrow"><i class="bi bi-file-person"></i> Information</div>
+                <h2 class="page-hero-title">My Information</h2>
+                <p class="page-hero-text">View and update your student information on file with the school guidance office.</p>
             </div>
         </div>
 

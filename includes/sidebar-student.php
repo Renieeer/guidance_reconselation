@@ -11,7 +11,7 @@
         <li><a href="feedback.php"><i class="bi bi-chat-dots"></i> Feedback</a></li>
         <li><a href="appointment-history.php"><i class="bi bi-clock-history"></i> History</a></li>
         <li><a href="schedule.php"><i class="bi bi-calendar3"></i> Schedule</a></li>
-        <li><a href="appointment-request.php"><i class="bi bi-calendar-plus"></i> Request Appointment</a></li>
+        
         <li><a href="#" id="logoutBtn"><i class="bi bi-box-arrow-left"></i> Logout</a></li>
     </ul>
 </div>

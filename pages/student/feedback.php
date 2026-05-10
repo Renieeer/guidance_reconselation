@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-student.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Feedback</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">ST</div>
-                        <div>
-                            <div style="font-weight: 600;" id="userName">Student</div>
-                            <small style="color: #64748b;" id="userRole">Student</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-chat-dots"></i> Assessment</div>
+                    <h2 class="page-hero-title">Feedback</h2>
+                    <p class="page-hero-text">Share your thoughts about your counseling experience and the guidance services you received.</p>
                 </div>
             </div>
 

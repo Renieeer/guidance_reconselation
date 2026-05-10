@@ -32,6 +32,19 @@ function showAlert(message, type = 'success') {
     }
 }
 
+// Expose weekend helpers on window so runtime checks can access them
+window.isWeekend = function(dateStr) {
+    const date = new Date((dateStr || '') + 'T00:00:00');
+    const dayOfWeek = isNaN(date.getTime()) ? -1 : date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
+};
+
+window.getWeekendName = function(dateStr) {
+    const date = new Date((dateStr || '') + 'T00:00:00');
+    const dayOfWeek = isNaN(date.getTime()) ? -1 : date.getDay();
+    return dayOfWeek === 0 ? 'Sunday' : 'Saturday';
+};
+
 function getCurrentUser() {
     try {
         return JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -68,6 +81,12 @@ async function refreshScheduleEvents() {
         throw new Error(result.message || 'Failed to load schedule events');
     }
     scheduleEventsCache = Array.isArray(result.data) ? result.data : [];
+    // Ensure the calendar re-renders after events are refreshed
+    try {
+        if (typeof renderAppointmentCalendar === 'function') renderAppointmentCalendar();
+    } catch (e) {
+        console.warn('renderAppointmentCalendar failed after refresh:', e && e.message);
+    }
 }
 
 async function refreshScheduleEventsSafely() {
@@ -83,6 +102,7 @@ async function initSchedulePage() {
     initPage();
     setupCalendarControls();
     setupCreateScheduleModal();
+    setupRequestModal();
     await refreshScheduleEventsSafely();
     loadAppointmentRequests();
     
@@ -116,6 +136,21 @@ function setupCreateScheduleModal() {
         }
     });
     document.getElementById('createScheduleModalForm')?.addEventListener('submit', submitCreateScheduleModal);
+}
+
+function setupRequestModal() {
+    const requestModal = document.getElementById('requestModal');
+    if (!requestModal) return;
+
+    // Close modal when clicking the X button
+    requestModal.querySelector('.modal-close')?.addEventListener('click', closeRequestModal);
+
+    // Close modal when clicking outside the modal content
+    requestModal.addEventListener('click', (event) => {
+        if (event.target === requestModal) {
+            closeRequestModal();
+        }
+    });
 }
 
 function setupCalendarControls() {
@@ -254,9 +289,13 @@ function renderAppointmentCalendar() {
             <div class="schedule-event-list">`;
 
         dayEvents.forEach(event => {
-            const title = escapeHtml(event.title || 'Event');
+            const isAppointment = event.kind === 'appointment' || !!event.student_id || !!event.student_name;
+            const title = escapeHtml(isAppointment ? `Appointment: ${event.title || 'Student'}` : (event.title || 'Event'));
             const color = getEventColor(event.id);
-            html += `<div class="schedule-event-block" data-event-id="${event.id}" onclick="openViewEventModal('${event.id}')" title="${title}" style="background: ${color.bg}; color: ${color.text};">${title}</div>`;
+            const style = isAppointment
+                ? `background: linear-gradient(135deg, ${color.bg} 0%, #ffffff 100%); color: ${color.text}; border-left: 4px solid ${color.text}; font-weight: 700;`
+                : `background: ${color.bg}; color: ${color.text};`;
+            html += `<div class="schedule-event-block" data-event-id="${event.id}" onclick="openViewEventModal('${event.id}')" title="${title}" style="${style}">${title}</div>`;
         });
 
         html += '</div></div>';
@@ -276,6 +315,13 @@ function renderAppointmentCalendar() {
 }
 
 function openCreateScheduleModal(dateStr) {
+    // Check if selected date is a weekend
+    if (isWeekend(dateStr)) {
+        const dayName = getWeekendName(dateStr);
+        showAlert(`${dayName} is not available. Please select a weekday.`, 'error');
+        return;
+    }
+
     selectedScheduleDate = dateStr;
     const modal = document.getElementById('createScheduleModal');
     const startInput = document.getElementById('modalEventStart');
@@ -314,6 +360,20 @@ function submitCreateScheduleModal(e) {
 
     if (!title || !selectedScheduleDate) {
         showAlert('Please choose a date and enter a title.', 'error');
+        return;
+    }
+
+    // Check if selected date is a weekend
+    if (isWeekend(selectedScheduleDate)) {
+        const dayName = getWeekendName(selectedScheduleDate);
+        showAlert(`${dayName} is not available. Please select a weekday.`, 'error');
+        return;
+    }
+
+    // Check for existing events on the same date
+    const existingEvents = scheduleEventsCache.filter(event => event.date === selectedScheduleDate);
+    if (existingEvents.length > 0) {
+        showAlert('An event is already scheduled for this date. Please choose another date.', 'error');
         return;
     }
 
@@ -362,6 +422,11 @@ function openViewEventModal(eventId) {
     const events = [...appointmentCalendarEvents, ...scheduleEvents];
     const ev = events.find(e => e.id === eventId);
     if (!ev) return;
+
+    if (ev.kind === 'appointment' || ev.student_id || ev.student_name) {
+        viewRequestDetails(ev.id);
+        return;
+    }
 
     const start = ev.date || '';
     const end = ev.endDate || '';
@@ -471,10 +536,21 @@ function loadAppointmentRequests() {
             // Filter for pending, proposed_change, and approved statuses (keep approved as history)
             const allRequests = result.data.filter(r => r.status === 'pending' || r.status === 'proposed_change' || r.status === 'approved');
             appointmentCalendarEvents = allRequests.map(request => ({
+                id: request.id,
+                kind: 'appointment',
                 date: request.preferred_date,
                 title: request.student_name,
                 type: request.status,
-                time: request.preferred_time
+                time: request.preferred_time,
+                student_id: request.student_id,
+                student_name: request.student_name,
+                reason: request.reason,
+                notes: request.notes,
+                status: request.status,
+                counselor_notes: request.counselor_notes,
+                preferred_date: request.preferred_date,
+                preferred_time: request.preferred_time,
+                school_attended: request.school_attended
             }));
 
             if (allRequests.length === 0) {

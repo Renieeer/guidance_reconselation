@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-other-school.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Schedule</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CC</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Staff</div>
-                            <small class="text-muted" id="userRole">Coordinator & Counselor</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-calendar-check"></i> Calendar</div>
+                    <h2 class="page-hero-title">Schedule</h2>
+                    <p class="page-hero-text">Coordinate and schedule guidance meetings and case reviews for other school students.</p>
                 </div>
             </div>
 

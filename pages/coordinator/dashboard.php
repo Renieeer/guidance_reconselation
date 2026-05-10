@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-coordinator.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Coordinator Dashboard</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CJ</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Coordinator</div>
-                            <small class="text-muted" id="userRole">Coordinator</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-speedometer2"></i> Overview</div>
+                    <h2 class="page-hero-title">Coordinator Dashboard</h2>
+                    <p class="page-hero-text">Track referrals, manage schedules, and oversee guidance activities across your school.</p>
                 </div>
             </div>
 

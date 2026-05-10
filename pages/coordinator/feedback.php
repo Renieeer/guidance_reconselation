@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-coordinator.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Feedback Management</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CJ</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Coordinator</div>
-                            <small class="text-muted" id="userRole">Coordinator</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-chat-dots"></i> Assessment</div>
+                    <h2 class="page-hero-title">Feedback & Reports</h2>
+                    <p class="page-hero-text">Review feedback from students, teachers, and counselors to improve guidance services.</p>
                 </div>
             </div>
 

@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-other-school.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Referrals Management</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CC</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Staff</div>
-                            <small class="text-muted" id="userRole">Coordinator & Counselor</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-diagram-3"></i> Case Management</div>
+                    <h2 class="page-hero-title">Referrals</h2>
+                    <p class="page-hero-text">Track and manage student referrals from your school in the district guidance system.</p>
                 </div>
             </div>
 

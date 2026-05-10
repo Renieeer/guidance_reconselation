@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-other-school.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Feedback</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">CC</div>
-                        <div>
-                            <div class="fw-bold" id="userName">Staff</div>
-                            <small class="text-muted" id="userRole">Coordinator & Counselor</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-chat-dots"></i> Assessment</div>
+                    <h2 class="page-hero-title">Feedback</h2>
+                    <p class="page-hero-text">Review and manage feedback on guidance services provided to your school's students.</p>
                 </div>
             </div>
 

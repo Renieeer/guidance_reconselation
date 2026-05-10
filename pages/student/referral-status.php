@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-student.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>Referral Status</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">ST</div>
-                        <div>
-                            <div style="font-weight: 600;" id="userName">Student</div>
-                            <small style="color: #64748b;" id="userRole">Student</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-diagram-3"></i> Tracking</div>
+                    <h2 class="page-hero-title">Referral Status</h2>
+                    <p class="page-hero-text">View referrals made about you and track their progress through the guidance process.</p>
                 </div>
             </div>
 

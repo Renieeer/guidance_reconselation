@@ -12,19 +12,12 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-sdo.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <div class="topbar-left">
-                    <h1>District Overview Dashboard</h1>
-                </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">SD</div>
-                        <div>
-                            <div class="fw-bold" id="userName">SDO</div>
-                            <small class="text-muted" id="userRole">School District Officer</small>
-                        </div>
-                    </div>
+            <!-- Page Hero -->
+            <div class="page-hero">
+                <div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-speedometer2"></i> Overview</div>
+                    <h2 class="page-hero-title">SDO Dashboard</h2>
+                    <p class="page-hero-text">Monitor district-wide guidance activities, school performance, and coordination with all schools.</p>
                 </div>
             </div>
 
