@@ -6,7 +6,7 @@ function initReferralForm() {
     initPage();
     setTodayDate('referralDate');
     populateTeacherSchool();
-    setupStudentSearch();  // Changed from setupAutoPopulate()
+    setupStudentSearch();  // Autocomplete suggestions as you type
     loadExistingReferralData();
     document.getElementById('referralForm').addEventListener('submit', submitReferralForm);
 }
@@ -83,12 +83,11 @@ function populateReferralForm(referral) {
     });
 }
 
-// Setup student name search with dropdown results
+// Setup student name search with inline auto-completion
 function setupStudentSearch() {
     const user = getCurrentUser();
     console.log('=== SETUP STUDENT SEARCH ===');
     console.log('Current user on setup:', user);
-    console.log('User school_attended:', user?.school_attended);
     
     const studentNameInput = document.getElementById('studentName');
     
@@ -97,61 +96,40 @@ function setupStudentSearch() {
         return;
     }
     
-    // Create search results container
-    const searchResultsContainer = document.createElement('div');
-    searchResultsContainer.id = 'studentSearchResults';
-    searchResultsContainer.style.cssText = `
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #ddd;
-        border-top: none;
-        max-height: 300px;
-        overflow-y: auto;
-        display: none;
-        z-index: 1000;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    `;
-    
-    // Make parent relative for positioning
-    studentNameInput.parentElement.style.position = 'relative';
-    studentNameInput.parentElement.appendChild(searchResultsContainer);
-    
-    // Search on input
     let searchTimeout;
+    let currentSuggestion = null;
+    
     studentNameInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);
         const searchTerm = this.value.trim();
         
         if (searchTerm.length < 2) {
-            searchResultsContainer.style.display = 'none';
             return;
         }
         
         searchTimeout = setTimeout(() => {
-            searchStudents(searchTerm, searchResultsContainer);
+            searchStudentsForSuggestion(searchTerm, studentNameInput);
         }, 300);
     });
     
-    // Close on blur
-    studentNameInput.addEventListener('blur', function() {
-        setTimeout(() => {
-            searchResultsContainer.style.display = 'none';
-        }, 200);
+    // Handle Tab/Right Arrow to accept suggestion
+    studentNameInput.addEventListener('keydown', function(e) {
+        if ((e.key === 'Tab' || e.key === 'ArrowRight') && currentSuggestion) {
+            e.preventDefault();
+            this.value = currentSuggestion.fullName;
+            populateStudentFromSearch(currentSuggestion);
+            currentSuggestion = null;
+        }
     });
 }
 
-// Search for students and display results
-function searchStudents(searchTerm, resultsContainer) {
+// Search for students and suggest inline
+function searchStudentsForSuggestion(searchTerm, inputField) {
     const user = getCurrentUser();
-    console.log('=== SEARCHING STUDENTS ===');
-    console.log('Current user:', user);
+    console.log('=== SEARCHING FOR SUGGESTIONS ===');
+    console.log('Search term:', searchTerm);
     
-    // Get teacher's school from user object (primary) or localStorage (fallback)
     let teacherSchool = user?.school_attended;
-    
     if (!teacherSchool) {
         teacherSchool = localStorage.getItem('teacherSchool');
     }
@@ -159,15 +137,11 @@ function searchStudents(searchTerm, resultsContainer) {
     console.log('Teacher school:', teacherSchool);
     
     if (!teacherSchool || teacherSchool === 'Default School') {
-        console.error('❌ ERROR: Teacher school not found. User school_attended:', user?.school_attended);
-        resultsContainer.innerHTML = '<div style="padding: 10px; color: #f00;">Error: Teacher school not configured. Please contact administrator.</div>';
-        resultsContainer.style.display = 'block';
         return;
     }
     
-    const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(teacherSchool)}&search=${encodeURIComponent(searchTerm)}&limit=5`;
+    const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(teacherSchool)}&search=${encodeURIComponent(searchTerm)}&limit=1`;
     
-    console.log('🔍 Searching for students:', searchTerm, 'at school:', teacherSchool);
     console.log('API URL:', apiUrl);
     
     fetch(apiUrl)
@@ -175,57 +149,37 @@ function searchStudents(searchTerm, resultsContainer) {
         .then(result => {
             console.log('API Response:', result);
             if (result.success && result.data && result.data.length > 0) {
-                console.log('✓ Found', result.data.length, 'students');
-                displaySearchResults(result.data, resultsContainer);
-            } else {
-                console.warn('⚠️ No students found matching:', searchTerm);
-                resultsContainer.innerHTML = '<div style="padding: 10px; color: #999;">No students found matching "' + searchTerm + '"</div>';
-                resultsContainer.style.display = 'block';
+                const student = result.data[0];
+                const fullName = `${student.first_name} ${student.last_name}`;
+                
+                // Show inline suggestion - grey out the suggested part
+                const currentInput = inputField.value;
+                const suggestion = fullName.substring(currentInput.length);
+                
+                console.log('Current input:', currentInput);
+                console.log('Suggestion part:', suggestion);
+                console.log('Full name:', fullName);
+                
+                if (suggestion.length > 0) {
+                    // Set value to full name, position cursor at end of what user typed
+                    inputField.value = fullName;
+                    
+                    // Select the suggested part (show as grey/highlighted)
+                    inputField.setSelectionRange(currentInput.length, fullName.length);
+                    
+                    // Store suggestion for Tab acceptance
+                    searchStudentsForSuggestion.currentSuggestion = student;
+                    searchStudentsForSuggestion.currentSuggestion.fullName = fullName;
+                    
+                    // Also store in setup function scope
+                    window.currentStudentSuggestion = student;
+                    window.currentStudentSuggestion.fullName = fullName;
+                }
             }
         })
         .catch(error => {
             console.error('Error searching students:', error);
-            resultsContainer.innerHTML = '<div style="padding: 10px; color: #f00;">Error searching students</div>';
-            resultsContainer.style.display = 'block';
         });
-}
-
-// Display search results as clickable list
-function displaySearchResults(students, resultsContainer) {
-    resultsContainer.innerHTML = '';
-    
-    students.forEach(student => {
-        const resultItem = document.createElement('div');
-        const fullName = `${student.first_name} ${student.last_name}`;
-        resultItem.style.cssText = `
-            padding: 10px 15px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: background 0.2s;
-        `;
-        resultItem.innerHTML = `
-            <div style="font-weight: 500;">${fullName}</div>
-            <div style="font-size: 0.85em; color: #666;">ID: ${student.id} | Grade: ${student.grade_id ? 'G' + student.grade_id : 'N/A'}</div>
-        `;
-        
-        resultItem.addEventListener('mouseover', () => {
-            resultItem.style.background = '#f0f0f0';
-        });
-        
-        resultItem.addEventListener('mouseout', () => {
-            resultItem.style.background = 'white';
-        });
-        
-        resultItem.addEventListener('click', () => {
-            console.log('✓ Student selected:', fullName, 'ID:', student.id);
-            populateStudentFromSearch(student);
-            resultsContainer.style.display = 'none';
-        });
-        
-        resultsContainer.appendChild(resultItem);
-    });
-    
-    resultsContainer.style.display = 'block';
 }
 
 // Populate form with selected student data
@@ -239,8 +193,10 @@ function populateStudentFromSearch(student) {
     document.getElementById('studentName').value = fullName;
     
     const studentIdField = document.getElementById('studentId');
-    studentIdField.value = student.id;  // This is accounts.id
-    studentIdField.readOnly = true;  // Prevent manual editing
+    if (studentIdField) {
+        studentIdField.value = student.id;  // This is accounts.id
+        studentIdField.readOnly = true;  // Prevent manual editing
+    }
     
     console.log('✓ Student ID set to:', student.id);
     console.log('✓ Student Name set to:', fullName);
@@ -256,24 +212,22 @@ function populateStudentFromSearch(student) {
         '6': 'Grade 12'
     };
     
-    if (student.grade_id && gradeMap[String(student.grade_id)]) {
-        document.getElementById('grade').value = gradeMap[String(student.grade_id)];
+    const gradeEl = document.getElementById('grade');
+    if (gradeEl && student.grade_id && gradeMap[String(student.grade_id)]) {
+        gradeEl.value = gradeMap[String(student.grade_id)];
     }
-    
-    // Age
-    if (student.Age) {
-        document.getElementById('age').value = student.Age;
+
+    // Age (optional field on form)
+    const ageEl = document.getElementById('age');
+    if (ageEl && student.Age) {
+        ageEl.value = student.Age;
     }
-    
+
     // Gender
-    if (student.Sex) {
-        const genderMap = {
-            'M': 'Male',
-            'F': 'Female',
-            'Male': 'Male',
-            'Female': 'Female'
-        };
-        document.getElementById('gender').value = genderMap[student.Sex] || student.Sex;
+    const genderEl = document.getElementById('gender');
+    if (genderEl && student.Sex) {
+        const genderMap = { 'M': 'Male', 'F': 'Female', 'Male': 'Male', 'Female': 'Female' };
+        genderEl.value = genderMap[student.Sex] || student.Sex;
     }
 }
 
@@ -328,31 +282,24 @@ function submitReferralForm(e) {
     const teacherSchool = user.school_attended || localStorage.getItem('teacherSchool') || 'Default School';
     const formData = new FormData(document.getElementById('referralForm'));
     
-    // Get the student name and ID from form
+    // Get the student name and optional student ID from form
     const studentName = formData.get('studentName');
     const studentId = formData.get('studentId');
     
     console.log('=== SUBMITTING REFERRAL ===');
     console.log('Student name:', studentName);
-    console.log('Student ID (from accounts):', studentId);
+    console.log('Student ID:', studentId);
     
-    // Validate student ID is filled
-    if (!studentId || studentId.trim() === '') {
-        console.error('❌ ERROR: Student ID is empty!');
-        showErrorMessage('Please search for and select a student from the dropdown before submitting.');
-        return;
-    }
-    
-    // Validate student name is filled
+    // Validate student name is filled (manual entry allowed)
     if (!studentName || studentName.trim() === '') {
         console.error('❌ ERROR: Student name is empty!');
-        showErrorMessage('Please search for and select a student from the dropdown before submitting.');
+        showErrorMessage('Please enter the student name before submitting.');
         return;
     }
     
-    console.log('✓ Validation passed - both name and ID are set');
+    console.log('✓ Validation passed - student name is set');
     
-    submitWithStudentId(studentId, studentName, teacherSchool, formData, user);
+    submitWithStudentId(studentId || null, studentName, teacherSchool, formData, user);
 }
 
 function submitWithStudentId(studentId, studentName, teacherSchool, formData, user) {
@@ -414,8 +361,8 @@ function submitWithStudentId(studentId, studentName, teacherSchool, formData, us
             // Show success message
             showSuccessMessage('Referral submitted successfully! Student has been notified.');
             setTimeout(() => {
-                // Redirect to referral status page to see the submitted referral
-                window.location.href = '../student/referral-status.php';
+                // Redirect to the teacher referral status page to see the submitted referral
+                window.location.href = 'referral-status.php';
             }, 1500);
         } else {
             showErrorMessage(result.message || 'Failed to submit referral');

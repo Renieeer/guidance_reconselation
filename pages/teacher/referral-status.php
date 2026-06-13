@@ -47,8 +47,8 @@
                         <div id="stagesContainer"></div>
                     </div>
 
-                    <!-- Referral Information -->
-                    <div class="card mt-5">
+                    <!-- Referral Information (Hidden while counseling is in progress) -->
+                    <div class="card mt-5" id="referralInfoSection" style="display: none;">
                         <h2 class="card-title">Referral Information</h2>
                         <div class="form-row">
                             <div>
@@ -56,6 +56,19 @@
                                 <p><strong>Description:</strong></p>
                                 <p id="refDescription" class="bg-light p-2 rounded"></p>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Acknowledgement Form (Visible only when counseling is complete - Stage 6) -->
+                    <div class="card mt-5" id="acknowledgementSection" style="display: none;">
+                        <h2 class="card-title">Counseling Referral Acknowledgement Form</h2>
+                        <div id="acknowledgementForm" class="referral-paper">
+                            <!-- Acknowledgement content will be inserted here by JS -->
+                        </div>
+                        <div class="mt-4" id="printActionSection">
+                            <button class="btn btn-primary" onclick="window.print()">
+                                <i class="bi bi-printer"></i> Print Form
+                            </button>
                         </div>
                     </div>
 

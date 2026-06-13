@@ -60,8 +60,28 @@ function loadReferralDetail(referral) {
     document.getElementById('refReason').textContent = referral.referral_reason;
     document.getElementById('refDescription').textContent = referral.description || 'No description provided';
 
-    // Load stages
+    // Load stages and handle conditional visibility
     loadStages(referral);
+    
+    // Show/hide referral information section based on stage
+    // Hide while counseling is in progress (stages 1-5)
+    const referralInfoSection = document.getElementById('referralInfoSection');
+    if (referral.stage >= 4 && referral.stage < 6) {
+        referralInfoSection.style.display = 'none';
+    } else if (referral.stage === 6) {
+        referralInfoSection.style.display = 'none'; // Hide info when showing acknowledgement
+    } else {
+        referralInfoSection.style.display = 'block'; // Show for stages 1-3
+    }
+    
+    // Show acknowledgement form only when stage 6 (counseling complete/closed)
+    const acknowledgementSection = document.getElementById('acknowledgementSection');
+    if (referral.stage === 6) {
+        acknowledgementSection.style.display = 'block';
+        generateAcknowledgementForm(referral);
+    } else {
+        acknowledgementSection.style.display = 'none';
+    }
 }
 
 function loadStages(referral) {
@@ -136,6 +156,98 @@ function selectReferral(referralId) {
         window.history.pushState({}, '', `?id=${referral.referral_code || referralId}`);
         loadReferralDetail(referral);
     }
+}
+
+function generateAcknowledgementForm(referral) {
+    const formDiv = document.getElementById('acknowledgementForm');
+    
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    const html = `
+        <div class="referral-sheet">
+            <h3 class="referral-sheet-title">COUNSELING REFERRAL ACKNOWLEDGEMENT FORM</h3>
+            
+            <div class="referral-sheet-intro">
+                <table border="1" cellpadding="8" width="100%" style="border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td colspan="2" style="font-weight: bold; background-color: #f0f0f0;">
+                            To: <span style="margin-left: 20px;">${referral.student_name}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="font-weight: bold; background-color: #f0f0f0;">
+                            Referring Person / Unit: <span style="margin-left: 20px;">Teacher</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="font-weight: bold; background-color: #f0f0f0;">
+                            Designation/Department: <span style="margin-left: 20px;">Teaching Staff</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="margin-top: 20px; padding: 15px; border: 1px solid #999;">
+                <p style="line-height: 1.8; font-size: 14px;">
+                    This is to confirm that <strong>${referral.student_name}</strong> whom you referred to us on 
+                    <strong>${formatDate(referral.date_submitted)}</strong> has started his/her session<br/>
+                    and is being attended by <strong>__________________________</strong>
+                </p>
+            </div>
+
+            <div style="margin-top: 20px; padding: 15px; border: 1px solid #999;">
+                <p style="font-weight: bold; margin-bottom: 10px;">Kindly refer to the checklist below on the status of the case at hand:</p>
+                
+                <div style="margin-left: 20px; line-height: 1.8; font-size: 14px;">
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> Closed at Intake Interview
+                    </label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> For Counseling
+                    </label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> Counseling Sessions are on-going
+                    </label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> Parent/Guardian Conference Conducted
+                    </label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> Sessions Completed / Case Terminated
+                    </label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> Student did not show up
+                    </label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> Under Monitoring
+                    </label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> Number of follow-ups made by the Counselor: __________
+                    </label>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input type="checkbox"> Referred to __________________________
+                    </label>
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; padding: 15px; text-align: center; font-style: italic; line-height: 1.6; font-size: 14px;">
+                <p>Thank you.</p>
+                <p>Always for the welfare of students,</p>
+            </div>
+
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #999;">
+                <p style="margin-bottom: 8px; font-weight: bold;">Attending Guidance Counselor</p>
+                <p style="margin-top: 40px;">_________________________________</p>
+                <p style="margin-top: 20px;">Date: <strong>${formattedDate}</strong></p>
+            </div>
+        </div>
+    `;
+    
+    formDiv.innerHTML = html;
 }
 
 // Initialize on page load

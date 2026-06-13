@@ -4826,3 +4826,143 @@ footer {
         gap: 15px;
     }
 }
+
+/* ========== PRINT STYLES FOR ACKNOWLEDGEMENT FORM ========== */
+@media print {
+    /* Hide unnecessary elements when printing */
+    .navbar,
+    .sidebar,
+    .main-wrapper > .sidebar-wrapper,
+    .page-hero,
+    .btn,
+    .referral-actions,
+    #printActionSection,
+    #referralListContainer,
+    #referralDetailContainer > .mt-5 a,
+    .card-title,
+    h2.card-title {
+        display: none !important;
+    }
+
+    /* Show only the acknowledgement form */
+    #acknowledgementSection {
+        display: block !important;
+    }
+
+    #referralInfoSection {
+        display: none !important;
+    }
+
+    /* Reset body and main content styles for printing */
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: auto;
+    }
+
+    .main-wrapper,
+    .main-content {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        width: 100%;
+    }
+
+    #referralDetailContainer {
+        display: block !important;
+    }
+
+    .card {
+        display: none !important;
+    }
+
+    #acknowledgementSection {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-inside: avoid;
+    }
+
+    /* Optimize referral paper for printing */
+    .referral-paper {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+        border-radius: 0;
+    }
+
+    .referral-sheet {
+        border-radius: 0;
+        box-shadow: none;
+        border: none;
+        page-break-inside: avoid;
+    }
+
+    .referral-sheet-title {
+        background: #1a1a1a;
+        color: #ffffff;
+        padding: 18px 24px;
+        font-size: 20px;
+        font-weight: 800;
+        page-break-after: avoid;
+    }
+
+    .referral-sheet-intro {
+        padding: 16px 20px;
+        page-break-after: avoid;
+    }
+
+    /* Ensure tables and inputs show properly */
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    table,
+    table tr,
+    table td {
+        page-break-inside: avoid;
+    }
+
+    input[type="checkbox"],
+    input[type="text"] {
+        border: 1px solid #000;
+        page-break-inside: avoid;
+    }
+
+    /* Set proper sizing for checkboxes in print */
+    input[type="checkbox"] {
+        width: 16px !important;
+        height: 16px !important;
+        margin-right: 8px;
+    }
+
+    /* Optimize font and spacing for print */
+    body {
+        font-size: 11pt;
+        line-height: 1.5;
+        color: #000;
+    }
+
+    p {
+        page-break-inside: avoid;
+    }
+
+    /* Add page breaks where needed */
+    .referral-actions,
+    .mt-5 {
+        page-break-before: avoid;
+    }
+
+    /* Ensure proper margin for printing */
+    @page {
+        margin: 0.5in;
+        size: letter;
+    }
+}

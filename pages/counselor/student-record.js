@@ -8,26 +8,53 @@ let tableRefreshInterval = null;
 function loadStudentRecords() {
     initPage();
     
-    // Get user info for school filtering
-    const userInfo = JSON.parse(sessionStorage.getItem('userInfo')) || {};
-    const userSchool = userInfo.school_attended || userInfo.school || '';
+    // Resolve current user's school robustly from storage
+    const getUserSchool = () => {
+        try {
+            const raw = sessionStorage.getItem('userInfo') || sessionStorage.getItem('user') || localStorage.getItem('currentUser') || localStorage.getItem('teacherSchool');
+            if (!raw) {
+                console.warn('No user data found in storage');
+                return '';
+            }
+            let parsed = null;
+            try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+            if (parsed && typeof parsed === 'object') {
+                const school = parsed.school_attended || parsed.school || '';
+                console.log('User data found:', { school_attended: parsed.school_attended, school: parsed.school, resolved: school });
+                return school;
+            }
+            console.warn('User data is not an object');
+            return '';
+        } catch (e) {
+            console.error('Error getting user school:', e);
+            return '';
+        }
+    };
+
+    const userSchool = getUserSchool();
+    console.log('Loading student records for school:', userSchool || '(EMPTY - THIS IS THE PROBLEM)');
+    
+    if (!userSchool || userSchool === 'Unknown') {
+        console.error('ERROR: School is not set or is "Unknown". Please update counselor account with proper school name.');
+        const tbody = document.getElementById('recordsTableBody');
+        tbody.innerHTML = `<tr>
+            <td colspan="7" style="text-align: center; padding: 30px; color: red;">
+                <strong>Error:</strong> Your account is not assigned to a school. Please contact admin.
+            </td>
+        </tr>`;
+        return;
+    }
     
     // Fetch students from database
     fetchStudents(userSchool)
         .then(() => {
+            console.log('Students loaded:', allStudents.length);
             // Setup event listeners
             document.getElementById('searchStudent').addEventListener('keyup', filterStudents);
             document.getElementById('gradeFilter').addEventListener('change', filterStudents);
             document.getElementById('statusFilter').addEventListener('change', filterStudents);
             
             displayStudents(allStudents);
-            
-            // Auto-refresh table every 5 seconds for real-time updates
-            tableRefreshInterval = setInterval(() => {
-                fetchStudents(userSchool).then(() => {
-                    displayStudents(allStudents);
-                });
-            }, 5000);
         })
         .catch(error => {
             console.error('Error loading students:', error);
@@ -37,15 +64,23 @@ function loadStudentRecords() {
 
 function fetchStudents(school) {
     const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(school)}`;
+    console.log('Fetching students from:', apiUrl);
     
     return fetch(apiUrl)
         .then(response => response.json())
         .then(result => {
+            console.log('API Response:', result);
             if (result.success) {
                 allStudents = result.data || [];
+                console.log(`Successfully loaded ${allStudents.length} students for school: ${school}`);
             } else {
+                console.error('API Error:', result.message);
                 throw new Error(result.message || 'Failed to fetch students');
             }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            throw error;
         });
 }
 
@@ -59,36 +94,60 @@ function displayStudents(students) {
         return;
     }
 
+    const getGradeLabel = (student) => {
+        const gradeValue = String(student.grade_level || student.grade_id || student.Grade || '').trim();
+
+        if (!gradeValue) {
+            return 'N/A';
+        }
+
+        const normalizedGrade = gradeValue.replace(/^grade\s*/i, '');
+        if (/^\d+$/.test(normalizedGrade)) {
+            return `Grade ${normalizedGrade}`;
+        }
+
+        return gradeValue;
+    };
+
     tbody.innerHTML = students.map((student, index) => {
-        // Convert grade_id to grade name
-        const gradeMap = {
-            '1': 'Grade 7',
-            '2': 'Grade 8',
-            '3': 'Grade 9',
-            '4': 'Grade 10'
-        };
-        const gradeId = String(student.grade_id || '');
-        const gradeName = gradeMap[gradeId] || '';
+        const gradeName = getGradeLabel(student);
+        const studentId = student.id || student.StudentId || '';
+        const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
         
         return `<tr style="border-bottom: 1px solid #e5e7eb; transition: background-color 0.2s ease; ${index % 2 === 0 ? 'background-color: #f9fafb;' : ''}">
-            <td style="padding: 14px 15px;"><strong style="color: #1f2937;">${student.first_name || ''} ${student.last_name || ''}</strong></td>
+            <td style="padding: 14px 15px;"><strong style="color: #1f2937;">${studentName || 'N/A'}</strong></td>
             <td style="padding: 14px 15px; color: #6b7280; font-size: 14px;">${student.email || 'N/A'}</td>
             <td style="padding: 14px 15px; color: #6b7280;">${gradeName || 'N/A'}</td>
-            <td style="padding: 14px 15px; color: #6b7280;">${student.Age || 'N/A'}</td>
-            <td style="padding: 14px 15px; color: #6b7280;">N/A</td>
+            <td style="padding: 14px 15px; color: #6b7280;">${student.age || student.Age || 'N/A'}</td>
+            <td style="padding: 14px 15px; color: #6b7280;">${student.section || student.Section || 'N/A'}</td>
             <td style="padding: 14px 15px; text-align: center;">
                 ${student.referral_count > 0 ? '<span class="badge" style="background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">active</span>' : '<span class="badge" style="background: #9ca3af; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">inactive</span>'}
             </td>
             <td style="padding: 14px 15px; text-align: center;">
-                <button class="btn btn-sm btn-primary" onclick="viewStudentRecord(${student.id})" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background-color 0.2s;">View</button>
+                <button class="btn btn-sm btn-primary" onclick="viewStudentRecord(${JSON.stringify(studentId)})" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background-color 0.2s;">View</button>
             </td>
         </tr>`;
     }).join('');
 }
 
 function viewStudentRecord(studentId) {
-    const userInfo = JSON.parse(sessionStorage.getItem('userInfo')) || {};
-    const userSchool = userInfo.school_attended || userInfo.school || '';
+    // Get user school robustly from multiple storage locations
+    const getUserSchool = () => {
+        try {
+            const raw = sessionStorage.getItem('userInfo') || sessionStorage.getItem('user') || localStorage.getItem('currentUser') || localStorage.getItem('teacherSchool');
+            if (!raw) return '';
+            let parsed = null;
+            try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+            if (parsed && typeof parsed === 'object') {
+                return parsed.school_attended || parsed.school || '';
+            }
+            return '';
+        } catch (e) {
+            return '';
+        }
+    };
+    
+    const userSchool = getUserSchool();
     
     // Clear any existing refresh interval
     if (refreshInterval) {
@@ -328,11 +387,27 @@ function filterStudents() {
 
     let filtered = allStudents;
 
+    const normalizeGrade = (student) => {
+        const rawGrade = String(student.grade_level || student.grade_id || student.Grade || '').trim();
+
+        if (!rawGrade) {
+            return '';
+        }
+
+        const stripped = rawGrade.replace(/^grade\s*/i, '');
+        return /^\d+$/.test(stripped) ? `Grade ${stripped}` : rawGrade;
+    };
+
     if (searchTerm) {
         filtered = filtered.filter(s => 
-            (s.first_name + ' ' + s.last_name).toLowerCase().includes(searchTerm) ||
-            s.email.toLowerCase().includes(searchTerm)
+            `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase().includes(searchTerm) ||
+            String(s.email || '').toLowerCase().includes(searchTerm) ||
+            String(s.StudentId || s.id || '').toLowerCase().includes(searchTerm)
         );
+    }
+
+    if (gradeFilter) {
+        filtered = filtered.filter(s => normalizeGrade(s) === gradeFilter);
     }
 
     if (statusFilter === 'active') {

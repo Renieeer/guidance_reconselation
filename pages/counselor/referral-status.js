@@ -32,8 +32,22 @@ function loadReferralStatus() {
 }
 
 function fetchCounselorReferrals() {
-    const userInfo = JSON.parse(sessionStorage.getItem('userInfo')) || {};
-    const userSchool = userInfo.school || '';
+    // Get user school using robust multi-source logic
+    const getUserSchool = () => {
+        try {
+            const raw = sessionStorage.getItem('userInfo') || sessionStorage.getItem('user') || localStorage.getItem('currentUser') || localStorage.getItem('teacherSchool');
+            if (!raw) return '';
+            let parsed = null;
+            try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+            if (parsed && typeof parsed === 'object') {
+                return parsed.school_attended || parsed.school || '';
+            }
+            return '';
+        } catch (e) {
+            return '';
+        }
+    };
+    const userSchool = getUserSchool();
     
     const apiUrl = `/guidancemanagment/api/referral.php?role=counselor&school=${encodeURIComponent(userSchool)}`;
     

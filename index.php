@@ -155,7 +155,7 @@
             <div class="r-card reveal" style="transition-delay:.3s">
                 <div class="r-watermark">04</div>
                 <div class="r-icon"><i class="bi bi-people"></i></div>
-                <div class="r-name">Guidance Office H       andler</div>
+                <div class="r-name">Guidance Office Handler</div>
                 <div class="r-desc">Oversee all counseling services, manage cases, and generate institutional reports.</div>
             </div>
         </div>
