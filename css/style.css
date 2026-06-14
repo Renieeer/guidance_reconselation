@@ -948,6 +948,266 @@ body.auth-page {
     transform: translateY(-2px);
 }
 
+/* ========== COUNSELOR CASE CREATE ========== */
+.counseling-page {
+    background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 32%),
+        radial-gradient(circle at left center, rgba(20, 184, 166, 0.08), transparent 28%),
+        #f7f9fc;
+}
+
+.counseling-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.case-dashboard {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.case-form,
+.recent-cases-card {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+}
+
+.case-form {
+    padding: 26px;
+}
+
+.form-section + .form-section {
+    margin-top: 28px;
+    padding-top: 28px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+}
+
+.section-header h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.section-header p {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.pill-soft {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.form-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.form-grid.two-up {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid.three-up {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 8px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    width: 100%;
+    border: 1px solid #d7dde5;
+    border-radius: 12px;
+    background: #fff;
+    color: #0f172a;
+    padding: 12px 14px;
+    font-size: 14px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.form-field textarea {
+    resize: vertical;
+    min-height: 110px;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+}
+
+.student-add-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.4fr) minmax(180px, 0.8fr) auto;
+    gap: 14px;
+    align-items: end;
+    margin-bottom: 16px;
+}
+
+.add-student-btn {
+    height: 46px;
+    align-self: stretch;
+}
+
+.student-list {
+    display: grid;
+    gap: 12px;
+}
+
+.student-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+}
+
+.student-meta {
+    min-width: 0;
+}
+
+.student-meta strong {
+    display: block;
+    color: #0f172a;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.student-meta span {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.student-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    font-size: 12px;
+}
+
+.btn-outline {
+    background: #fff;
+    border: 1px solid #d7dde5;
+    color: #334155;
+}
+
+.btn-outline:hover {
+    background: #f8fafc;
+}
+
+.checkbox-row {
+    margin-top: 12px;
+    color: #334155;
+    font-size: 13px;
+}
+
+.checkbox-row input {
+    margin-right: 8px;
+    accent-color: #2563eb;
+}
+
+.recent-cases-card {
+    margin-top: 24px;
+    padding: 24px;
+}
+
+.recent-table th,
+.recent-table td {
+    padding: 14px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.recent-table th {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.recent-table td {
+    color: #0f172a;
+    font-size: 14px;
+}
+
+.empty-state {
+    text-align: center !important;
+    color: #94a3b8 !important;
+    padding: 28px 12px !important;
+}
+
+@media (max-width: 1100px) {
+    .case-dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .form-grid.two-up,
+    .form-grid.three-up,
+    .student-add-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ========== SCHEDULE CALENDAR ========== */
 .schedule-calendar-card {
     background: #ffffff;

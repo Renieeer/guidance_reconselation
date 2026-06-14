@@ -10,6 +10,7 @@
         <li><a href="report-case.php"><i class="bi bi-pencil-square"></i> Report Case</a></li>
         <li><a href="student-record.php"><i class="bi bi-people"></i> Student Records</a></li>
         <li><a href="referral-status.php"><i class="bi bi-clipboard-data"></i> Referral</a></li>
+        <li><a href="counseling.php"><i class="bi bi-plus-circle"></i>Counseling</a></li>
          <li><a href="documents.php"><i class="bi bi-bar-chart"></i> Documentation</a></li>
         <li><a href="schedule.php"><i class="bi bi-calendar3"></i> Schedule</a></li>
         <li><a href="feedback.php"><i class="bi bi-chat-dots"></i> Feedback</a></li>
