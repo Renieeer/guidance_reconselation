@@ -11,24 +11,33 @@
     <div class="main-wrapper">
         <?php include '../../includes/sidebar-counselor.php'; ?>
 
-        <div class="main-content counseling-page page-content">
-            <div class="page-hero counseling-hero">
+        <div class="main-content">
+            <div class="page-hero">
                 <div>
                     <div class="page-hero-eyebrow"><i class="bi bi-folder-plus"></i> Case Management</div>
                     <h2 class="page-hero-title">Case Scenario</h2>
                     <p class="page-hero-text">Open a new counseling case, attach involved students, and prepare the first follow-up plan.</p>
                 </div>
+                <button type="button" class="btn btn-primary" id="openCaseFormBtn">
+                    <i class="bi bi-folder-plus"></i> Create case
+                </button>
             </div>
 
-            <div class="case-dashboard">
+            <!-- Form: hidden by default, shown when Create case is clicked -->
+            <div class="case-dashboard" id="caseFormWrapper" style="display:none;">
                 <form id="caseCreateForm" class="case-form card">
-                     <div class="form-section">
+                    <div class="form-section">
                         <div class="section-header">
                             <div>
                                 <h3>Student involvement</h3>
                                 <p>Add every student who should be linked to this case.</p>
                             </div>
-                            <span class="pill" id="studentCountPill">0 students</span>
+                            <div style="display:flex;gap:10px;align-items:center;">
+                                <span class="pill" id="studentCountPill">0 students</span>
+                                <button type="button" class="btn btn-ghost btn-sm" id="cancelCaseFormBtn" title="Discard and close">
+                                    <i class="bi bi-x-lg"></i> Cancel
+                                </button>
+                            </div>
                         </div>
 
                         <div class="student-add-grid">
@@ -49,12 +58,14 @@
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-                            <button type="button" class="btn btn-outline add-student-btn" id="addStudentBtn"><i class="bi bi-plus-lg"></i> Add student</button>
+                            <button type="button" class="btn btn-outline add-student-btn" id="addStudentBtn">
+                                <i class="bi bi-plus-lg"></i> Add student
+                            </button>
                         </div>
 
                         <div id="studentList" class="student-list"></div>
                     </div>
-                    
+
                     <div class="form-section">
                         <div class="section-header">
                             <div>
@@ -65,7 +76,6 @@
                         </div>
 
                         <div class="form-grid three-up">
-                            
                             <div class="form-field">
                                 <label for="caseCategory">Case category *</label>
                                 <select id="caseCategory" name="caseCategory" required>
@@ -83,7 +93,7 @@
                                 <select id="caseType" name="caseType">
                                     <option value="Walk-in">Event</option>
                                     <option value="Referral" selected>Individual</option>
-                                    <option value="Parent request">other</option>
+                                    <option value="Parent request">Other</option>
                                 </select>
                             </div>
                             <div class="form-field">
@@ -91,10 +101,6 @@
                                 <input type="date" id="caseDate" name="caseDate">
                             </div>
                         </div>
-
-                        <!-- <div class="form-grid three-up">
-                            
-                        </div> -->
 
                         <div class="form-field">
                             <label for="caseSummary">Summary of concern *</label>
@@ -112,8 +118,6 @@
                             </div>
                         </div>
                     </div>
-
-                
 
                     <div class="form-section">
                         <div class="section-header">
@@ -141,18 +145,18 @@
                             </label>
                         </div>
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" id="saveDraftBtn"><i class="bi bi-save2"></i> Save draft</button>
                             <button type="submit" form="caseCreateForm" class="btn btn-primary"><i class="bi bi-send"></i> Submit case</button>
                         </div>
                     </div>
                 </form>
             </div>
 
+            <!-- Recent drafts: always visible -->
             <div class="card recent-cases-card">
                 <div class="section-header">
                     <div>
                         <h3>Recent drafts</h3>
-                        <p>Locally saved case drafts appear here until they are submitted or cleared.</p>
+                        <p>Saved cases appear here. Click "View students" to see who is linked to each case.</p>
                     </div>
                 </div>
 
@@ -161,19 +165,36 @@
                         <thead>
                             <tr>
                                 <th>Case ID</th>
-                                <th>Title</th>
+                                <th>Summary</th>
                                 <th>Category</th>
-                                <th>Urgency</th>
+                                <th>Type</th>
+                                <th>Students</th>
                                 <th>Status</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody id="recentCasesBody">
                             <tr>
-                                <td colspan="5" class="empty-state">No saved drafts yet.</td>
+                                <td colspan="7" class="empty-state">No saved drafts yet.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Counseling info modal -->
+    <div class="modal" id="counselingInfoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="bi bi-clipboard2-pulse"></i> Counseling Information</h2>
+                <button type="button" class="modal-close" onclick="closeCounselingPanel()">&times;</button>
+            </div>
+            <div class="modal-body" id="counselingInfoBody"></div>
+            <div class="form-actions" style="padding: 16px 32px 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCounselingPanel()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveCounselingInfo()"><i class="bi bi-check2"></i> Save</button>
             </div>
         </div>
     </div>

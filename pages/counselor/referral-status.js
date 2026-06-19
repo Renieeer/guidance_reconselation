@@ -307,3 +307,4 @@ function getStatusLabel(stage) {
 }
 
 document.addEventListener('DOMContentLoaded', loadReferralStatus);
+

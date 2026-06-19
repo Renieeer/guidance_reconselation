@@ -195,3 +195,4 @@ function escapeHtml(value) {
 }
 
 document.addEventListener('DOMContentLoaded', initSchoolManagementPage);
+

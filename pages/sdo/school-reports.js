@@ -50,3 +50,4 @@ function loadSampleReports() {
 }
 
 document.addEventListener('DOMContentLoaded', loadSchoolReports);
+

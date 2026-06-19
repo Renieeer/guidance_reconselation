@@ -18,3 +18,4 @@ if (document.readyState === 'loading') {
 } else {
     initSidebarActive();
 }
+

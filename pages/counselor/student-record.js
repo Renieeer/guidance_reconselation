@@ -20,7 +20,6 @@ function loadStudentRecords() {
             try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
             if (parsed && typeof parsed === 'object') {
                 const school = parsed.school_attended || parsed.school || '';
-                console.log('User data found:', { school_attended: parsed.school_attended, school: parsed.school, resolved: school });
                 return school;
             }
             console.warn('User data is not an object');
@@ -31,8 +30,7 @@ function loadStudentRecords() {
         }
     };
 
-    const userSchool = getUserSchool();
-    console.log('Loading student records for school:', userSchool || '(EMPTY - THIS IS THE PROBLEM)');
+    const userSchool = getUserSchool();');
     
     if (!userSchool || userSchool === 'Unknown') {
         console.error('ERROR: School is not set or is "Unknown". Please update counselor account with proper school name.');
@@ -48,7 +46,6 @@ function loadStudentRecords() {
     // Fetch students from database
     fetchStudents(userSchool)
         .then(() => {
-            console.log('Students loaded:', allStudents.length);
             // Setup event listeners
             document.getElementById('searchStudent').addEventListener('keyup', filterStudents);
             document.getElementById('gradeFilter').addEventListener('change', filterStudents);
@@ -64,15 +61,12 @@ function loadStudentRecords() {
 
 function fetchStudents(school) {
     const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(school)}`;
-    console.log('Fetching students from:', apiUrl);
     
     return fetch(apiUrl)
         .then(response => response.json())
         .then(result => {
-            console.log('API Response:', result);
             if (result.success) {
                 allStudents = result.data || [];
-                console.log(`Successfully loaded ${allStudents.length} students for school: ${school}`);
             } else {
                 console.error('API Error:', result.message);
                 throw new Error(result.message || 'Failed to fetch students');
@@ -157,16 +151,13 @@ function viewStudentRecord(studentId) {
     // Function to fetch and display student details
     const loadStudentDetails = () => {
         const url = `/guidancemanagment/api/get-student-details.php?student_id=${studentId}&school=${encodeURIComponent(userSchool)}`;
-        console.log('Fetching from URL:', url);
         
         fetch(url)
             .then(response => response.json())
             .then(result => {
-                console.log('API Response:', result);
                 if (result && result.success && result.student) {
                     currentStudent = result.student;
                     document.getElementById('debugInfo').innerHTML = `Name: ${result.student.first_name || 'N/A'}`;
-                    console.log('Calling displayStudentDetail with:', result);
                     displayStudentDetail(result);
                 } else {
                     const errMsg = result && result.message ? result.message : 'Unknown error';
@@ -192,7 +183,6 @@ function viewStudentRecord(studentId) {
 }
 
 function displayStudentDetail(data) {
-    console.log('displayStudentDetail called with:', data);
     
     const student = data.student || {};
     const referrals = data.referrals || [];
@@ -202,11 +192,8 @@ function displayStudentDetail(data) {
     const siblings = data.siblings || [];
     const friends = data.friends || [];
     
-    console.log('Student object:', student);
-    
     // Debug: Show what we're receiving
     const debugMsg = `DEBUG - Student: ${JSON.stringify(student).substring(0, 200)}`;
-    console.log(debugMsg);
     
     const showValue = (val) => {
         if (val === null || val === undefined || val === '') {
@@ -221,7 +208,6 @@ function displayStudentDetail(data) {
         if (field) {
             field.value = showValue(value);
             const debugVal = showValue(value).substring(0, 30);
-            console.log(`Set ${fieldId} to: ${debugVal}`);
         } else {
             console.warn(`Field ${fieldId} not found!`);
         }
@@ -245,15 +231,9 @@ function displayStudentDetail(data) {
         '3': 'Grade 9',
         '4': 'Grade 10'
     };
-    console.log('Student object grade fields:');
-    console.log('  grade_id:', student.grade_id);
-    console.log('  grade_level:', student.grade_level);
-    console.log('  GradeId:', student.GradeId);
     
     const gradeId = String(student.grade_id || student.grade_level || student.GradeId || '');
-    console.log('Final gradeId:', gradeId);
     const gradeName = gradeMap[gradeId] || student.grade_level || gradeId || '';
-    console.log('Final gradeName:', gradeName);
     setField('formGradeLevel', gradeName);
     
     setField('formSection', student.section);
@@ -445,3 +425,4 @@ function saveCounselingNotes() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', loadStudentRecords);
+

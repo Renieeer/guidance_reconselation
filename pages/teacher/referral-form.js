@@ -21,8 +21,6 @@ function loadExistingReferralData() {
         return; // No existing referral to load
     }
     
-    console.log('Loading referral data:', { referralId, studentId });
-    
     let apiUrl = '/guidancemanagment/api/referral.php?role=teacher';
     if (referralId) {
         apiUrl += `&id=${encodeURIComponent(referralId)}`;
@@ -33,12 +31,10 @@ function loadExistingReferralData() {
     fetch(apiUrl)
         .then(r => r.json())
         .then(result => {
-            console.log('Referral load result:', result);
             if (result.success && result.data) {
                 const referralData = Array.isArray(result.data) ? result.data[0] : result.data;
                 if (referralData) {
                     populateReferralForm(referralData);
-                    console.log('Referral form populated from database');
                 }
             }
         })
@@ -77,7 +73,6 @@ function populateReferralForm(referral) {
                     value = value.split(' ')[0]; // Get just the date part (YYYY-MM-DD)
                 }
                 element.value = value;
-                console.log(`Set ${formFieldId} to:`, value);
             }
         }
     });
@@ -86,8 +81,6 @@ function populateReferralForm(referral) {
 // Setup student name search with inline auto-completion
 function setupStudentSearch() {
     const user = getCurrentUser();
-    console.log('=== SETUP STUDENT SEARCH ===');
-    console.log('Current user on setup:', user);
     
     const studentNameInput = document.getElementById('studentName');
     
@@ -126,15 +119,11 @@ function setupStudentSearch() {
 // Search for students and suggest inline
 function searchStudentsForSuggestion(searchTerm, inputField) {
     const user = getCurrentUser();
-    console.log('=== SEARCHING FOR SUGGESTIONS ===');
-    console.log('Search term:', searchTerm);
     
     let teacherSchool = user?.school_attended;
     if (!teacherSchool) {
         teacherSchool = localStorage.getItem('teacherSchool');
     }
-    
-    console.log('Teacher school:', teacherSchool);
     
     if (!teacherSchool || teacherSchool === 'Default School') {
         return;
@@ -142,12 +131,9 @@ function searchStudentsForSuggestion(searchTerm, inputField) {
     
     const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(teacherSchool)}&search=${encodeURIComponent(searchTerm)}&limit=1`;
     
-    console.log('API URL:', apiUrl);
-    
     fetch(apiUrl)
         .then(r => r.json())
         .then(result => {
-            console.log('API Response:', result);
             if (result.success && result.data && result.data.length > 0) {
                 const student = result.data[0];
                 const fullName = `${student.first_name} ${student.last_name}`;
@@ -155,10 +141,6 @@ function searchStudentsForSuggestion(searchTerm, inputField) {
                 // Show inline suggestion - grey out the suggested part
                 const currentInput = inputField.value;
                 const suggestion = fullName.substring(currentInput.length);
-                
-                console.log('Current input:', currentInput);
-                console.log('Suggestion part:', suggestion);
-                console.log('Full name:', fullName);
                 
                 if (suggestion.length > 0) {
                     // Set value to full name, position cursor at end of what user typed
@@ -184,8 +166,6 @@ function searchStudentsForSuggestion(searchTerm, inputField) {
 
 // Populate form with selected student data
 function populateStudentFromSearch(student) {
-    console.log('=== POPULATING FROM SEARCH RESULT ===');
-    console.log('Student selected:', student);
     
     const fullName = `${student.first_name} ${student.last_name}`;
     
@@ -197,10 +177,6 @@ function populateStudentFromSearch(student) {
         studentIdField.value = student.id;  // This is accounts.id
         studentIdField.readOnly = true;  // Prevent manual editing
     }
-    
-    console.log('✓ Student ID set to:', student.id);
-    console.log('✓ Student Name set to:', fullName);
-    console.log('✓ Student ID field is now read-only');
     
     // Grade
     const gradeMap = {
@@ -235,10 +211,6 @@ function populateStudentFromSearch(student) {
 function populateTeacherSchool() {
     const user = getCurrentUser();
     
-    console.log('=== INITIALIZING TEACHER SCHOOL ===');
-    console.log('User object:', user);
-    console.log('user.school_attended:', user?.school_attended);
-    
     // Get teacher's school from user object (from login)
     const teacherSchool = user?.school_attended;
     
@@ -249,14 +221,12 @@ function populateTeacherSchool() {
     // Store in localStorage for later use
     if (teacherSchool) {
         localStorage.setItem('teacherSchool', teacherSchool);
-        console.log('✓ Stored teacher school in localStorage:', teacherSchool);
     }
     
     // Populate the school field in the form
     const schoolField = document.getElementById('studentSchool');
     if (schoolField) {
         schoolField.value = teacherSchool || 'Default School';
-        console.log('✓ Set student school field to:', schoolField.value);
     }
 
     const teacherNameField = document.getElementById('teacherName');
@@ -286,18 +256,12 @@ function submitReferralForm(e) {
     const studentName = formData.get('studentName');
     const studentId = formData.get('studentId');
     
-    console.log('=== SUBMITTING REFERRAL ===');
-    console.log('Student name:', studentName);
-    console.log('Student ID:', studentId);
-    
     // Validate student name is filled (manual entry allowed)
     if (!studentName || studentName.trim() === '') {
         console.error('❌ ERROR: Student name is empty!');
         showErrorMessage('Please enter the student name before submitting.');
         return;
     }
-    
-    console.log('✓ Validation passed - student name is set');
     
     submitWithStudentId(studentId || null, studentName, teacherSchool, formData, user);
 }
@@ -331,12 +295,6 @@ function submitWithStudentId(studentId, studentName, teacherSchool, formData, us
 
     // Save to database
     const apiUrl = '/guidancemanagment/api/referral.php';
-
-    console.log('=== TEACHER SUBMITTING REFERRAL ===');
-    console.log('Referral data being submitted:', referral);
-    console.log('- student_id:', referral.student_id);
-    console.log('- student_name:', referral.student_name);
-    console.log('- school_attended:', referral.school_attended);
     
     fetch(apiUrl, {
         method: 'POST',
@@ -353,10 +311,6 @@ function submitWithStudentId(studentId, studentName, teacherSchool, formData, us
     })
     .then(result => {
         if (result.success) {
-            console.log('=== REFERRAL SAVED ===');
-            console.log('Full result:', result);
-            console.log('Referral ID:', result.referral_id);
-            console.log('What was stored in database:', result.debug_data);
             
             // Show success message
             showSuccessMessage('Referral submitted successfully! Student has been notified.');
@@ -423,3 +377,4 @@ function showErrorMessage(message) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', initReferralForm);
+

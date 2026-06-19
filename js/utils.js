@@ -162,3 +162,4 @@ function initPage() {
     setUserInfo();
     initLogout();
 }
+

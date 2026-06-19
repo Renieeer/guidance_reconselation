@@ -242,3 +242,4 @@ function saveAccountChanges(e) {
 }
 
 document.addEventListener('DOMContentLoaded', initAccountPage);
+

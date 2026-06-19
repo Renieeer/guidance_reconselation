@@ -301,3 +301,4 @@ function getStatusLabel(stage) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', initReferralsPage);
+

@@ -35,10 +35,6 @@ function loadReferrals() {
     const studentName = user?.name || (user.first_name ? `${user.first_name} ${user.last_name}` : '');
     const studentId = user?.id;
     
-    console.log('=== REFERRAL STATUS LOAD ===');
-    console.log('User object:', user);
-    console.log('Loading referrals for:', { studentName, userSchool, studentId });
-    
     if (!studentName && !studentId) {
         console.error('ERROR: No student name or ID found');
         document.getElementById('referralsTableBody').innerHTML = 
@@ -50,54 +46,29 @@ function loadReferrals() {
     let apiUrl = `/guidancemanagment/api/referral.php?role=student`;
     if (studentId) {
         apiUrl += `&student_id=${encodeURIComponent(studentId)}`;
-        console.log('✓ Using student_id:', studentId);
     }
     if (studentName) {
         apiUrl += `&student_name=${encodeURIComponent(studentName)}`;
-        console.log('✓ Using student_name:', studentName);
     }
     if (userSchool) {
         apiUrl += `&school=${encodeURIComponent(userSchool)}`;
-        console.log('✓ Using school:', userSchool);
     }
-
-    console.log('Final API URL:', apiUrl);
     
     fetch(apiUrl)
         .then(response => response.json())
         .then(result => {
-            console.log('=== API RESPONSE ===');
-            console.log('Full response:', result);
-            console.log('Success:', result.success);
-            console.log('Count:', result.count);
-            console.log('Data items:', result.data?.length || 0);
             
             // Show the actual SQL query for debugging
             if (result.query_params) {
-                console.log('--- DEBUG INFO ---');
-                console.log('SQL Query executed:', result.query_params.sql_query);
-                console.log('Number of rows found:', result.query_params.num_rows_found);
-                console.log('Full query_params:', result.query_params);
                 
                 // Show what we were searching for vs what exists
-                console.log('--- MISMATCH ANALYSIS ---');
-                console.log('You searched for:');
-                console.log('  - student_id:', result.query_params.student_id);
-                console.log('  - student_name:', result.query_params.student_name);
-                console.log('  - school:', result.query_params.school);
-                console.log('If count=0, the database doesnt have a matching referral!');
                 
                 // Show what's actually in the database
                 if (result.debug_all_referrals_by_name && result.debug_all_referrals_by_name.length > 0) {
-                    console.log('--- WHAT EXISTS IN DATABASE ---');
-                    console.log('Found referrals matching student name "' + result.query_params.student_name + '":');
                     result.debug_all_referrals_by_name.forEach((ref, idx) => {
-                        console.log(`[${idx}] ID:${ref.id}, student_name:"${ref.student_name}", student_id:"${ref.student_id}", school:"${ref.school_attended}"`);
                     });
-                    console.log('⚠️ THE PROBLEM: student_id in database is different from user.id!');
                     if (result.debug_all_referrals_by_name.length > 0) {
                         const firstRef = result.debug_all_referrals_by_name[0];
-                        console.log(`   Database has student_id="${firstRef.student_id}" but you searched for student_id="${result.query_params.student_id}"`);
                     }
                 }
             }
@@ -293,8 +264,6 @@ function viewReferral(referralId) {
                 const modal = document.getElementById('referralModal');
                 modal.classList.add('show');
                 modal.style.display = 'flex';
-                
-                console.log('Referral details loaded:', ref);
             } else {
                 alert('Error loading referral details: ' + (result.message || 'Unknown error'));
             }
@@ -351,3 +320,4 @@ document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
     localStorage.removeItem('currentUser');
     window.location.href = '../../index.php';
 });
+

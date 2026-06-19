@@ -79,3 +79,4 @@ function getStatusLabel(stage) {
 }
 
 document.addEventListener('DOMContentLoaded', loadCounselorDashboard);
+

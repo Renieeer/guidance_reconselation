@@ -542,8 +542,6 @@ function loadAppointmentRequests() {
     }
 
     const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(user.school_attended)}&role=coordinator`;
-    
-    console.log('Loading appointment requests from:', apiUrl);
 
     fetch(apiUrl)
         .then(response => {
@@ -553,7 +551,6 @@ function loadAppointmentRequests() {
             return response.json();
         })
         .then(result => {
-            console.log('Appointment requests loaded:', result);
             const tbody = document.getElementById('appointmentRequestsBody');
             
             if (!result.success || !result.data || result.data.length === 0) {
@@ -713,8 +710,6 @@ function approveAppointment(requestId) {
         counselor_notes: 'Appointment approved by coordinator'
     };
 
-    console.log('Updating appointment:', updateData);
-
     fetch('/guidancemanagment/api/appointment-request.php', {
         method: 'PUT',
         headers: {
@@ -826,3 +821,4 @@ function rejectRequestFromModal() {
 }
 
 document.addEventListener('DOMContentLoaded', initSchedulePage);
+

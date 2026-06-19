@@ -252,3 +252,4 @@ function generateAcknowledgementForm(referral) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', initReferralStatus);
+

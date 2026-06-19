@@ -74,3 +74,4 @@ function loadComparativeAnalytics() {
 }
 
 document.addEventListener('DOMContentLoaded', loadAnalytics);
+

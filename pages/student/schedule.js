@@ -153,14 +153,12 @@ async function loadStudentAppointmentRequests() {
         const result = await response.json();
         
         if (!response.ok || !result.success) {
-            console.log('No appointment requests found');
             studentAppointmentRequests = [];
             return;
         }
 
         // Filter requests for this student
         studentAppointmentRequests = (result.data || []).filter(req => req.student_id === user.id);
-        console.log('Loaded student appointment requests:', studentAppointmentRequests);
     } catch (error) {
         console.error('Error loading student appointment requests:', error);
         studentAppointmentRequests = [];
@@ -595,3 +593,4 @@ async function submitAppointmentRequest(e) {
         showAlert(error.message || 'Failed to submit appointment request', 'error');
     }
 }
+

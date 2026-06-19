@@ -193,3 +193,4 @@ function displayStudentProfile(data) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', loadStudentRecords);
+

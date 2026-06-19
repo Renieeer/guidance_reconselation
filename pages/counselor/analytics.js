@@ -87,12 +87,10 @@ function fetchAnalyticsData() {
         if (data.success) {
             initializeCharts(data.data);
         } else {
-            console.log('Using fallback data');
             initializeChartsWithFallback();
         }
     })
     .catch(error => {
-        console.log('Using fallback data');
         initializeChartsWithFallback();
     });
 }
@@ -285,3 +283,4 @@ function initializeChartsWithFallback() {
 }
 
 document.addEventListener('DOMContentLoaded', loadAnalytics);
+

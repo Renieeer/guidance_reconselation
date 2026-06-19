@@ -35,10 +35,6 @@ function loadDashboardData() {
     const studentName = user?.name || (user.first_name ? `${user.first_name} ${user.last_name}` : '');
     const studentId = user?.id;
     
-    console.log('=== DASHBOARD DATA LOAD ===');
-    console.log('User object:', user);
-    console.log('Loading dashboard for:', { studentName, userSchool, studentId });
-    
     if (!studentName && !studentId) {
         console.warn('No student name or ID found');
         return;
@@ -48,40 +44,24 @@ function loadDashboardData() {
     let apiUrl = `/guidancemanagment/api/referral.php?role=student`;
     if (studentId) {
         apiUrl += `&student_id=${encodeURIComponent(studentId)}`;
-        console.log('✓ Using student_id:', studentId);
     }
     if (studentName) {
         apiUrl += `&student_name=${encodeURIComponent(studentName)}`;
-        console.log('✓ Using student_name:', studentName);
     }
     if (userSchool) {
         apiUrl += `&school=${encodeURIComponent(userSchool)}`;
-        console.log('✓ Using school:', userSchool);
     }
-    
-    console.log('Final API URL:', apiUrl);
     
     fetch(apiUrl)
         .then(response => response.json())
         .then(result => {
-            console.log('=== API RESPONSE ===');
-            console.log('Full response:', result);
-            console.log('Success:', result.success);
-            console.log('Count:', result.count);
-            console.log('Data items:', result.data?.length || 0);
             
             // Show the actual SQL query for debugging
             if (result.query_params) {
-                console.log('--- DEBUG INFO ---');
-                console.log('SQL Query executed:', result.query_params.sql_query);
-                console.log('Number of rows found:', result.query_params.num_rows_found);
                 
                 // Show what's actually in the database if no match
                 if (result.count === 0 && result.debug_all_referrals_by_name && result.debug_all_referrals_by_name.length > 0) {
-                    console.log('--- DATABASE CONTAINS ---');
-                    console.log('Referrals matching student name:');
                     result.debug_all_referrals_by_name.forEach((ref, idx) => {
-                        console.log(`[${idx}] student_id:"${ref.student_id}", student_name:"${ref.student_name}"`);
                     });
                 }
             }
@@ -91,7 +71,6 @@ function loadDashboardData() {
                 document.getElementById('referralCount').textContent = referrals.length;
                 displayReferralProgress(referrals);
             } else {
-                console.log('No referrals found or API error');
                 displayReferralProgress([]);
             }
         })
@@ -156,3 +135,4 @@ document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
     clearAllUserData();
     window.location.href = '../../index.php';
 });
+

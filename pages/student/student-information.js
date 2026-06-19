@@ -108,7 +108,6 @@ let friendCount  = 0;
 
 // ─── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Initializing student information form');
     
     // Load grades immediately
     loadGrades();
@@ -236,31 +235,23 @@ function setupAgeAutoCalculate() {
 
 // ─── MANUAL SAVE BUTTON (no auto-save) ──────────────────────
 function manualSaveChanges() {
-    console.log('manualSaveChanges called!');
     
     const studentIdField = document.querySelector('input[name="StudentId"]');
-    console.log('studentIdField:', studentIdField);
-    console.log('studentIdField value:', studentIdField ? studentIdField.value : 'NOT FOUND');
     
     if (!studentIdField || !studentIdField.value.trim()) {
-        console.log('StudentId validation failed');
         showNotification('Cannot save: StudentId is empty', 'error');
         return;
     }
 
     // Validate grade selection
     const gradeSelect = document.querySelector('select[name="grade_id"]');
-    console.log('gradeSelect:', gradeSelect);
-    console.log('gradeSelect value:', gradeSelect ? gradeSelect.value : 'NOT FOUND');
     
     if (!gradeSelect || !gradeSelect.value) {
-        console.log('Grade validation failed');
         showNotification('Please select a grade before saving', 'warning');
         return;
     }
 
     const studentIdToSave = studentIdField.value.trim();
-    console.log('About to save for StudentId:', studentIdToSave);
     
     showConfirmationDialog(
         'Save Changes',
@@ -272,7 +263,6 @@ function manualSaveChanges() {
 // ─── SAVE TO DATABASE (called by manual save button) ──────────
 function saveToDatabaseQuick(studentId) {
     try {
-        console.log('saveToDatabaseQuick called with studentId:', studentId);
         
         const form = document.getElementById('studentForm');
         if (!form) {
@@ -357,12 +347,6 @@ function saveToDatabaseQuick(studentId) {
             friend: collectFriendData()
         };
 
-        console.log('Collected form data:', studentData);
-        console.log('Education items:', studentData.education.length);
-        console.log('Organization items:', studentData.organization.length);
-        console.log('Sibling items:', studentData.sibling.length);
-        console.log('Friend items:', studentData.friend.length);
-
         // Check if there's actual data to save
         if (!studentId || studentId.trim() === '') {
             console.warn('No StudentId provided');
@@ -372,7 +356,6 @@ function saveToDatabaseQuick(studentId) {
 
         // Send to database
         const apiUrl = `${getApiUrl()}/save-student.php`;
-        console.log('Sending POST to:', apiUrl);
         
         fetch(apiUrl, {
             method: 'POST',
@@ -380,11 +363,9 @@ function saveToDatabaseQuick(studentId) {
             body: JSON.stringify(studentData)
         })
         .then(r => {
-            console.log('Response status:', r.status);
             return r.text();
         })
         .then(text => {
-            console.log('Response text:', text);
             try {
                 const data = JSON.parse(text);
                 if (data.success) {
@@ -410,18 +391,14 @@ function saveToDatabaseQuick(studentId) {
 
 // ─── HELPER: Collect education data from form ──────────────────
 function collectEducationData() {
-    console.log('collectEducationData called');
     const education = [];
     const eduContainer = document.getElementById('educationContainer');
-    console.log('educationContainer:', eduContainer);
     
     if (!eduContainer) {
-        console.log('educationContainer not found');
         return education;
     }
     
     const eduCards = eduContainer.querySelectorAll('.dyn-card');
-    console.log('Found education cards:', eduCards.length);
     
     eduCards.forEach((card, i) => {
         const gradeLevel = card.querySelector(`input[name="education[${i}][GradeLevel]"]`)?.value || '';
@@ -429,60 +406,46 @@ function collectEducationData() {
         const inclusiveYes = card.querySelector(`input[name="education[${i}][InclusiveYes]"]`)?.value || '';
         const placeAndSchool = card.querySelector(`textarea[name="education[${i}][PlaceAndSchool]"]`)?.value || '';
         
-        console.log(`Education card ${i}:`, { gradeLevel, schoolAttended, inclusiveYes, placeAndSchool });
-        
         if (gradeLevel || schoolAttended || inclusiveYes || placeAndSchool) {
             education.push({ GradeLevel: gradeLevel, SchoolAttended: schoolAttended, InclusiveYes: inclusiveYes, PlaceAndSchool: placeAndSchool });
         }
     });
-    console.log('Total education records collected:', education.length);
     return education;
 }
 
 // ─── HELPER: Collect organization data from form ──────────────────
 function collectOrganizationData() {
-    console.log('collectOrganizationData called');
     const organization = [];
     const orgContainer = document.getElementById('organizationContainer');
-    console.log('organizationContainer:', orgContainer);
     
     if (!orgContainer) {
-        console.log('organizationContainer not found');
         return organization;
     }
     
     const orgCards = orgContainer.querySelectorAll('.dyn-card');
-    console.log('Found organization cards:', orgCards.length);
     
     orgCards.forEach((card, i) => {
         const orgName = card.querySelector(`input[name="organization[${i}][OrganizationName]"]`)?.value || '';
         const positionTitle = card.querySelector(`input[name="organization[${i}][PositionTitle]"]`)?.value || '';
         const inCampus = card.querySelector(`select[name="organization[${i}][inCampus]"]`)?.value || '';
         
-        console.log(`Organization card ${i}:`, { orgName, positionTitle, inCampus });
-        
         if (orgName || positionTitle || inCampus) {
             organization.push({ OrganizationName: orgName, PositionTitle: positionTitle, inCampus: inCampus });
         }
     });
-    console.log('Total organization records collected:', organization.length);
     return organization;
 }
 
 // ─── HELPER: Collect sibling data from form ──────────────────
 function collectSiblingData() {
-    console.log('collectSiblingData called');
     const siblings = [];
     const sibContainer = document.getElementById('siblingsContainer');
-    console.log('siblingsContainer:', sibContainer);
     
     if (!sibContainer) {
-        console.log('siblingsContainer not found');
         return siblings;
     }
     
     const sibCards = sibContainer.querySelectorAll('.dyn-card');
-    console.log('Found sibling cards:', sibCards.length);
     
     sibCards.forEach((card, i) => {
         const firstName = card.querySelector(`input[name="sibling[${i}][FirstName]"]`)?.value || '';
@@ -493,30 +456,23 @@ function collectSiblingData() {
         const birthOrder = card.querySelector(`input[name="sibling[${i}][BirthOrder]"]`)?.value || '';
         const schoolId = card.querySelector(`input[name="sibling[${i}][SchoolId]"]`)?.value || '';
         
-        console.log(`Sibling card ${i}:`, { firstName, lastName, age, birthOrder });
-        
         if (firstName || lastName || age) {
             siblings.push({ FirstName: firstName, LastName: lastName, MiddleName: middleName, NickName: nickName, Age: age, BirthOrder: birthOrder, SchoolId: schoolId });
         }
     });
-    console.log('Total sibling records collected:', siblings.length);
     return siblings;
 }
 
 // ─── HELPER: Collect friend data from form ──────────────────
 function collectFriendData() {
-    console.log('collectFriendData called');
     const friends = [];
     const friendContainer = document.getElementById('friendsContainer');
-    console.log('friendsContainer:', friendContainer);
     
     if (!friendContainer) {
-        console.log('friendsContainer not found');
         return friends;
     }
     
     const friendCards = friendContainer.querySelectorAll('.dyn-card');
-    console.log('Found friend cards:', friendCards.length);
     
     friendCards.forEach((card, i) => {
         const inSchool = card.querySelector(`select[name="friend[${i}][In_school]"]`)?.value || '';
@@ -524,13 +480,10 @@ function collectFriendData() {
         const middleName = card.querySelector(`input[name="friend[${i}][MiddleName]"]`)?.value || '';
         const lastName = card.querySelector(`input[name="friend[${i}][LastName]"]`)?.value || '';
         
-        console.log(`Friend card ${i}:`, { firstName, lastName, inSchool });
-        
         if (firstName || lastName) {
             friends.push({ In_school: inSchool, FirstName: firstName, MiddleName: middleName, LastName: lastName });
         }
     });
-    console.log('Total friend records collected:', friends.length);
     return friends;
 }
 
@@ -554,7 +507,6 @@ function setupUserInfo() {
     const studentIdField = document.querySelector('input[name="StudentId"]');
     if (studentIdField && currentUser.id) {
         studentIdField.value = currentUser.id;
-        console.log('StudentId set to:', currentUser.id);
     }
 
     // Wire StudentId change event to load data (if visible)
@@ -576,7 +528,6 @@ function setupUserInfo() {
 // ─── SETUP STUDENT NAME SEARCH AUTO-FILL ──────────────────────
 let searchTimeout;
 function setupStudentNameSearch() {
-    console.log('=== setupStudentNameSearch STARTED ===');
     
     // Try to find name fields - could be separate First/Last or combined Student Name
     const firstNameField = document.querySelector('input[name="FirstName"]');
@@ -585,18 +536,12 @@ function setupStudentNameSearch() {
                             document.querySelector('input[placeholder*="Student Name" i]') ||
                             document.querySelector('input[placeholder*="students name" i]');
     
-    console.log('=== Field Detection ===');
-    console.log('firstNameField:', firstNameField ? 'FOUND' : 'NOT FOUND');
-    console.log('lastNameField:', lastNameField ? 'FOUND' : 'NOT FOUND');
-    console.log('studentNameField:', studentNameField ? 'FOUND' : 'NOT FOUND');
-    
     if (!firstNameField && !lastNameField && !studentNameField) {
         console.error('ERROR: No name fields found on the form!');
         return;
     }
     
     const handleStudentSearch = () => {
-        console.log('=== handleStudentSearch TRIGGERED ===');
         clearTimeout(searchTimeout);
         
         let firstName = '';
@@ -607,19 +552,14 @@ function setupStudentNameSearch() {
             const parts = studentNameField.value.trim().split(' ');
             firstName = parts[0] || '';
             lastName = parts.slice(1).join(' ') || '';
-            console.log('Using combined StudentName field');
         } else {
             // Use separate fields
             firstName = firstNameField?.value?.trim() || '';
             lastName = lastNameField?.value?.trim() || '';
-            console.log('Using separate FirstName/LastName fields');
         }
-        
-        console.log('Current input:', { firstName, lastName });
         
         // Need at least 2 characters to search
         if (firstName.length < 2 && lastName.length < 2) {
-            console.log('Search skipped - not enough characters');
             return;
         }
         
@@ -630,44 +570,32 @@ function setupStudentNameSearch() {
         const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
         const school = currentUser.school_attended || 'Default School';
         
-        console.log('Search parameters:', { searchQuery, school });
-        
         // Debounce search - wait 500ms after user stops typing
         searchTimeout = setTimeout(() => {
             const url = `${getApiUrl()}/get-students.php?search=${encodeURIComponent(searchQuery)}&school=${encodeURIComponent(school)}&limit=5`;
-            console.log('Fetching from URL:', url);
             
             fetch(url)
                 .then(r => {
-                    console.log('Response status:', r.status, r.statusText);
                     if (!r.ok) {
                         throw new Error(`HTTP ${r.status}`);
                     }
                     return r.json();
                 })
                 .then(data => {
-                    console.log('=== API Response ===');
-                    console.log('Full response:', data);
-                    console.log('Success:', data.success);
-                    console.log('Students:', data.students);
-                    console.log('Student count:', data.students?.length || 0);
                     
                     if (data.success && Array.isArray(data.students) && data.students.length > 0) {
                         // Auto-fill with the first matching student
                         const student = data.students[0];
-                        console.log('=== Auto-filling with ===', student);
                         
                         // Populate StudentId / LRN field
                         const lrnField = document.querySelector('input[name="LRN"]');
                         if (lrnField && student.id) {
                             lrnField.value = student.id;
-                            console.log('✓ Set LRN to:', student.id);
                         }
                         
                         const studentIdField = document.querySelector('input[name="StudentId"]');
                         if (studentIdField && student.id) {
                             studentIdField.value = student.id;
-                            console.log('✓ Set StudentId to:', student.id);
                         }
                         
                         // Auto-fill Age
@@ -675,7 +603,6 @@ function setupStudentNameSearch() {
                             const ageField = document.querySelector('input[name="Age"]');
                             if (ageField) {
                                 ageField.value = student.Age;
-                                console.log('✓ Set Age to:', student.Age);
                             }
                         }
                         
@@ -684,7 +611,6 @@ function setupStudentNameSearch() {
                             const sexField = document.querySelector('select[name="Sex"]');
                             if (sexField) {
                                 sexField.value = student.Sex;
-                                console.log('✓ Set Sex to:', student.Sex);
                             }
                         }
                         
@@ -693,7 +619,6 @@ function setupStudentNameSearch() {
                             const dobField = document.querySelector('input[name="DateOfBirth"]');
                             if (dobField) {
                                 dobField.value = student.DateOfBirth;
-                                console.log('✓ Set DateOfBirth to:', student.DateOfBirth);
                             }
                         }
 
@@ -704,13 +629,11 @@ function setupStudentNameSearch() {
                             const gradeField = document.querySelector('select[name="grade_id"]');
                             if (gradeField) {
                                 gradeField.value = student.grade_id;
-                                console.log('✓ Set grade_id to:', student.grade_id);
                             }
                         }
                         
                         showNotification('✓ Student found and auto-filled!', 'success');
                     } else {
-                        console.log('No students found matching:', searchQuery);
                     }
                 })
                 .catch(err => {
@@ -721,19 +644,14 @@ function setupStudentNameSearch() {
     
     // Add event listeners for real-time search
     if (firstNameField) {
-        console.log('✓ Adding input listener to FirstName field');
         firstNameField.addEventListener('input', handleStudentSearch);
     }
     if (lastNameField) {
-        console.log('✓ Adding input listener to LastName field');
         lastNameField.addEventListener('input', handleStudentSearch);
     }
     if (studentNameField) {
-        console.log('✓ Adding input listener to StudentName field');
         studentNameField.addEventListener('input', handleStudentSearch);
     }
-    
-    console.log('=== setupStudentNameSearch COMPLETED ===');
 }
 
 // ─── LOAD DATA (on page load) ──────────────────────────────────
@@ -756,11 +674,8 @@ function loadStudentData() {
     }
 
     if (!studentId) {
-        console.log('No student ID found, form is ready for manual entry');
         return;
     }
-
-    console.log('Loading student data for StudentId:', studentId);
 
     setTimeout(() => {
         // First try the merged API endpoint which gets data from both accounts and student_table
@@ -772,14 +687,8 @@ function loadStudentData() {
                 return r.json();
             })
             .then(data => {
-                console.log('API Response from get-student-details:', data);
                 
                 if (data.success && data.student) {
-                    console.log('Student data loaded from get-student-details');
-                    console.log('Education records:', data.education);
-                    console.log('Organization records:', data.organizations);
-                    console.log('Sibling records:', data.siblings);
-                    console.log('Friend records:', data.friends);
                     
                     // Pass the full response object
                     populateFormWithStudentDetails(data);
@@ -788,7 +697,6 @@ function loadStudentData() {
                     enterUpdateMode();
                     showNotification('✓ Your previous information has been loaded.', 'success');
                 } else {
-                    console.log('No student data found, trying fallback API');
                     // Fallback to save-student.php if get-student-details fails
                     return fetch(`${getApiUrl()}/save-student.php?StudentId=${encodeURIComponent(studentId)}`);
                 }
@@ -802,7 +710,6 @@ function loadStudentData() {
             })
             .then(data => {
                 if (data && data.success && data.data) {
-                    console.log('Student data loaded from save-student.php');
                         populateFormWithData({
                             ...data.data,
                             family_status: data.family_status || {}
@@ -827,7 +734,6 @@ function loadStudentData() {
 
 // ─── POPULATE FORM FROM get-student-details.php ─────────────────
 function populateFormWithStudentDetails(response) {
-    console.log('populateFormWithStudentDetails called with response:', response);
     const student = response.student || {};
     const familyStatus = response.family_status || student.family_status || {};
     
@@ -876,13 +782,11 @@ function populateFormWithStudentDetails(response) {
     syncAgeFromDateOfBirth();
 
     // ── Step 2: Education ──
-    console.log('Processing education data:', response.education);
     if (Array.isArray(response.education) && response.education.length) {
         const container = document.getElementById('educationContainer');
         container.innerHTML = '';
         eduCount = 0;
         response.education.forEach(edu => {
-            console.log('Adding education record:', edu);
             const i = eduCount++;
             container.appendChild(buildEducationCard(i, edu));
         });
@@ -890,13 +794,11 @@ function populateFormWithStudentDetails(response) {
     }
 
     // ── Step 3: Organizations ──
-    console.log('Processing organization data:', response.organizations);
     if (Array.isArray(response.organizations) && response.organizations.length) {
         const container = document.getElementById('organizationContainer');
         container.innerHTML = '';
         orgCount = 0;
         response.organizations.forEach(org => {
-            console.log('Adding organization record:', org);
             const i = orgCount++;
             container.appendChild(buildOrganizationCard(i, org));
         });
@@ -904,7 +806,6 @@ function populateFormWithStudentDetails(response) {
     }
 
     // ── Step 4: Parents ──
-    console.log('Processing parent data:', response.parents);
     if (Array.isArray(response.parents) && response.parents.length) {
         const parentMap = {
             'father': 0,
@@ -933,7 +834,6 @@ function populateFormWithStudentDetails(response) {
     }
 
     // ── Step 5: Family Status ──
-    console.log('Processing family status data:', response.family_status);
     if (familyStatus && typeof familyStatus === 'object') {
         const familyFields = ['LivingTogether', 'MarriedYet', 'MarriedChurch',
             'TemporarilySepered', 'PermanentlySepered',
@@ -948,13 +848,11 @@ function populateFormWithStudentDetails(response) {
     }
 
     // ── Step 6: Siblings ──
-    console.log('Processing sibling data:', response.siblings);
     if (Array.isArray(response.siblings) && response.siblings.length) {
         const container = document.getElementById('siblingsContainer');
         container.innerHTML = '';
         sibCount = 0;
         response.siblings.forEach(sib => {
-            console.log('Adding sibling record:', sib);
             const i = sibCount++;
             container.appendChild(buildSiblingCard(i, sib));
         });
@@ -962,7 +860,6 @@ function populateFormWithStudentDetails(response) {
     }
 
     // ── Step 6: Guardian ──
-    console.log('Processing guardian data:', response.guardians);
     if (Array.isArray(response.guardians) && response.guardians.length > 0) {
         const guardian = response.guardians[0];
         const guardianFields = ['FirstName', 'MiddleName', 'LastName', 'Relationship',
@@ -974,13 +871,11 @@ function populateFormWithStudentDetails(response) {
     }
 
     // ── Step 6: Friends ──
-    console.log('Processing friend data:', response.friends);
     if (Array.isArray(response.friends) && response.friends.length) {
         const container = document.getElementById('friendsContainer');
         container.innerHTML = '';
         friendCount = 0;
         response.friends.forEach(fr => {
-            console.log('Adding friend record:', fr);
             const i = friendCount++;
             container.appendChild(buildFriendCard(i, fr));
         });
@@ -989,7 +884,6 @@ function populateFormWithStudentDetails(response) {
 
     // Re-apply family status dependencies after populating data
     setupFamilyStatusDependencies();
-    console.log('Form populated with student details');
 }
 
 // ─── LOAD DATA (manual StudentId change) ──────────────────────
@@ -1214,30 +1108,21 @@ function navigateToStep(target) {
 
 // ─── CHANGE STEP (Next / Prev buttons) ────────────────────────
 function changeStep(direction) {
-    console.log('changeStep called with direction:', direction);
     
     // Only validate when going FORWARD (direction === 1)
     // Only validate on the last step before submission
     if (direction === 1 && currentStep === totalSteps && !validateCurrentStep()) {
-        console.log('Validation failed on final step, not submitting');
         return;
     }
     
     saveCurrentStep();
     const newStep = Math.max(1, Math.min(totalSteps, currentStep + direction));
-    console.log('Moving from step', currentStep, 'to', newStep);
     currentStep = newStep;
-    
-    console.log('Updating step indicator');
     updateStepIndicator();
-    
-    console.log('Updating navigation buttons');
     updateNavigationButtons();
     
     // Delay scroll to allow animation to start
-    console.log('Scheduling scroll to top');
     setTimeout(() => {
-        console.log('Scrolling to top');
         scrollToTop();
     }, 50);
 }
@@ -1261,7 +1146,6 @@ function saveCurrentStep() {
 // ─── STEP INDICATOR UPDATE ────────────────────────────────────
 function updateStepIndicator() {
     try {
-        console.log('updateStepIndicator: currentStep =', currentStep);
         
         // Hide all panels, show current
         const panels = document.querySelectorAll('.step-panel');
@@ -1279,7 +1163,6 @@ function updateStepIndicator() {
         
         const active = document.querySelector(`.step-panel[data-step="${currentStep}"]`);
         if (active) {
-            console.log('Adding active class to step', currentStep, 'panel');
             active.classList.add('active');
         } else {
             console.warn('Could not find step-panel for step', currentStep);
@@ -1366,7 +1249,6 @@ function updateNavigationButtons() {
             nextBtn.onclick = function(e) { 
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Update Information/Submit button clicked');
                 const studentIdField = document.querySelector('input[name="StudentId"]');
                 if (studentIdField && studentIdField.value) {
                     manualSaveChanges();

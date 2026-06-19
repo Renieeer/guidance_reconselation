@@ -128,8 +128,6 @@ function clearAllUserData() {
     // Clear any form data
     sessionStorage.removeItem('formData');
     localStorage.removeItem('formData');
-    
-    console.log('All user data cleared');
 }
 
 // Logout function
@@ -170,3 +168,4 @@ function getCurrentUser() {
     const user = sessionStorage.getItem('userInfo') || sessionStorage.getItem('user');
     return user ? JSON.parse(user) : null;
 }
+

@@ -72,3 +72,4 @@ function deleteFeedback(feedbackId) {
 }
 
 document.addEventListener('DOMContentLoaded', initFeedbackPage);
+

@@ -167,3 +167,4 @@ document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
     localStorage.removeItem('currentUser');
     window.location.href = '../../index.php';
 });
+
