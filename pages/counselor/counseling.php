@@ -23,7 +23,6 @@
                 </button>
             </div>
 
-            <!-- Form: hidden by default, shown when Create case is clicked -->
             <div class="case-dashboard" id="caseFormWrapper" style="display:none;">
                 <form id="caseCreateForm" class="case-form card">
                     <div class="form-section">
@@ -77,17 +76,23 @@
 
                         <div class="form-grid three-up">
                             <div class="form-field">
-                                <label for="caseCategory">Case category *</label>
-                                <select id="caseCategory" name="caseCategory" required>
-                                    <option value="">Select category</option>
-                                    <option value="Academic">Academic concern</option>
-                                    <option value="Behavioral">Behavioral concern</option>
-                                    <option value="Social-Emotional">Social-emotional issue</option>
-                                    <option value="Attendance">Attendance / Truancy</option>
-                                    <option value="Family">Family-related concern</option>
-                                    <option value="Other">Other</option>
+                                <label for="caseSection">Case Section *</label>
+                                <select id="caseSection" name="caseSection" required>
+                                    <option value="">Loading sections…</option>
                                 </select>
                             </div>
+                            <div class="form-field">
+                                <label for="caseCategory">Case Category *</label>
+                                <select id="caseCategory" name="caseCategory" required disabled>
+                                    <option value="">Select a section first</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label for="caseDate">Date logged</label>
+                                <input type="date" id="caseDate" name="caseDate">
+                            </div>
+                        </div>
+                        <div class="form-grid two-up">
                             <div class="form-field">
                                 <label for="caseType">Type of Cases</label>
                                 <select id="caseType" name="caseType">
@@ -95,10 +100,6 @@
                                     <option value="Referral" selected>Individual</option>
                                     <option value="Parent request">Other</option>
                                 </select>
-                            </div>
-                            <div class="form-field">
-                                <label for="caseDate">Date logged</label>
-                                <input type="date" id="caseDate" name="caseDate">
                             </div>
                         </div>
 
@@ -151,7 +152,6 @@
                 </form>
             </div>
 
-            <!-- Recent drafts: always visible -->
             <div class="card recent-cases-card">
                 <div class="section-header">
                     <div>
@@ -165,7 +165,7 @@
                         <thead>
                             <tr>
                                 <th>Case ID</th>
-                                <th>Summary</th>
+                                <th>Section (Range)</th>
                                 <th>Category</th>
                                 <th>Type</th>
                                 <th>Students</th>
@@ -184,7 +184,20 @@
         </div>
     </div>
 
-    <!-- Counseling info modal -->
+    <div class="modal" id="followUpModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="bi bi-chat-dots"></i> Record Follow-up</h2>
+                <button type="button" class="modal-close" onclick="closeFollowUpModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="followUpBody"></div>
+            <div class="form-actions" style="padding:16px 32px 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeFollowUpModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveFollowUp()"><i class="bi bi-check2"></i> Save follow-up</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="counselingInfoModal">
         <div class="modal-content">
             <div class="modal-header">

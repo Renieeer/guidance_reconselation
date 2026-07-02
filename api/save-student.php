@@ -38,6 +38,33 @@ function pickColumn(array $columns, array $candidates): ?string {
     return null;
 }
 
+function getColumnMaxLength(array $columns, ?string $columnName): ?int {
+    if (!$columnName || !isset($columns[$columnName]['Type'])) {
+        return null;
+    }
+
+    $type = strtolower((string) $columns[$columnName]['Type']);
+    if (preg_match('/^(?:varchar|char)\((\d+)\)$/', $type, $matches)) {
+        return (int) $matches[1];
+    }
+
+    return null;
+}
+
+function truncateToColumnLength(?string $value, ?int $maxLength): string {
+    $text = (string) $value;
+
+    if (!$maxLength || $maxLength < 1) {
+        return $text;
+    }
+
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, 0, $maxLength);
+    }
+
+    return substr($text, 0, $maxLength);
+}
+
 function bindDynamicParams(mysqli_stmt $stmt, string $types, array $params): void {
     $bindings = [$types];
     foreach ($params as $index => $value) {
@@ -70,6 +97,59 @@ function buildFullName(array $row): string {
     ];
 
     return trim(implode(' ', array_filter($parts, fn($part) => $part !== '')));
+}
+
+function decodeAddressPayload($value): array {
+    if (is_array($value)) {
+        return $value;
+    }
+
+    if (!is_string($value) || trim($value) === '') {
+        return [];
+    }
+
+    $decoded = json_decode($value, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function buildAddressSummary(array $payload): string {
+    $parts = [
+        $payload['houseUnitNo'] ?? '',
+        $payload['street'] ?? '',
+        $payload['barangayName'] ?? '',
+        $payload['cityName'] ?? '',
+        $payload['provinceName'] ?? '',
+        $payload['regionName'] ?? '',
+        $payload['zipCode'] ?? '',
+        $payload['country'] ?? ''
+    ];
+
+    $parts = array_values(array_filter(array_map(function ($part) {
+        return trim((string) $part);
+    }, $parts), function ($part) {
+        return $part !== '';
+    }));
+
+    return implode(', ', $parts);
+}
+
+function prepareAddressData(array $data, string $prefix): array {
+    $payload = decodeAddressPayload($data[$prefix . 'Data'] ?? null);
+
+    if (empty($payload)) {
+        $fallback = trim((string) ($data[$prefix] ?? ''));
+        if ($fallback !== '') {
+            $payload = [
+                'summary' => $fallback,
+                'country' => 'Philippines'
+            ];
+        }
+    }
+
+    $payload['country'] = $payload['country'] ?? 'Philippines';
+    $payload['summary'] = $payload['summary'] ?? buildAddressSummary($payload);
+
+    return $payload;
 }
 
 try {
@@ -175,6 +255,28 @@ try {
     ];
 
     $friendTable = tableExists($conn, 'friend') ? 'friend' : (tableExists($conn, 'friends_table') ? 'friends_table' : null);
+    $currentAddressColumn = pickColumn($studentColumns, ['CurrentAddress']);
+    $currentAddressDataColumn = pickColumn($studentColumns, ['CurrentAddressData']);
+    $currentAddressRegionCodeColumn = pickColumn($studentColumns, ['CurrentAddressRegionCode']);
+    $currentAddressRegionNameColumn = pickColumn($studentColumns, ['CurrentAddressRegionName']);
+    $currentAddressProvinceCodeColumn = pickColumn($studentColumns, ['CurrentAddressProvinceCode']);
+    $currentAddressProvinceNameColumn = pickColumn($studentColumns, ['CurrentAddressProvinceName']);
+    $currentAddressCityCodeColumn = pickColumn($studentColumns, ['CurrentAddressCityCode']);
+    $currentAddressCityNameColumn = pickColumn($studentColumns, ['CurrentAddressCityName']);
+    $currentAddressBarangayCodeColumn = pickColumn($studentColumns, ['CurrentAddressBarangayCode']);
+    $currentAddressBarangayNameColumn = pickColumn($studentColumns, ['CurrentAddressBarangayName']);
+    $permanentAddressColumn = pickColumn($studentColumns, ['PermanentAddress']);
+    $permanentAddressDataColumn = pickColumn($studentColumns, ['PermanentAddressData']);
+    $permanentAddressRegionCodeColumn = pickColumn($studentColumns, ['PermanentAddressRegionCode']);
+    $permanentAddressRegionNameColumn = pickColumn($studentColumns, ['PermanentAddressRegionName']);
+    $permanentAddressProvinceCodeColumn = pickColumn($studentColumns, ['PermanentAddressProvinceCode']);
+    $permanentAddressProvinceNameColumn = pickColumn($studentColumns, ['PermanentAddressProvinceName']);
+    $permanentAddressCityCodeColumn = pickColumn($studentColumns, ['PermanentAddressCityCode']);
+    $permanentAddressCityNameColumn = pickColumn($studentColumns, ['PermanentAddressCityName']);
+    $permanentAddressBarangayCodeColumn = pickColumn($studentColumns, ['PermanentAddressBarangayCode']);
+    $permanentAddressBarangayNameColumn = pickColumn($studentColumns, ['PermanentAddressBarangayName']);
+    $currentAddressMaxLength = getColumnMaxLength($studentColumns, $currentAddressColumn);
+    $permanentAddressMaxLength = getColumnMaxLength($studentColumns, $permanentAddressColumn);
 
     // Get JSON input
     $input = file_get_contents('php://input');
@@ -241,27 +343,108 @@ try {
         'PlaceOfBirth' => $data['PlaceOfBirth'] ?? '',
         'ReligionFromBirth' => $data['ReligionFromBirth'] ?? '',
         'CurrentReligion' => $data['CurrentReligion'] ?? '',
-        'CurrentAddress' => $data['CurrentAddress'] ?? '',
-        'PermanentAddress' => $data['PermanentAddress'] ?? '',
         'CellphoneNumber' => $data['CellphoneNumber'] ?? '',
         'grade_id' => isset($data['grade_id']) && $data['grade_id'] !== null ? intval($data['grade_id']) : null,
     ];
 
+    $currentAddressData = prepareAddressData($data, 'CurrentAddress');
+    $permanentAddressData = prepareAddressData($data, 'PermanentAddress');
+
+    $structuredAddressColumns = [
+        'CurrentAddressRegionCode' => $currentAddressRegionCodeColumn,
+        'CurrentAddressRegionName' => $currentAddressRegionNameColumn,
+        'CurrentAddressProvinceCode' => $currentAddressProvinceCodeColumn,
+        'CurrentAddressProvinceName' => $currentAddressProvinceNameColumn,
+        'CurrentAddressCityCode' => $currentAddressCityCodeColumn,
+        'CurrentAddressCityName' => $currentAddressCityNameColumn,
+        'CurrentAddressBarangayCode' => $currentAddressBarangayCodeColumn,
+        'CurrentAddressBarangayName' => $currentAddressBarangayNameColumn,
+        'PermanentAddressRegionCode' => $permanentAddressRegionCodeColumn,
+        'PermanentAddressRegionName' => $permanentAddressRegionNameColumn,
+        'PermanentAddressProvinceCode' => $permanentAddressProvinceCodeColumn,
+        'PermanentAddressProvinceName' => $permanentAddressProvinceNameColumn,
+        'PermanentAddressCityCode' => $permanentAddressCityCodeColumn,
+        'PermanentAddressCityName' => $permanentAddressCityNameColumn,
+        'PermanentAddressBarangayCode' => $permanentAddressBarangayCodeColumn,
+        'PermanentAddressBarangayName' => $permanentAddressBarangayNameColumn,
+    ];
+
+    $studentData['CurrentAddress'] = truncateToColumnLength($currentAddressData['summary'] ?? '', $currentAddressMaxLength);
+    $studentData['CurrentAddressData'] = json_encode($currentAddressData, JSON_UNESCAPED_UNICODE);
+    $studentData['PermanentAddress'] = truncateToColumnLength($permanentAddressData['summary'] ?? '', $permanentAddressMaxLength);
+    $studentData['PermanentAddressData'] = json_encode($permanentAddressData, JSON_UNESCAPED_UNICODE);
+
+    foreach ($structuredAddressColumns as $fieldName => $columnName) {
+        if (!$columnName) {
+            continue;
+        }
+
+        if (str_starts_with($fieldName, 'CurrentAddress')) {
+            $studentData[$fieldName] = $currentAddressData[
+                match ($fieldName) {
+                    'CurrentAddressRegionCode' => 'regionCode',
+                    'CurrentAddressRegionName' => 'regionName',
+                    'CurrentAddressProvinceCode' => 'provinceCode',
+                    'CurrentAddressProvinceName' => 'provinceName',
+                    'CurrentAddressCityCode' => 'cityCode',
+                    'CurrentAddressCityName' => 'cityName',
+                    'CurrentAddressBarangayCode' => 'barangayCode',
+                    'CurrentAddressBarangayName' => 'barangayName',
+                }
+            ] ?? '';
+            continue;
+        }
+
+        $studentData[$fieldName] = $permanentAddressData[
+            match ($fieldName) {
+                'PermanentAddressRegionCode' => 'regionCode',
+                'PermanentAddressRegionName' => 'regionName',
+                'PermanentAddressProvinceCode' => 'provinceCode',
+                'PermanentAddressProvinceName' => 'provinceName',
+                'PermanentAddressCityCode' => 'cityCode',
+                'PermanentAddressCityName' => 'cityName',
+                'PermanentAddressBarangayCode' => 'barangayCode',
+                'PermanentAddressBarangayName' => 'barangayName',
+            }
+        ] ?? '';
+    }
+
+    $addressFieldBindings = [
+        ['column' => $currentAddressRegionCodeColumn, 'field' => 'CurrentAddressRegionCode'],
+        ['column' => $currentAddressRegionNameColumn, 'field' => 'CurrentAddressRegionName'],
+        ['column' => $currentAddressProvinceCodeColumn, 'field' => 'CurrentAddressProvinceCode'],
+        ['column' => $currentAddressProvinceNameColumn, 'field' => 'CurrentAddressProvinceName'],
+        ['column' => $currentAddressCityCodeColumn, 'field' => 'CurrentAddressCityCode'],
+        ['column' => $currentAddressCityNameColumn, 'field' => 'CurrentAddressCityName'],
+        ['column' => $currentAddressBarangayCodeColumn, 'field' => 'CurrentAddressBarangayCode'],
+        ['column' => $currentAddressBarangayNameColumn, 'field' => 'CurrentAddressBarangayName'],
+        ['column' => $permanentAddressRegionCodeColumn, 'field' => 'PermanentAddressRegionCode'],
+        ['column' => $permanentAddressRegionNameColumn, 'field' => 'PermanentAddressRegionName'],
+        ['column' => $permanentAddressProvinceCodeColumn, 'field' => 'PermanentAddressProvinceCode'],
+        ['column' => $permanentAddressProvinceNameColumn, 'field' => 'PermanentAddressProvinceName'],
+        ['column' => $permanentAddressCityCodeColumn, 'field' => 'PermanentAddressCityCode'],
+        ['column' => $permanentAddressCityNameColumn, 'field' => 'PermanentAddressCityName'],
+        ['column' => $permanentAddressBarangayCodeColumn, 'field' => 'PermanentAddressBarangayCode'],
+        ['column' => $permanentAddressBarangayNameColumn, 'field' => 'PermanentAddressBarangayName'],
+    ];
+
     if ($studentExists) {
         // Update existing student
-        $updateQuery = "UPDATE student_table SET 
-            LRN = ?, FirstName = ?, LastName = ?, MiddleName = ?, `{$nicknameColumn}` = ?, 
-            Sex = ?, Age = ?, DateOfBirth = ?, PlaceOfBirth = ?, ReligionFromBirth = ?, 
-            CurrentReligion = ?, CurrentAddress = ?, PermanentAddress = ?, CellphoneNumber = ?, `{$gradeColumn}` = ?
-            WHERE `{$studentIdColumn}` = ?";
-        
-        $stmt = $conn->prepare($updateQuery);
-        if (!$stmt) {
-            throw new Exception("Prepare failed: " . $conn->error);
-        }
-        
-        $stmt->bind_param(
-            "ssssssssssssssss",
+        $updateAssignments = [
+            'LRN = ?',
+            'FirstName = ?',
+            'LastName = ?',
+            'MiddleName = ?',
+            "`{$nicknameColumn}` = ?",
+            'Sex = ?',
+            'Age = ?',
+            'DateOfBirth = ?',
+            'PlaceOfBirth = ?',
+            'ReligionFromBirth = ?',
+            'CurrentReligion = ?',
+        ];
+
+        $updateValues = [
             $studentData['LRN'],
             $studentData['FirstName'],
             $studentData['LastName'],
@@ -273,12 +456,49 @@ try {
             $studentData['PlaceOfBirth'],
             $studentData['ReligionFromBirth'],
             $studentData['CurrentReligion'],
-            $studentData['CurrentAddress'],
-            $studentData['PermanentAddress'],
-            $studentData['CellphoneNumber'],
-            $studentData['grade_id'],
-            $studentId
-        );
+        ];
+
+        if ($currentAddressColumn) {
+            $updateAssignments[] = "`{$currentAddressColumn}` = ?";
+            $updateValues[] = $studentData['CurrentAddress'];
+        }
+
+        if ($currentAddressDataColumn) {
+            $updateAssignments[] = "`{$currentAddressDataColumn}` = ?";
+            $updateValues[] = $studentData['CurrentAddressData'];
+        }
+
+        foreach ($addressFieldBindings as $binding) {
+            if ($binding['column']) {
+                $updateAssignments[] = "`{$binding['column']}` = ?";
+                $updateValues[] = $studentData[$binding['field']] ?? '';
+            }
+        }
+
+        if ($permanentAddressColumn) {
+            $updateAssignments[] = "`{$permanentAddressColumn}` = ?";
+            $updateValues[] = $studentData['PermanentAddress'];
+        }
+
+        if ($permanentAddressDataColumn) {
+            $updateAssignments[] = "`{$permanentAddressDataColumn}` = ?";
+            $updateValues[] = $studentData['PermanentAddressData'];
+        }
+
+        $updateAssignments[] = 'CellphoneNumber = ?';
+        $updateAssignments[] = "`{$gradeColumn}` = ?";
+        $updateValues[] = $studentData['CellphoneNumber'];
+        $updateValues[] = $studentData['grade_id'];
+        $updateValues[] = $studentId;
+
+        $updateQuery = 'UPDATE student_table SET ' . implode(', ', $updateAssignments) . ' WHERE `' . $studentIdColumn . '` = ?';
+        
+        $stmt = $conn->prepare($updateQuery);
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
+        
+        bindDynamicParams($stmt, str_repeat('s', count($updateValues)), $updateValues);
         
         if (!$stmt->execute()) {
             throw new Exception("Execute failed: " . $stmt->error);
@@ -286,18 +506,22 @@ try {
         $stmt->close();
     } else {
         // Insert new student
-        $insertQuery = "INSERT INTO student_table 
-            (`{$studentIdColumn}`, LRN, FirstName, LastName, MiddleName, `{$nicknameColumn}`, Sex, Age, DateOfBirth, PlaceOfBirth, 
-             ReligionFromBirth, CurrentReligion, CurrentAddress, PermanentAddress, CellphoneNumber, `{$gradeColumn}`)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
-        $stmt = $conn->prepare($insertQuery);
-        if (!$stmt) {
-            throw new Exception("Prepare failed: " . $conn->error);
-        }
-        
-        $stmt->bind_param(
-            "ssssssssssssssss",
+        $insertColumns = [
+            "`{$studentIdColumn}`",
+            'LRN',
+            'FirstName',
+            'LastName',
+            'MiddleName',
+            "`{$nicknameColumn}`",
+            'Sex',
+            'Age',
+            'DateOfBirth',
+            'PlaceOfBirth',
+            'ReligionFromBirth',
+            'CurrentReligion'
+        ];
+
+        $insertValues = [
             $studentId,
             $studentData['LRN'],
             $studentData['FirstName'],
@@ -309,12 +533,49 @@ try {
             $studentData['DateOfBirth'],
             $studentData['PlaceOfBirth'],
             $studentData['ReligionFromBirth'],
-            $studentData['CurrentReligion'],
-            $studentData['CurrentAddress'],
-            $studentData['PermanentAddress'],
-            $studentData['CellphoneNumber'],
-            $studentData['grade_id']
-        );
+            $studentData['CurrentReligion']
+        ];
+
+        if ($currentAddressColumn) {
+            $insertColumns[] = "`{$currentAddressColumn}`";
+            $insertValues[] = $studentData['CurrentAddress'];
+        }
+
+        if ($currentAddressDataColumn) {
+            $insertColumns[] = "`{$currentAddressDataColumn}`";
+            $insertValues[] = $studentData['CurrentAddressData'];
+        }
+
+        foreach ($addressFieldBindings as $binding) {
+            if ($binding['column']) {
+                $insertColumns[] = "`{$binding['column']}`";
+                $insertValues[] = $studentData[$binding['field']] ?? '';
+            }
+        }
+
+        if ($permanentAddressColumn) {
+            $insertColumns[] = "`{$permanentAddressColumn}`";
+            $insertValues[] = $studentData['PermanentAddress'];
+        }
+
+        if ($permanentAddressDataColumn) {
+            $insertColumns[] = "`{$permanentAddressDataColumn}`";
+            $insertValues[] = $studentData['PermanentAddressData'];
+        }
+
+        $insertColumns[] = 'CellphoneNumber';
+        $insertColumns[] = "`{$gradeColumn}`";
+        $insertValues[] = $studentData['CellphoneNumber'];
+        $insertValues[] = $studentData['grade_id'];
+
+        $insertQuery = 'INSERT INTO student_table (' . implode(', ', $insertColumns) . ') VALUES (' . implode(', ', array_fill(0, count($insertColumns), '?')) . ')';
+        
+        $stmt = $conn->prepare($insertQuery);
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
+        
+        bindDynamicParams($stmt, str_repeat('s', count($insertValues)), $insertValues);
         
         if (!$stmt->execute()) {
             throw new Exception("Execute failed: " . $stmt->error);
@@ -516,22 +777,6 @@ try {
         $stmt->close();
     }
 
-    echo json_encode([
-        'success' => true,
-        'message' => 'Student information saved successfully',
-        'StudentId' => $studentId
-    ]);
-
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'An error occurred: ' . $e->getMessage()
-    ]);
-}
-
-
-
     // Save parent records
     if ($parentTableExists) {
         $parentFields = [
@@ -566,7 +811,6 @@ try {
                 'MonthlyIncome' => ''
             ]
         ];
-
         foreach ($parentFields as $role => $parentData) {
             $deleteParentStmt = $conn->prepare("DELETE FROM parent_table WHERE ParentId = ?");
             if ($deleteParentStmt) {
@@ -677,4 +921,18 @@ try {
             $guardianStmt->close();
         }
     }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Student information saved successfully',
+        'StudentId' => $studentId
+    ]);
+
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'An error occurred: ' . $e->getMessage()
+    ]);
+}
 ?>

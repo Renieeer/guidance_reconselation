@@ -419,18 +419,63 @@ body {
 .field-group input:disabled,
 .field-group select:disabled,
 .field-group textarea:disabled {
-    border: 2px solid var(--danger);
-    background-color: #ffebee;
-    color: #c62828;
-    opacity: 0.8;
+    border: 1px solid var(--gray-200);
+    background-color: #f8fafc;
+    color: var(--gray-400);
+    opacity: 1;
     cursor: not-allowed;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15), inset 0 0 0 1px rgba(239, 68, 68, 0.2);
-    font-weight: 500;
+    box-shadow: none;
+    font-weight: 400;
 }
 
 .field-group input:disabled::placeholder {
-    color: #c62828;
-    opacity: 0.6;
+    color: var(--gray-400);
+    opacity: 1;
+}
+
+.address-panel {
+    grid-column: 1 / -1;
+    border: 1px solid var(--gray-200);
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.address-panel .section-header {
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+}
+
+.address-panel .field-grid {
+    gap: 16px;
+    margin-bottom: 0;
+}
+
+@media (max-width: 1200px) {
+    .address-panel .field-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.address-panel .field-group select:disabled {
+    background: #f8fafc;
+    color: var(--gray-400);
+}
+
+.address-panel:hover {
+    box-shadow: var(--shadow-md);
+    border-color: #bfdbfe;
+}
+
+.address-panel .btn-add-inline {
+    padding: 8px 12px;
+}
+
+@media (max-width: 900px) {
+    .address-panel {
+        grid-column: span 2;
+    }
 }
 
 /* ────── PARENT CARDS ─────────────────────────────────────────── */
@@ -747,6 +792,11 @@ body {
     .form-body {
         padding: 24px 16px;
         min-height: auto;
+    }
+
+    .address-panel {
+        grid-column: span 1;
+        padding: 18px 14px;
     }
 
     .step-track {

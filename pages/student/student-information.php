@@ -108,10 +108,10 @@
                                         <label>Grade <span class="req">*</span></label>
                                         <select name="grade_id" id="gradeSelect" required>
                                             <option value="">Select grade</option>
-                                            <option value="1">Grade 7</option>
-                                            <option value="2">Grade 8</option>
-                                            <option value="3">Grade 9</option>
-                                            <option value="4">Grade 10</option>
+                                            <option value="7">Grade 7</option>
+                                            <option value="8">Grade 8</option>
+                                            <option value="9">Grade 9</option>
+                                            <option value="10">Grade 10</option>
                                         </select>
                                     </div>
                                   
@@ -132,20 +132,111 @@
                                     <label>Current Religion</label>
                                     <input type="text" name="CurrentReligion" placeholder="If different">
                                 </div>
-                                <div class="address-row span-2">
-                                    <div class="field-group">
-                                        <label>Current Address</label>
-                                        <input type="text" name="CurrentAddress" placeholder="House/Unit No., Street, Barangay, City">
-                                    </div>
-                                    <div class="field-group">
-                                        <label>Permanent Address</label>
-                                        <input type="text" name="PermanentAddress" placeholder="Same as current if applicable">
-                                    </div>
-                                </div>
-                                <div class="field-group span-2">
+                                 <div class="field-group ">
                                     <label>Cellphone Number</label>
                                     <input type="text" name="CellphoneNumber" placeholder="+63 9XX XXX XXXX">
                                 </div>
+                                <div class="address-panel">
+                                    <div class="section-header">
+                                        <div class="section-title">Current Address</div>
+                                        <button type="button" class="btn-add btn-add-inline" onclick="copyAddressFields('CurrentAddress', 'PermanentAddress')">
+                                            <i class="fas fa-copy"></i> Copy to Permanent
+                                        </button>
+                                    </div>
+                                    <div class="field-grid">
+                                        <div class="field-group">
+                                            <label>House / Unit No.</label>
+                                            <input type="text" name="CurrentAddress_HouseUnitNo" placeholder="Blk 12 Lot 4, Unit 3">
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Street</label>
+                                            <input type="text" name="CurrentAddress_Street" placeholder="Street name, village, subdivision">
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Region</label>
+                                            <select name="CurrentAddress_RegionCode" data-address-role="region" data-address-prefix="CurrentAddress">
+                                                <option value="">Select region</option>
+                                            </select>
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Province</label>
+                                            <select name="CurrentAddress_ProvinceCode" data-address-role="province" data-address-prefix="CurrentAddress" disabled>
+                                                <option value="">Select province</option>
+                                            </select>
+                                        </div>
+                                        <div class="field-group">
+                                            <label>City / Municipality</label>
+                                            <select name="CurrentAddress_CityCode" data-address-role="city" data-address-prefix="CurrentAddress" disabled>
+                                                <option value="">Select city or municipality</option>
+                                            </select>
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Barangay</label>
+                                            <select name="CurrentAddress_BarangayCode" data-address-role="barangay" data-address-prefix="CurrentAddress" disabled>
+                                                <option value="">Select barangay</option>
+                                            </select>
+                                        </div>
+                                        <div class="field-group">
+                                            <label>ZIP Code</label>
+                                            <input type="text" name="CurrentAddress_ZipCode" placeholder="1234">
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Country</label>
+                                            <input type="text" name="CurrentAddress_Country" placeholder="Philippines" value="Philippines">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="address-panel">
+                                    <div class="section-header">
+                                        <div class="section-title">Permanent Address</div>
+                                        <button type="button" class="btn-add btn-add-inline" onclick="copyAddressFields('CurrentAddress', 'PermanentAddress')">
+                                            <i class="fas fa-clone"></i> Use Current Address
+                                        </button>
+                                    </div>
+                                    <div class="field-grid">
+                                        <div class="field-group">
+                                            <label>House / Unit No.</label>
+                                            <input type="text" name="PermanentAddress_HouseUnitNo" placeholder="Blk 12 Lot 4, Unit 3">
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Street</label>
+                                            <input type="text" name="PermanentAddress_Street" placeholder="Street name, village, subdivision">
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Region</label>
+                                            <select name="PermanentAddress_RegionCode" data-address-role="region" data-address-prefix="PermanentAddress">
+                                                <option value="">Select region</option>
+                                            </select>
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Province</label>
+                                            <select name="PermanentAddress_ProvinceCode" data-address-role="province" data-address-prefix="PermanentAddress" disabled>
+                                                <option value="">Select province</option>
+                                            </select>
+                                        </div>
+                                        <div class="field-group">
+                                            <label>City / Municipality</label>
+                                            <select name="PermanentAddress_CityCode" data-address-role="city" data-address-prefix="PermanentAddress" disabled>
+                                                <option value="">Select city or municipality</option>
+                                            </select>
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Barangay</label>
+                                            <select name="PermanentAddress_BarangayCode" data-address-role="barangay" data-address-prefix="PermanentAddress" disabled>
+                                                <option value="">Select barangay</option>
+                                            </select>
+                                        </div>
+                                        <div class="field-group">
+                                            <label>ZIP Code</label>
+                                            <input type="text" name="PermanentAddress_ZipCode" placeholder="1234">
+                                        </div>
+                                        <div class="field-group">
+                                            <label>Country</label>
+                                            <input type="text" name="PermanentAddress_Country" placeholder="Philippines" value="Philippines">
+                                        </div>
+                                    </div>
+                                </div>
+                               
                             </div>
                         </div>
                     </div>

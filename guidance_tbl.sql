@@ -364,14 +364,119 @@ CREATE TABLE `student_table` (
   `PlaceOfBirth` varchar(45) DEFAULT NULL,
   `ReligionFromBirth` varchar(45) DEFAULT NULL,
   `CurrentReligion` varchar(45) DEFAULT NULL,
-  `CurrentAddress` varchar(45) DEFAULT NULL,
-  `PermanentAddress` varchar(45) DEFAULT NULL,
+  `CurrentAddress` varchar(255) DEFAULT NULL,
+  `CurrentAddressData` longtext DEFAULT NULL,
+  `CurrentAddressRegionCode` varchar(20) DEFAULT NULL,
+  `CurrentAddressRegionName` varchar(255) DEFAULT NULL,
+  `CurrentAddressProvinceCode` varchar(20) DEFAULT NULL,
+  `CurrentAddressProvinceName` varchar(255) DEFAULT NULL,
+  `CurrentAddressCityCode` varchar(20) DEFAULT NULL,
+  `CurrentAddressCityName` varchar(255) DEFAULT NULL,
+  `CurrentAddressBarangayCode` varchar(20) DEFAULT NULL,
+  `CurrentAddressBarangayName` varchar(255) DEFAULT NULL,
+  `PermanentAddress` varchar(255) DEFAULT NULL,
+  `PermanentAddressData` longtext DEFAULT NULL,
+  `PermanentAddressRegionCode` varchar(20) DEFAULT NULL,
+  `PermanentAddressRegionName` varchar(255) DEFAULT NULL,
+  `PermanentAddressProvinceCode` varchar(20) DEFAULT NULL,
+  `PermanentAddressProvinceName` varchar(255) DEFAULT NULL,
+  `PermanentAddressCityCode` varchar(20) DEFAULT NULL,
+  `PermanentAddressCityName` varchar(255) DEFAULT NULL,
+  `PermanentAddressBarangayCode` varchar(20) DEFAULT NULL,
+  `PermanentAddressBarangayName` varchar(255) DEFAULT NULL,
   `CellphoneNumber` varchar(45) DEFAULT NULL,
   `Grade` varchar(45) DEFAULT NULL,
   `AccountID` int DEFAULT NULL,
   `EmailAccount` varchar(45) DEFAULT NULL,
   `Section` varchar(45) DEFAULT NULL,
   `EducationalBackground_EducationalBgId` int DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `address_regions`
+--
+
+CREATE TABLE `address_regions` (
+  `code` varchar(20) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `region_name` varchar(255) DEFAULT NULL,
+  `island_group_code` varchar(30) DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`),
+  KEY `idx_address_regions_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `address_provinces`
+--
+
+CREATE TABLE `address_provinces` (
+  `code` varchar(20) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `region_code` varchar(20) DEFAULT NULL,
+  `island_group_code` varchar(30) DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`),
+  KEY `idx_address_provinces_region` (`region_code`),
+  KEY `idx_address_provinces_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `address_cities`
+--
+
+CREATE TABLE `address_cities` (
+  `code` varchar(20) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `old_name` varchar(255) DEFAULT NULL,
+  `is_capital` tinyint(1) DEFAULT NULL,
+  `is_city` tinyint(1) DEFAULT NULL,
+  `is_municipality` tinyint(1) DEFAULT NULL,
+  `district_code` varchar(20) DEFAULT NULL,
+  `province_code` varchar(20) DEFAULT NULL,
+  `region_code` varchar(20) DEFAULT NULL,
+  `island_group_code` varchar(30) DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`),
+  KEY `idx_address_cities_province` (`province_code`),
+  KEY `idx_address_cities_region` (`region_code`),
+  KEY `idx_address_cities_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `address_barangays`
+--
+
+CREATE TABLE `address_barangays` (
+  `code` varchar(20) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `old_name` varchar(255) DEFAULT NULL,
+  `sub_municipality_code` varchar(20) DEFAULT NULL,
+  `city_code` varchar(20) DEFAULT NULL,
+  `municipality_code` varchar(20) DEFAULT NULL,
+  `district_code` varchar(20) DEFAULT NULL,
+  `province_code` varchar(20) DEFAULT NULL,
+  `region_code` varchar(20) DEFAULT NULL,
+  `island_group_code` varchar(30) DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code`),
+  KEY `idx_address_barangays_city` (`city_code`),
+  KEY `idx_address_barangays_municipality` (`municipality_code`),
+  KEY `idx_address_barangays_province` (`province_code`),
+  KEY `idx_address_barangays_region` (`region_code`),
+  KEY `idx_address_barangays_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------

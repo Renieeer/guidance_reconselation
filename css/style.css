@@ -3,8 +3,8 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-}
 
+}
 * {
     margin: 0;
     padding: 0;
@@ -336,25 +336,25 @@ body.auth-page {
     }
 }
 
-.btn-auth-primary {
-    width: 100%;
-    padding: 10px 20px;
+.btn-primary {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: white;
     border: none;
     border-radius: 8px;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     letter-spacing: 0.5px;
+    padding: 10px 20px;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
-.btn-auth-primary:hover {
+.btn-primary:hover {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     box-shadow: 0 12px 28px rgba(59, 130, 246, 0.4);
     transform: translateY(-2px);
@@ -776,19 +776,62 @@ body.auth-page {
     background: #f9fafb;
 }
 
-.referral-field input,
-.referral-field select,
-.referral-field textarea {
-    width: 100%;
-    border: 2px solid #cccccc;
-    background: #ffffff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-family: inherit;
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-field label {
     font-size: 14px;
-    color: #333333;
-    transition: all 0.3s ease;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: var(--transition);
+    background: white;
+    color: var(--text-color);
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid transparent;
+}
+
+.btn-outline {
+    border-color: var(--border-color);
+    color: var(--text-color);
+    background: transparent;
+}
+
+.btn-outline:hover {
+    background: var(--light-gray);
+    border-color: var(--text-light);
 }
 
 .referral-field input::placeholder,
@@ -893,10 +936,12 @@ body.auth-page {
     box-shadow: none;
 }
 .main-content.teacher-page .page-hero-eyebrow i { display:none; }
-.main-content.teacher-page .page-content {
-    max-width: none;
-    padding: 16px 24px;
-    margin: 0;
+.main-content {
+    flex-grow: 1;
+    padding: 24px;
+    background: #f7f9fc;
+    transition: margin-left 0.3s ease;
+    margin-left: 260px;
 }
 .main-content.teacher-page .dashboard-grid {
     display: grid;
@@ -979,8 +1024,51 @@ body.auth-page {
 
 .case-form,
 .recent-cases-card {
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.recent-cases-card .card-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.recent-cases-card .card-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 16px 20px;
+    text-align: left;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table th {
+    background: #f7f9fc;
+    font-weight: 600;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr:hover {
+    background: var(--light-gray);
 }
 
 .case-form {
@@ -996,9 +1084,22 @@ body.auth-page {
 .section-header {
     display: flex;
     justify-content: space-between;
-    gap: 12px;
-    align-items: flex-start;
-    margin-bottom: 18px;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.section-header p {
+    font-size: 14px;
+    color: var(--text-light);
+    margin-top: 4px;
 }
 
 .section-header h3 {
@@ -1282,6 +1383,168 @@ body.auth-page {
     font-size: 13px;
     font-weight: 700;
     flex-shrink: 0;
+}
+
+/* Follow-up modal — two-column layout */
+.fu-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    min-height: 320px;
+}
+
+/* LEFT: student list */
+.fu-student-list {
+    border-right: 1px solid #e5e7eb;
+    padding: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.fu-student-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 0.15s;
+    position: relative;
+    border-left: 3px solid transparent;
+}
+
+.fu-student-row:hover {
+    background: #f8fafc;
+}
+
+.fu-student-row--active {
+    background: #f0f4ff;
+    border-left-color: #6366f1;
+}
+
+.fu-student-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #6366f1;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.fu-student-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.fu-student-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fu-student-sub {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fu-recorded-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+}
+
+/* RIGHT: form panel */
+.fu-form-panel {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.fu-form-row-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.fu-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fu-form-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.fu-form-select,
+.fu-form-input {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #0f172a;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.fu-form-select:focus,
+.fu-form-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+}
+
+.fu-form-textarea {
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #0f172a;
+    background: #fff;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+}
+
+.fu-form-textarea:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+}
+
+/* Legacy — keep for counselingInfoModal if referenced elsewhere */
+.fu-recorded-tag {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: #16a34a;
+    background: #dcfce7;
+    padding: 2px 7px;
+    border-radius: 99px;
 }
 
 @media (max-width: 1100px) {
@@ -2821,7 +3084,7 @@ tr:hover {
     background-color: white;
     padding: 0;
     border-radius: 12px;
-    max-width: 500px;
+    max-width: 700px;
     width: 90%;
     box-shadow: var(--shadow-xl);
     max-height: 90vh;
@@ -2877,7 +3140,7 @@ tr:hover {
 .modal-body {
     flex: 1;
     overflow-y: auto;
-    padding: 32px;
+    padding-left: 8px;
     color: var(--text-color);
     line-height: 1.7;
 }
@@ -5349,4 +5612,267 @@ footer {
         margin: 0.5in;
         size: letter;
     }
+}
+/* ========== GUIDANCE CASE REPORT CARD MODAL ========== */
+.modal-content-wide {
+    max-width: 780px;
+    width: 92vw;
+}
+
+/* Report card header */
+.rc-report-header {
+    background: var(--secondary-color);
+    color: #fff;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 0;
+    flex-wrap: nowrap;
+}
+
+.rc-report-title-block {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.rc-report-title-block i {
+    font-size: 16px;
+}
+
+.rc-report-header-meta {
+    display: flex;
+    gap: 18px;
+    flex: 1;
+}
+
+.rc-header-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.rc-header-meta-label {
+    font-size: 8px;
+    font-weight: 700;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rc-header-meta-val {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.rc-report-header .modal-close {
+    color: rgba(255,255,255,0.85);
+    font-size: 18px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    margin-left: auto;
+    padding: 0 2px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+}
+
+.rc-report-header .modal-close:hover {
+    color: #fff;
+}
+
+.rc-modal-body {
+    padding: 0 !important;
+    overflow-y: auto;
+    max-height: calc(85vh - 120px);
+}
+
+/* Two-column layout */
+.rc-layout {
+    display: flex;
+    min-height: 380px;
+}
+
+/* LEFT sidebar — narrower, scrollable */
+.rc-sidebar {
+    flex: 0 0 155px;
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    padding: 14px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+}
+
+.rc-avatar-lg {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.rc-profile-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex: 1;
+}
+
+.rc-profile-row {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 5px 0;
+    gap: 1px;
+}
+
+.rc-label {
+    font-size: 8px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rc-value {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1e293b;
+    word-break: break-word;
+}
+
+.rc-inline-input {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 400;
+    color: #1e293b;
+    padding: 3px 6px;
+    border-radius: 4px;
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin-top: 2px;
+}
+
+.rc-inline-input:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 2px rgba(13,110,253,0.08);
+}
+
+.rc-inline-input::placeholder {
+    color: #cbd5e1;
+}
+
+.rc-sidebar-footer {
+    margin-top: 10px;
+    border-top: 1.5px solid #e2e8f0;
+    padding-top: 6px;
+}
+
+/* RIGHT main panel */
+.rc-main {
+    flex: 1;
+    padding: 16px 18px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+    min-width: 0;
+}
+
+/* ========== RC FORM FIELDS ========== */
+.rc-form-field {
+    margin-bottom: 14px;
+}
+
+.rc-form-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.rc-form-input,
+.rc-form-select,
+.rc-form-textarea {
+    width: 100%;
+    padding: 8px 11px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-color);
+    background: #ffffff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.rc-form-input:focus,
+.rc-form-select:focus,
+.rc-form-textarea:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.08);
+}
+
+.rc-form-input[readonly] {
+    background: #f1f5f9;
+    color: var(--text-light);
+    cursor: default;
+}
+
+.rc-form-textarea {
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.5;
+}
+
+.rc-form-select {
+    cursor: pointer;
+    appearance: auto;
+}
+
+.rc-form-row-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .rc-layout { flex-direction: column; }
+    .rc-sidebar {
+        flex: none;
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-right: none;
+        border-bottom: 1px solid #e2e8f0;
+        gap: 8px;
+    }
+    .rc-report-header-meta { flex-wrap: wrap; gap: 10px; }
+    .modal-content-wide { width: 100vw; max-width: 100vw; }
+    .rc-form-row-two { grid-template-columns: 1fr; }
 }
