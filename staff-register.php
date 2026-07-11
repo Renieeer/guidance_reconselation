@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guidance Management System - Register</title>
+    <title>Guidance Management System - Teacher Registration</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
-<body class="auth-page">
+<body class="auth-page" data-portal="staff">
     <nav id="navbar">
         <a class="nav-brand" href="index.php">
             <span class="nav-dot"></span> Guidance Portal
@@ -22,8 +22,8 @@
             <li><a href="index.php#features">Features</a></li>
             <li><a href="index.php#roles">Roles</a></li>
             <li><a href="index.php#about">About</a></li>
-            <li><a href="login.php">Log In</a></li>
-            <li><a href="register.php" class="btn-nav">Register</a></li>
+            <li><a href="staff-login.php">Staff Login</a></li>
+            <li><a href="staff-register.php" class="btn-nav">Staff Register</a></li>
         </ul>
     </nav>
 
@@ -31,12 +31,12 @@
         <div class="auth-left">
             <div class="auth-brand">
                 <div class="brand-icon">
-                    <i class="bi bi-heart-handshake"></i>
+                    <i class="bi bi-briefcase"></i>
                 </div>
-                <h2>Guidance Management</h2>
-                <p>Comprehensive Student Counselling & Referral System</p>
+                <h2>Teacher Registration</h2>
+                <p>Refer students and track your submissions</p>
             </div>
-            
+
             <div class="auth-features">
                 <div class="feature">
                     <i class="bi bi-shield-check"></i>
@@ -55,8 +55,8 @@
 
         <div class="auth-right">
             <div class="auth-box auth-register-box">
-                <h1>Create Your Student Account</h1>
-                <p class="auth-subtitle">Join our guidance management community today</p>
+                <h1>Create Your Teacher Account</h1>
+                <p class="auth-subtitle">For teaching staff only — counselor and coordinator accounts are set up by the SDO</p>
 
                 <form id="registerForm" class="auth-form">
                     <div class="form-row">
@@ -86,7 +86,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="school">School <span id="schoolRequired" style="color: #ef4444;">*</span></label>
+                        <label for="school">School <span style="color: #ef4444;">*</span></label>
                         <div class="input-wrapper">
                             <select id="school" name="school" required>
                                 <option value="">Loading schools...</option>
@@ -95,14 +95,14 @@
                         <small class="error-text"></small>
                     </div>
 
-                    <!-- Fixed to student — teacher accounts register at
-                         staff-register.php, and counselor/coordinator
-                         accounts are SDO-only via School Management. -->
-                    <input type="hidden" id="role" name="role" value="student">
+                    <!-- Fixed to teacher — counselor/coordinator accounts are
+                         SDO-only, created via School Management so their
+                         grade-scope assignment stays under district control. -->
+                    <input type="hidden" id="role" name="role" value="teacher">
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="password">Password * 
+                            <label for="password">Password *
                                 <button type="button" class="password-help-btn" id="passwordHelpBtn">
                                     <i class="bi bi-question-circle"></i>
                                 </button>
@@ -123,7 +123,6 @@
                                 <button type="button" class="toggle-password" id="toggleConfirmPassword">
                                     <i class="bi bi-eye"></i>
                                 </button>
-
                             </div>
                             <small class="error-text"></small>
                         </div>
@@ -176,11 +175,11 @@
 
                 <div class="auth-divider">
                     <span>Already have an account?</span>
-                    <a href="login.php" class="auth-link">Sign In Here <i class="bi bi-arrow-right"></i></a>
+                    <a href="staff-login.php" class="auth-link">Sign In Here <i class="bi bi-arrow-right"></i></a>
                 </div>
 
                 <p class="text-muted" style="text-align:center; margin-top: 16px; font-size: 13px;">
-                    Teacher? <a href="staff-register.php" class="auth-link">Go to Teacher Registration</a>
+                    Student? <a href="register.php" class="auth-link">Go to Student Registration</a>
                 </p>
             </div>
         </div>

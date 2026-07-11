@@ -10,11 +10,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'conn.php';
+require_once 'grade-scope.php';
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
     echo json_encode($payload);
     exit;
+}
+
+function is_counselor_or_coordinator(string $role): bool {
+    $normalized = strtolower(trim($role));
+    if ($normalized === '') {
+        return false;
+    }
+    if (in_array($normalized, ['coordinator', 'counselor', 'counselor-and-coordinator'], true)) {
+        return true;
+    }
+    return strpos($normalized, 'coordinator') !== false || strpos($normalized, 'counselor') !== false;
 }
 
 function ensure_appointment_request_table(mysqli $conn): void {
@@ -103,6 +115,36 @@ try {
         }
         $stmt->close();
 
+        // Grade-scope filter — appointments reference a student_id rather
+        // than storing a grade directly, so scoped requests are resolved
+        // with a small batch lookup against student_table instead of
+        // reworking this query.
+        $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
+        if (!empty($gradeScope) && !empty($rows)) {
+            $studentIds = array_values(array_unique(array_map(
+                static fn($r) => (string)$r['student_id'],
+                $rows
+            )));
+            $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+            $gradeStmt = $conn->prepare("SELECT StudentId, Grade FROM student_table WHERE StudentId IN ({$placeholders})");
+            $gradeByStudent = [];
+            if ($gradeStmt) {
+                $gradeStmt->bind_param(str_repeat('s', count($studentIds)), ...$studentIds);
+                if ($gradeStmt->execute()) {
+                    $gradeResult = $gradeStmt->get_result();
+                    while ($gradeRow = $gradeResult->fetch_assoc()) {
+                        $gradeByStudent[(string)$gradeRow['StudentId']] = $gradeRow['Grade'];
+                    }
+                }
+                $gradeStmt->close();
+            }
+
+            $rows = array_values(array_filter($rows, static function ($r) use ($gradeByStudent, $gradeScope) {
+                $studentGrade = $gradeByStudent[(string)$r['student_id']] ?? null;
+                return grade_matches_scope($studentGrade, $gradeScope);
+            }));
+        }
+
         send_json(200, ['success' => true, 'data' => $rows]);
     }
 
@@ -121,6 +163,8 @@ try {
         $reason = trim((string)($payload['reason'] ?? ''));
         $notes = trim((string)($payload['notes'] ?? ''));
         $school = trim((string)($payload['school'] ?? ''));
+        $role = trim((string)($payload['role'] ?? ''));
+        $counselor_id = (int)($payload['counselor_id'] ?? 0);
 
         if ($student_id === 0 || $student_name === '' || $preferred_date === '' || $preferred_time === '' || $reason === '') {
             send_json(400, ['success' => false, 'message' => 'Missing required fields']);
@@ -131,12 +175,33 @@ try {
             send_json(400, ['success' => false, 'message' => 'Invalid date format. Use YYYY-MM-DD']);
         }
 
+        // Reject past dates - enforced server-side too, not just in the UI,
+        // since the client-side check can be bypassed.
+        if ($preferred_date < date('Y-m-d')) {
+            send_json(400, ['success' => false, 'message' => 'You cannot request an appointment for a date that has already passed.']);
+        }
+
+        // Reject weekends - same reasoning, the UI check alone isn't enough.
+        $dayOfWeek = (int)date('N', strtotime($preferred_date)); // 6 = Saturday, 7 = Sunday
+        if ($dayOfWeek >= 6) {
+            send_json(400, ['success' => false, 'message' => 'Weekends are not available for appointments. Please select a weekday.']);
+        }
+
         $request_id = 'areq_' . bin2hex(random_bytes(8));
+
+        // Appointments a counselor/coordinator schedules directly (e.g. from
+        // a case's "Appoint Students" action) don't need their own approval
+        // step — that review is only meaningful for appointments a student
+        // requests. Skip straight to 'approved' for staff-initiated ones.
+        $isStaffInitiated = is_counselor_or_coordinator($role);
+        $initialStatus = $isStaffInitiated ? 'approved' : 'pending';
+        $initialCounselorId = $isStaffInitiated ? $counselor_id : 0;
+        $initialCounselorNotes = $isStaffInitiated ? 'Scheduled directly by counselor' : '';
 
         $sql = "
             INSERT INTO appointment_requests (
-                request_id, student_id, student_name, preferred_date, preferred_time, reason, notes, school_attended, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                request_id, student_id, student_name, preferred_date, preferred_time, reason, notes, school_attended, status, counselor_id, counselor_notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ";
 
         $stmt = $conn->prepare($sql);
@@ -144,7 +209,20 @@ try {
             send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
         }
 
-        $stmt->bind_param('sissssss', $request_id, $student_id, $student_name, $preferred_date, $preferred_time, $reason, $notes, $school);
+        $stmt->bind_param(
+            'sisssssssis',
+            $request_id,
+            $student_id,
+            $student_name,
+            $preferred_date,
+            $preferred_time,
+            $reason,
+            $notes,
+            $school,
+            $initialStatus,
+            $initialCounselorId,
+            $initialCounselorNotes
+        );
 
         if (!$stmt->execute()) {
             send_json(500, ['success' => false, 'message' => 'Failed to save request: ' . $stmt->error]);
@@ -154,7 +232,7 @@ try {
 
         send_json(201, [
             'success' => true,
-            'message' => 'Appointment request submitted successfully',
+            'message' => $isStaffInitiated ? 'Appointment scheduled successfully' : 'Appointment request submitted successfully',
             'data' => [
                 'request_id' => $request_id,
                 'student_id' => $student_id,
@@ -162,7 +240,7 @@ try {
                 'preferred_date' => $preferred_date,
                 'preferred_time' => $preferred_time,
                 'reason' => $reason,
-                'status' => 'pending'
+                'status' => $initialStatus
             ]
         ]);
     }

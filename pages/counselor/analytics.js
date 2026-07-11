@@ -31,12 +31,6 @@ function loadAnalytics() {
     document.getElementById('analyticsCounseling').textContent = referrals.filter(r => r.stage === 4).length;
     document.getElementById('analyticsClosed').textContent = referrals.filter(r => r.stage === 6).length;
 
-    // By urgency
-    document.getElementById('analyticsLow').textContent = referrals.filter(r => r.urgency === 'Low').length;
-    document.getElementById('analyticsMedium').textContent = referrals.filter(r => r.urgency === 'Medium').length;
-    document.getElementById('analyticsHigh').textContent = referrals.filter(r => r.urgency === 'High').length;
-    document.getElementById('analyticsCrisis').textContent = referrals.filter(r => r.urgency === 'Crisis').length;
-
     // Performance metrics
     const resolved = referrals.filter(r => r.stage === 6).length;
     const total = referrals.length;

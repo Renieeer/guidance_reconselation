@@ -58,20 +58,6 @@
 
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Urgency Levels</h3>
-                        </div>
-                        <div class="card-content">
-                            <div class="text-sm lh-lg">
-                                <p><strong>Low:</strong> <span id="analyticsLow">0</span></p>
-                                <p><strong>Medium:</strong> <span id="analyticsMedium">0</span></p>
-                                <p><strong>High:</strong> <span id="analyticsHigh">0</span></p>
-                                <p><strong>Crisis:</strong> <span id="analyticsCrisis">0</span></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
                             <h3 class="card-title">Performance Metrics</h3>
                         </div>
                         <div class="card-content">

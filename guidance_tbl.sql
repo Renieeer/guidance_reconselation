@@ -99,20 +99,6 @@ CREATE TABLE `case_table` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `case_type`
---
-
-CREATE TABLE `case_type` (
-  `CaseTypeID` int NOT NULL,
-  `Appointment` int DEFAULT NULL,
-  `Referral` int DEFAULT NULL,
-  `Follow_up` int DEFAULT NULL,
-  `counseling` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `counseling_table`
 --
 
@@ -529,6 +515,7 @@ CREATE TABLE `users_tables` (
   `Type` varchar(45) NOT NULL,
   `email` varchar(255) UNIQUE NOT NULL,
   `school_attended` varchar(100) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`AccountID`),
@@ -561,12 +548,6 @@ ALTER TABLE `case_category`
 --
 ALTER TABLE `case_table`
   ADD PRIMARY KEY (`Case_table_Id`);
-
---
--- Indexes for table `case_type`
---
-ALTER TABLE `case_type`
-  ADD PRIMARY KEY (`CaseTypeID`);
 
 --
 -- Indexes for table `counseling_table`
@@ -681,12 +662,6 @@ ALTER TABLE `appointment`
 --
 ALTER TABLE `case_table`
   MODIFY `Case_table_Id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `case_type`
---
-ALTER TABLE `case_type`
-  MODIFY `CaseTypeID` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `counseling_table`

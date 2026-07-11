@@ -16,7 +16,11 @@ session_start();
 try {
     // Include database connection
     require_once 'conn.php';
-    
+    require_once 'grade-scope.php';
+    require_once 'account-status.php';
+    ensure_users_table_grade_column($conn);
+    ensure_users_table_active_column($conn);
+
     // Get JSON input
     $input = file_get_contents('php://input');
     if (!$input) {
@@ -48,7 +52,7 @@ try {
     }
 
     // Query user from database (users_tables)
-    $query = "SELECT AccountID, email, Password, Type, First_name, Last_name, school_attended FROM users_tables WHERE email = ?";
+    $query = "SELECT AccountID, email, Password, Type, First_name, Last_name, school_attended, Grade, is_active FROM users_tables WHERE email = ?";
     $stmt = $conn->prepare($query);
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
@@ -65,13 +69,18 @@ try {
 
     if (!$user) {
         // User not found - return generic error for security
-        echo json_encode(['success' => false, 'message' => 'Invalid email or password']);
+        echo json_encode(['success' => false, 'message' => 'Incorrect credentials provided.']);
         exit;
     }
 
     // Verify password
     if (!password_verify($plainPassword, $user['Password'])) {
-        echo json_encode(['success' => false, 'message' => 'Invalid email or password']);
+        echo json_encode(['success' => false, 'message' => 'Incorrect credentials provided.']);
+        exit;
+    }
+
+    if ((int)($user['is_active'] ?? 1) === 0) {
+        echo json_encode(['success' => false, 'message' => 'This account has been deactivated. Please contact your SDO administrator.']);
         exit;
     }
 
@@ -83,7 +92,10 @@ try {
         'firstName' => $user['First_name'],
         'lastName' => $user['Last_name'],
         'role' => $user['Type'],
-        'school' => $user['school_attended']
+        'school' => $user['school_attended'],
+        // Comma-separated grade numbers a counselor/coordinator is scoped to
+        // (e.g. "7", "11,12"). Empty/NULL means no restriction. See api/grade-scope.php.
+        'grade' => $user['Grade']
     ];
 
     // Store in session

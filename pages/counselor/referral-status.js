@@ -49,7 +49,7 @@ function fetchCounselorReferrals() {
     };
     const userSchool = getUserSchool();
     
-    const apiUrl = `/guidancemanagment/api/referral.php?role=counselor&school=${encodeURIComponent(userSchool)}`;
+    const apiUrl = `/guidancemanagment/api/referral.php?role=counselor&school=${encodeURIComponent(userSchool)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     return fetch(apiUrl)
         .then(response => response.json())

@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'conn.php';
+require_once 'grade-scope.php';
 
 function tableExists(mysqli $conn, string $tableName): bool {
     $result = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($tableName) . "'");
@@ -59,9 +60,10 @@ function formatGradeLabel($grade): string {
 }
 
 try {
-    $school = isset($_GET['school']) ? trim($_GET['school']) : '';
-    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-    $limit  = isset($_GET['limit'])  ? (int)$_GET['limit']  : 0;
+    $school     = isset($_GET['school']) ? trim($_GET['school']) : '';
+    $search     = isset($_GET['search']) ? trim($_GET['search']) : '';
+    $limit      = isset($_GET['limit'])  ? (int)$_GET['limit']  : 0;
+    $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
 
     if ($school === '' && $search === '') {
         http_response_code(400);
@@ -150,6 +152,16 @@ try {
         $whereClauses[] = "({$placeholders} OR s.AccountID IS NULL)";
         $types          .= str_repeat('s', count($likes));
         $params          = array_merge($params, $likes);
+    }
+
+    // Grade-scope filter — restricts a per-grade counselor/coordinator to
+    // only the grade(s) they're assigned. Empty scope means no restriction.
+    $gradeClause = build_grade_in_clause('s.Grade', $gradeScope);
+    if ($gradeClause !== null) {
+        [$sql, $clauseParams, $clauseTypes] = $gradeClause;
+        $whereClauses[] = $sql;
+        $types          .= $clauseTypes;
+        $params          = array_merge($params, $clauseParams);
     }
 
     // Search filter — name, nickname, email

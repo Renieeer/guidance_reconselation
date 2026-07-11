@@ -1,20 +1,46 @@
 // Report Case Script (Combined Coordinator & Counselor)
 
+// Grades this account is allowed to see — e.g. the 11/12 combined
+// coordinator-counselor only sees Grades 11 & 12, while an unassigned
+// account (no restriction) still sees all six.
+const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
+let visibleGrades = ALL_REPORT_GRADES;
+
+function computeVisibleGrades() {
+    const scoped = gradeScopeToList(getCurrentGradeScope());
+    return scoped.length ? scoped : ALL_REPORT_GRADES;
+}
+
+// Remove the header column-groups for any grade outside this account's
+// scope. Removed (not just hidden) so the remaining header/body columns
+// stay aligned once updateReportTable() only emits cells for visibleGrades.
+function applyGradeColumnVisibility() {
+    document.querySelectorAll('.report-table .grade-col').forEach(el => {
+        const grade = parseInt(el.getAttribute('data-grade'), 10);
+        if (!visibleGrades.includes(grade)) {
+            el.remove();
+        }
+    });
+}
+
 function initReportCase() {
     initPage();
     const form = document.getElementById('reportCaseForm');
-    
+
+    visibleGrades = computeVisibleGrades();
+    applyGradeColumnVisibility();
+
     // Set today's date
     document.getElementById('reportDate').valueAsDate = new Date();
-    
+
     form?.addEventListener('submit', handleReportSubmit);
-    
+
     // Load and display case report
     loadCaseReport();
-    
+
     // Export button
     document.getElementById('exportBtn')?.addEventListener('click', exportCaseReport);
-    
+
     // Filter button
     document.getElementById('filterBtn')?.addEventListener('click', filterCaseReport);
 }
@@ -52,17 +78,16 @@ function handleReportSubmit(e) {
 function loadCaseReport() {
     const cases = getData('cases') || [];
     const categories = ['Academic Issue', 'Behavioral Issue', 'Emotional/Mental Health', 'Social Issue', 'Family Issue', 'Attendance Issue'];
-    const grades = [7, 8, 9, 10, 11, 12];
-    
+
     // Initialize report data structure
     const reportData = {};
     categories.forEach(cat => {
         reportData[cat] = {};
-        grades.forEach(grade => {
+        visibleGrades.forEach(grade => {
             reportData[cat][grade] = { male: 0, female: 0 };
         });
     });
-    
+
     // Count cases
     cases.forEach(caseItem => {
         const grade = caseItem.gradeLevel;
@@ -75,15 +100,15 @@ function loadCaseReport() {
             'family': 'Family Issue',
             'attendance': 'Attendance Issue'
         };
-        
+
         const category = categoryMap[caseType] || 'Academic Issue';
         const gender = (caseItem.gender || 'Male').toLowerCase() === 'female' ? 'female' : 'male';
-        
-        if (grades.includes(grade) && reportData[category]) {
+
+        if (visibleGrades.includes(grade) && reportData[category]) {
             reportData[category][grade][gender]++;
         }
     });
-    
+
     // Update table
     updateReportTable(reportData);
 }
@@ -91,15 +116,14 @@ function loadCaseReport() {
 function updateReportTable(reportData) {
     const tbody = document.getElementById('reportTableBody');
     const categories = ['Academic Issue', 'Behavioral Issue', 'Emotional/Mental Health', 'Social Issue', 'Family Issue', 'Attendance Issue'];
-    const grades = [7, 8, 9, 10, 11, 12];
-    
+
     tbody.innerHTML = categories.map(category => {
         let totalMale = 0, totalFemale = 0, totalAll = 0;
-        
+
         let row = `<tr><td class="category-col">${category}</td>`;
-        
-        // For each grade
-        grades.forEach(grade => {
+
+        // For each visible grade
+        visibleGrades.forEach(grade => {
             const male = reportData[category]?.[grade]?.male || 0;
             const female = reportData[category]?.[grade]?.female || 0;
             const total = male + female;
@@ -122,33 +146,28 @@ function updateReportTable(reportData) {
 function exportCaseReport() {
     const cases = getData('cases') || [];
     const categories = ['Academic Issue', 'Behavioral Issue', 'Emotional/Mental Health', 'Social Issue', 'Family Issue', 'Attendance Issue'];
-    const grades = [7, 8, 9, 10, 11, 12];
-    
-    // Build CSV content
-    let csv = 'CATEGORY OF CASES,GRADE 7,,,,GRADE 8,,,,GRADE 9,,,,GRADE 10,,,,GRADE 11,,,,GRADE 12,,,,TOTALS,,,\n';
-    csv += ',MALE,FEMALE,TOTAL,MALE,FEMALE,TOTAL,MALE,FEMALE,TOTAL,MALE,FEMALE,TOTAL,MALE,FEMALE,TOTAL,MALE,FEMALE,TOTAL,MALE,FEMALE,TOTAL\n';
-    
+
+    // Build CSV content — header reflects only this account's visible grades.
+    let csv = 'CATEGORY OF CASES,' + visibleGrades.map(g => `GRADE ${g},,,`).join('') + 'TOTALS,,\n';
+    csv += ',' + visibleGrades.map(() => 'MALE,FEMALE,TOTAL,').join('') + 'MALE,FEMALE,TOTAL\n';
+
     // Add data rows
     categories.forEach(category => {
-        let row = category;
+        let row = category + ',';
         let totalMale = 0, totalFemale = 0;
-        
-        grades.forEach(grade => {
-            const categoryData = cases.filter(c => c.gradeLevel === grade && 
+
+        visibleGrades.forEach(grade => {
+            const categoryData = cases.filter(c => c.gradeLevel === grade &&
                                                    Object.values(c.caseType).toString().includes(category.split(' ')[0].toLowerCase()));
             const male = categoryData.filter(c => (c.gender || 'Male').toLowerCase() === 'male').length;
             const female = categoryData.filter(c => (c.gender || '').toLowerCase() === 'female').length;
             const total = male + female;
-            
-            row += `${male},${female},${total}`;
+
+            row += `${male},${female},${total},`;
             totalMale += male;
             totalFemale += female;
-            
-            if (grade < 12) {
-                row += ',';
-            }
         });
-        
+
         row += `${totalMale},${totalFemale},${totalMale + totalFemale}\n`;
         csv += row;
     });

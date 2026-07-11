@@ -15,7 +15,9 @@
             <!-- Page Hero -->
             <div class="page-hero">
                 <div>
-                    <div class="page-hero-eyebrow"><i class="bi bi-speedometer2"></i> Overview</div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-speedometer2"></i> Overview
+                        <span id="gradeScopeBadge" style="display:none; margin-left:8px; padding:2px 10px; border-radius:999px; background:rgba(79,70,229,0.12); color:#4338ca; font-weight:800; letter-spacing:0.3px; text-transform:none;"></span>
+                    </div>
                     <h2 class="page-hero-title">Dashboard</h2>
                     <p class="page-hero-text">Monitor guidance activities and coordination with your school's counselor and district office.</p>
                 </div>
@@ -117,6 +119,7 @@
     <script src="other-school.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', loadCombinedDashboard);
+        renderGradeScopeBadge('gradeScopeBadge');
     </script>
 </body>
 </html>

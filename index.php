@@ -24,6 +24,7 @@
             <li><a href="#features">Features</a></li>
             <li><a href="#roles">Roles</a></li>
             <li><a href="#about">About</a></li>
+            <li><a href="staff-login.php">Staff Login</a></li>
             <li><a href="login.php">Log In</a></li>
             <li><a href="register.php" class="btn-nav">Register</a></li>
         </ul>

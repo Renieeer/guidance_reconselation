@@ -1,6 +1,6 @@
 <?php
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
@@ -214,6 +214,14 @@ try {
             send_json(400, ['success' => false, 'message' => 'End date must be on or after start date']);
         }
 
+        // Reject scheduling a new event in the past - enforced server-side
+        // too, not just in the UI, since the client-side check can be
+        // bypassed. Editing an existing (possibly past) event is handled by
+        // the PUT branch and isn't subject to this check.
+        if ($startDate < date('Y-m-d')) {
+            send_json(400, ['success' => false, 'message' => 'You cannot schedule an event for a date that has already passed.']);
+        }
+
         $eventType = trim((string)($payload['type'] ?? 'None'));
         $eventTime = trim((string)($payload['time'] ?? ''));
         $description = trim((string)($payload['description'] ?? ''));
@@ -281,6 +289,106 @@ try {
                 'location' => $location,
                 'createdBy' => $createdBy,
                 'createdRole' => $role
+            ]
+        ]);
+    }
+
+    if ($method === 'PUT') {
+        $raw = file_get_contents('php://input');
+        api_log('PUT raw: ' . substr($raw, 0, 4000));
+        $payload = json_decode($raw, true);
+        if (!is_array($payload)) {
+            send_json(400, ['success' => false, 'message' => 'Invalid JSON payload']);
+        }
+
+        $eventId = trim((string)($payload['id'] ?? ''));
+        $school = trim((string)($payload['school'] ?? ''));
+        $role = trim((string)($payload['createdRole'] ?? ''));
+
+        if ($eventId === '' || $school === '') {
+            send_json(400, ['success' => false, 'message' => 'Event id and school are required']);
+        }
+
+        if (!is_allowed_editor_role($role)) {
+            send_json(403, ['success' => false, 'message' => 'Only counselor or coordinator can edit calendar events']);
+        }
+
+        $title = trim((string)($payload['title'] ?? ''));
+        if ($title === '') {
+            send_json(400, ['success' => false, 'message' => 'Title is required']);
+        }
+
+        $startDate = normalize_date_input($payload['date'] ?? null);
+        $endDate = normalize_date_input($payload['endDate'] ?? null);
+
+        if ($startDate === null) {
+            send_json(400, ['success' => false, 'message' => 'Invalid start date']);
+        }
+
+        if ($endDate !== null && $endDate < $startDate) {
+            send_json(400, ['success' => false, 'message' => 'End date must be on or after start date']);
+        }
+
+        $eventType = trim((string)($payload['type'] ?? 'None'));
+        $eventTime = trim((string)($payload['time'] ?? ''));
+        $description = trim((string)($payload['description'] ?? ''));
+        $location = trim((string)($payload['location'] ?? ''));
+        $allDay = !empty($payload['allDay']) ? 1 : 0;
+        $dbEndDate = $endDate ?: '';
+
+        $updateSql = "
+            UPDATE schedule_events SET
+                title = ?, event_type = ?, start_date = ?, end_date = NULLIF(?, ''),
+                event_time = ?, all_day = ?, description = NULLIF(?, ''), location = NULLIF(?, '')
+            WHERE event_id = ? AND school_attended = ?
+        ";
+
+        $stmt = $conn->prepare($updateSql);
+        if (!$stmt) {
+            api_log('PUT prepare failed: ' . $conn->error . ' SQL: ' . $updateSql);
+            send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
+        }
+
+        $stmt->bind_param(
+            'sssssissss',
+            $title,       // s
+            $eventType,   // s
+            $startDate,   // s
+            $dbEndDate,   // s
+            $eventTime,   // s
+            $allDay,      // i
+            $description, // s
+            $location,    // s
+            $eventId,     // s (WHERE)
+            $school       // s (WHERE)
+        );
+
+        if (!$stmt->execute()) {
+            api_log('PUT execute failed: ' . $stmt->error);
+            send_json(500, ['success' => false, 'message' => 'Failed to update event: ' . $stmt->error]);
+        }
+
+        if ($stmt->affected_rows === 0) {
+            $stmt->close();
+            send_json(404, ['success' => false, 'message' => 'Event not found']);
+        }
+
+        $stmt->close();
+        api_log('PUT updated event: ' . $eventId . ' school=' . $school);
+
+        send_json(200, [
+            'success' => true,
+            'message' => 'Event updated successfully',
+            'data' => [
+                'id' => $eventId,
+                'title' => $title,
+                'type' => $eventType,
+                'date' => $startDate,
+                'endDate' => $endDate,
+                'time' => $eventTime,
+                'allDay' => (bool)$allDay,
+                'description' => $description,
+                'location' => $location
             ]
         ]);
     }

@@ -163,3 +163,88 @@ function initPage() {
     initLogout();
 }
 
+// ========== GRADE SCOPE ==========
+// Mirrors api/grade-scope.php. A staff account's grade scope is a
+// comma-separated list of grade numbers (e.g. "7", "11,12", "7,8,9,10")
+// stored on the user object as `grade_scope`. Empty/missing means no
+// restriction (the account sees every grade at its school), so accounts
+// that were never assigned a scope keep working exactly as before.
+const GRADE_LEGACY_CODE_MAP = { '1': 7, '2': 8, '3': 9, '4': 10, '5': 11, '6': 12 };
+
+function getCurrentGradeScope() {
+    const user = getCurrentUser();
+    return (user && user.grade_scope) ? String(user.grade_scope) : '';
+}
+
+function gradeScopeToList(scope) {
+    return String(scope || '')
+        .split(',')
+        .map(part => parseInt(part.trim(), 10))
+        .filter(num => Number.isInteger(num) && num >= 7 && num <= 12);
+}
+
+function normalizeGradeNumber(rawGrade) {
+    const raw = String(rawGrade == null ? '' : rawGrade).trim();
+    if (!raw) return null;
+
+    if (/^\d+$/.test(raw)) {
+        const num = parseInt(raw, 10);
+        if (num >= 7 && num <= 12) return num;
+        if (GRADE_LEGACY_CODE_MAP[raw] !== undefined) return GRADE_LEGACY_CODE_MAP[raw];
+    }
+
+    // Free-text fields (e.g. "Grade 10 - Section Alpha") — pull the first
+    // grade-shaped number out of the string rather than requiring an exact match.
+    const textMatch = raw.match(/grade\s*(\d{1,2})/i);
+    if (textMatch) {
+        const num = parseInt(textMatch[1], 10);
+        return (num >= 7 && num <= 12) ? num : null;
+    }
+
+    return null;
+}
+
+// True if `scope` is empty (no restriction) or `rawGrade` normalizes into it.
+function gradeMatchesScope(rawGrade, scope) {
+    const scopeGrades = gradeScopeToList(scope);
+    if (scopeGrades.length === 0) return true;
+
+    const normalized = normalizeGradeNumber(rawGrade);
+    return normalized !== null && scopeGrades.includes(normalized);
+}
+
+// Human label for a grade scope, e.g. "Grade 8" / "Grades 11-12" / "Grades 7-10".
+function gradeScopeLabel(scope) {
+    const grades = gradeScopeToList(scope).sort((a, b) => a - b);
+    if (grades.length === 0) return '';
+    if (grades.length === 1) return `Grade ${grades[0]}`;
+
+    const isConsecutive = grades.every((g, i) => i === 0 || g === grades[i - 1] + 1);
+    return isConsecutive
+        ? `Grades ${grades[0]}-${grades[grades.length - 1]}`
+        : `Grades ${grades.join(', ')}`;
+}
+
+// Renders a small "Grade 8 Counselor" / "Coordinator · Grades 7-10" badge
+// into the given element (if present). No-op for unassigned accounts so
+// schools that don't use per-grade staff splitting see nothing extra.
+function renderGradeScopeBadge(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    const label = gradeScopeLabel(getCurrentGradeScope());
+    if (!label) {
+        el.style.display = 'none';
+        return;
+    }
+
+    const user = getCurrentUser() || {};
+    const role = String(user.role || user.user_type || '').toLowerCase();
+    const roleLabel = role === 'counselor-and-coordinator' ? 'Coordinator & Counselor' :
+        role === 'coordinator' ? 'Coordinator' :
+        role === 'counselor' ? 'Counselor' : '';
+
+    el.textContent = roleLabel ? `${roleLabel} · ${label}` : label;
+    el.style.display = '';
+}
+

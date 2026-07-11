@@ -6,6 +6,7 @@ let currentCalendarDate = new Date();
 let appointmentCalendarEvents = [];
 let selectedScheduleDate = '';
 let scheduleEventsCache = [];
+let editingScheduleEventId = null; // set when createScheduleModal is opened to edit an existing event
 const SCHEDULE_API_URL = '/guidancemanagment/api/schedule-events.php';
 
 // Utility Functions
@@ -44,6 +45,11 @@ window.getWeekendName = function(dateStr) {
     const dayOfWeek = isNaN(date.getTime()) ? -1 : date.getDay();
     return dayOfWeek === 0 ? 'Sunday' : 'Saturday';
 };
+
+function getTodayDateStr() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
 
 function getCurrentUser() {
     try {
@@ -190,21 +196,21 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
-function getEventColor(eventId) {
-    const colors = [
-        { bg: '#dbeafe', text: '#1d4ed8' },
-        { bg: '#dcfce7', text: '#15803d' },
-        { bg: '#fef3c7', text: '#b45309' },
-        { bg: '#fee2e2', text: '#b91c1c' },
-        { bg: '#fecccc', text: '#c2185b' },
-        { bg: '#e9d5ff', text: '#7c3aed' },
-        { bg: '#cffafe', text: '#0891b2' },
-        { bg: '#fce7f3', text: '#be185d' },
-        { bg: '#fed7aa', text: '#92400e' },
-        { bg: '#d1fae5', text: '#047857' }
-    ];
-    const hash = (eventId || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
+// Fixed category per event (instead of a per-event color hash) so the
+// calendar reads consistently at a glance: manually scheduled events,
+// appointments students booked themselves online, and counseling
+// appointments the counselor scheduled directly (e.g. from a case's
+// "Appoint Students" action). Each maps to a CSS class + icon — see the
+// SCHEDULE CALENDAR section of css/style.css for the chip styling.
+const SCHEDULE_CATEGORY_META = {
+    event: { className: 'cat-event', icon: 'bi-calendar2-week', label: 'Event' },
+    online: { className: 'cat-online', icon: 'bi-laptop', label: 'Online Appointment' },
+    counseling: { className: 'cat-counseling', icon: 'bi-person-check-fill', label: 'Counseling Appointment' }
+};
+
+function getEventCategory(event, isAppointment) {
+    if (!isAppointment) return 'event';
+    return event.counselor_notes === 'Scheduled directly by counselor' ? 'counseling' : 'online';
 }
 
 function getAppointmentTypeClass(status) {
@@ -291,11 +297,9 @@ function renderAppointmentCalendar() {
         dayEvents.forEach(event => {
             const isAppointment = event.kind === 'appointment' || !!event.student_id || !!event.student_name;
             const title = escapeHtml(isAppointment ? `Appointment: ${event.title || 'Student'}` : (event.title || 'Event'));
-            const color = getEventColor(event.id);
-            const style = isAppointment
-                ? `background: linear-gradient(135deg, ${color.bg} 0%, #ffffff 100%); color: ${color.text}; border-left: 4px solid ${color.text}; font-weight: 700;`
-                : `background: ${color.bg}; color: ${color.text};`;
-            html += `<div class="schedule-event-block" data-event-id="${event.id}" onclick="openViewEventModal('${event.id}')" title="${title}" style="${style}">${title}</div>`;
+            const category = getEventCategory(event, isAppointment);
+            const meta = SCHEDULE_CATEGORY_META[category];
+            html += `<div class="schedule-event-block ${meta.className}" data-event-id="${event.id}" onclick="openViewEventModal('${event.id}')" title="${meta.label}: ${title}"><i class="bi ${meta.icon}"></i><span class="chip-label">${title}</span></div>`;
         });
 
         html += '</div></div>';
@@ -315,6 +319,12 @@ function renderAppointmentCalendar() {
 }
 
 function openCreateScheduleModal(dateStr) {
+    // Check if the date has already passed
+    if (dateStr < getTodayDateStr()) {
+        showAlert('You cannot schedule an event for a date that has already passed.', 'error');
+        return;
+    }
+
     // Check if selected date is a weekend
     if (isWeekend(dateStr)) {
         const dayName = getWeekendName(dateStr);
@@ -322,8 +332,10 @@ function openCreateScheduleModal(dateStr) {
         return;
     }
 
+    editingScheduleEventId = null;
     selectedScheduleDate = dateStr;
     const modal = document.getElementById('createScheduleModal');
+    const modalTitle = modal?.querySelector('.modal-header h2');
     const startInput = document.getElementById('modalEventStart');
     const titleInput = document.getElementById('modalEventTitle');
     const descriptionInput = document.getElementById('modalEventDescription');
@@ -331,6 +343,7 @@ function openCreateScheduleModal(dateStr) {
     const allDayInput = document.getElementById('modalEventAllDay');
     const labelSelect = document.getElementById('modalEventLabel');
 
+    if (modalTitle) modalTitle.textContent = 'Create Schedule';
     if (startInput) startInput.value = `${dateStr} 00:00`;
     if (titleInput) titleInput.value = '';
     if (descriptionInput) descriptionInput.value = '';
@@ -342,10 +355,48 @@ function openCreateScheduleModal(dateStr) {
     setTimeout(() => titleInput?.focus(), 50);
 }
 
+// Opens the same modal pre-filled with an existing event's data so editing
+// title/description updates that one event record (covering its whole date
+// range) instead of creating a duplicate.
+function openEditScheduleModal(eventId) {
+    const event = scheduleEventsCache.find(e => e.id === eventId);
+    if (!event) {
+        showAlert('Unable to find this event to edit.', 'error');
+        return;
+    }
+
+    editingScheduleEventId = eventId;
+    selectedScheduleDate = event.date || '';
+
+    const modal = document.getElementById('createScheduleModal');
+    const modalTitle = modal?.querySelector('.modal-header h2');
+    const startInput = document.getElementById('modalEventStart');
+    const titleInput = document.getElementById('modalEventTitle');
+    const descriptionInput = document.getElementById('modalEventDescription');
+    const endInput = document.getElementById('modalEventEnd');
+    const allDayInput = document.getElementById('modalEventAllDay');
+    const labelSelect = document.getElementById('modalEventLabel');
+
+    if (modalTitle) modalTitle.textContent = 'Edit Schedule';
+    if (startInput) startInput.value = `${event.date || ''} ${event.allDay ? '00:00' : (event.time || '00:00')}`;
+    if (titleInput) titleInput.value = event.title || '';
+    if (descriptionInput) descriptionInput.value = event.description || '';
+    if (endInput) endInput.value = event.endDate ? `${event.endDate}T00:00` : '';
+    if (allDayInput) allDayInput.checked = !!event.allDay;
+    if (labelSelect) labelSelect.value = event.type || 'None';
+
+    const viewModal = document.getElementById('viewEventModal');
+    if (viewModal) viewModal.style.display = 'none';
+
+    if (modal) modal.style.display = 'flex';
+    setTimeout(() => titleInput?.focus(), 50);
+}
+
 function closeCreateScheduleModal() {
     const modal = document.getElementById('createScheduleModal');
     if (modal) modal.style.display = 'none';
     selectedScheduleDate = '';
+    editingScheduleEventId = null;
 }
 
 function submitCreateScheduleModal(e) {
@@ -363,6 +414,15 @@ function submitCreateScheduleModal(e) {
         return;
     }
 
+    const isEditing = !!editingScheduleEventId;
+
+    // Check if the date has already passed (only relevant when scheduling a
+    // new event - editing an existing past event's details should still work)
+    if (!isEditing && selectedScheduleDate < getTodayDateStr()) {
+        showAlert('You cannot schedule an event for a date that has already passed.', 'error');
+        return;
+    }
+
     // Check if selected date is a weekend
     if (isWeekend(selectedScheduleDate)) {
         const dayName = getWeekendName(selectedScheduleDate);
@@ -370,17 +430,20 @@ function submitCreateScheduleModal(e) {
         return;
     }
 
-    // Check for existing events on the same date
-    const existingEvents = scheduleEventsCache.filter(event => event.date === selectedScheduleDate);
-    if (existingEvents.length > 0) {
-        showAlert('An event is already scheduled for this date. Please choose another date.', 'error');
-        return;
+    // Check for existing events on the same date (not relevant when editing
+    // the same event that already occupies that date)
+    if (!isEditing) {
+        const existingEvents = scheduleEventsCache.filter(event => event.date === selectedScheduleDate);
+        if (existingEvents.length > 0) {
+            showAlert('An event is already scheduled for this date. Please choose another date.', 'error');
+            return;
+        }
     }
 
     const user = getCurrentUser();
     const school = getCurrentSchool();
     const event = {
-        id: generateId(),
+        id: isEditing ? editingScheduleEventId : generateId(),
         title,
         type: label,
         date: selectedScheduleDate,
@@ -396,7 +459,7 @@ function submitCreateScheduleModal(e) {
     };
 
     fetch(SCHEDULE_API_URL, {
-        method: 'POST',
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(event)
     })
@@ -406,7 +469,7 @@ function submitCreateScheduleModal(e) {
                 throw new Error(data.message || 'Unable to save schedule event');
             }
 
-            showAlert('Schedule saved successfully!', 'success');
+            showAlert(isEditing ? 'Schedule updated successfully!' : 'Schedule saved successfully!', 'success');
             closeCreateScheduleModal();
             await refreshScheduleEventsSafely();
             renderAppointmentCalendar();
@@ -489,7 +552,8 @@ function openViewEventModal(eventId) {
 let currentViewingEventId = '';
 
 function editViewingEvent() {
-    showAlert('Edit event: ' + currentViewingEventId, 'info');
+    if (!currentViewingEventId) return;
+    openEditScheduleModal(currentViewingEventId);
 }
 
 // ===== APPOINTMENT REQUESTS MANAGEMENT =====
@@ -511,7 +575,7 @@ function loadAppointmentRequests() {
         return;
     }
 
-    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(user.school_attended)}&role=counselor`;
+    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(user.school_attended)}&role=counselor&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
 
     fetch(apiUrl)
         .then(response => {
@@ -601,7 +665,7 @@ function loadAppointmentRequests() {
 
 function viewRequestDetails(requestId) {
     // Find the request in the current data
-    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}&role=counselor`;
+    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}&role=counselor&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     fetch(apiUrl)
         .then(response => response.json())

@@ -35,8 +35,10 @@ function fetchReferrals() {
     };
     const userSchool = getUserSchool();
     
-    // Get referrals for this school
-    const apiUrl = `/guidancemanagment/api/referral.php?school=${encodeURIComponent(userSchool)}`;
+    // Get referrals for this school. `role=other-school` is required for the
+    // API to apply school/grade scoping at all — without it the request
+    // fell through to an unfiltered query.
+    const apiUrl = `/guidancemanagment/api/referral.php?role=other-school&school=${encodeURIComponent(userSchool)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     return fetch(apiUrl)
         .then(response => response.json())

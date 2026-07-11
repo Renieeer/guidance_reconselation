@@ -16,7 +16,6 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
 
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const errorDiv = document.getElementById('loginError');
 
     // Validate
     if (!email || !password) {
@@ -61,9 +60,26 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
                 first_name: data.user.firstName,
                 last_name: data.user.lastName,
                 user_type: data.user.role || data.user.user_type,
-                school_attended: data.user.school || 'Unknown'
+                school_attended: data.user.school || 'Unknown',
+                // Comma-separated grade numbers this counselor/coordinator is
+                // scoped to (e.g. "7", "11,12"). Empty means no restriction.
+                grade_scope: data.user.grade || ''
             };
-            
+
+            // Teacher/Counselor/Coordinator accounts sign in on staff-login.php,
+            // students sign in on login.php — keep the two portals separate
+            // rather than letting either accept the other's accounts.
+            const STAFF_LOGIN_ROLES = ['teacher', 'coordinator', 'counselor', 'counselor-and-coordinator'];
+            const portalType = document.body.getAttribute('data-portal');
+            if (portalType === 'staff' && userData.role === 'student') {
+                showError('This is the staff login. Students should use the Student Login page.');
+                return;
+            }
+            if (portalType !== 'staff' && STAFF_LOGIN_ROLES.includes(userData.role)) {
+                showError('Teacher, Counselor, and Coordinator accounts should use the Staff Login page.');
+                return;
+            }
+
             // Store in sessionStorage for current session
             sessionStorage.setItem('user', JSON.stringify(userData));
             // Optional: Store in localStorage for persistence across tabs
@@ -133,6 +149,7 @@ function clearAllUserData() {
 // Logout function
 function logout() {
     clearAllUserData();
+    sessionStorage.removeItem('staffPinVerified');
     // Call logout.php if you want server-side logout
     try {
         fetch('http://localhost/guidancemanagment/api/logout.php', {

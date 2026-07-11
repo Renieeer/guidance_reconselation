@@ -40,7 +40,7 @@ function loadStudentRecords() {
 }
 
 function fetchStudents(school) {
-    const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(school)}`;
+    const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(school)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     return fetch(apiUrl)
         .then(response => response.json())
@@ -140,7 +140,7 @@ function viewStudent(studentId) {
     const userSchool = getUserSchool();
     
     // Fetch student details
-    fetch(`/guidancemanagment/api/get-student-details.php?student_id=${studentId}&school=${encodeURIComponent(userSchool)}`)
+    fetch(`/guidancemanagment/api/get-student-details.php?student_id=${studentId}&school=${encodeURIComponent(userSchool)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`)
         .then(response => response.json())
         .then(result => {
             if (result.success) {

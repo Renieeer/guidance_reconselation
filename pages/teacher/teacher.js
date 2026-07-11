@@ -48,8 +48,10 @@ function loadTeacherDashboard() {
     // Check for success message from form submission
     const params = new URLSearchParams(window.location.search);
     if (params.get('submitted') === 'true') {
-        document.getElementById('successMessage').textContent = 'Referral form submitted successfully!';
-        document.getElementById('successMessage').style.display = 'block';
+        const successMessage = document.getElementById('successMessage');
+        successMessage.textContent = 'Referral form submitted successfully!';
+        successMessage.classList.add('show');
+        setTimeout(() => successMessage.classList.remove('show'), 3000);
     }
 }
 

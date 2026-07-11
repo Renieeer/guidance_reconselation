@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'conn.php';
+require_once 'grade-scope.php';
 
 function tableExists(mysqli $conn, string $tableName): bool {
     $result = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($tableName) . "'");
@@ -69,6 +70,16 @@ try {
     if (!$student) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Student not found']);
+        exit;
+    }
+
+    // Defense-in-depth: a grade-scoped counselor/coordinator shouldn't be
+    // able to pull a student outside their scope by guessing/iterating IDs,
+    // even though the primary filtering happens at the list level.
+    $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
+    if (!empty($gradeScope) && !grade_matches_scope($student['Grade'] ?? null, $gradeScope)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'This student is outside your assigned grade scope']);
         exit;
     }
 
@@ -185,9 +196,10 @@ try {
     }
 
     // Fetch parent records
-    $parents = [];
+    $father = [];
+    $mother = [];
     if (tableExists($conn, 'parent_table')) {
-        $parentQuery = "SELECT * FROM parent_table WHERE ParentId IN (?, ?) ORDER BY ParentId";
+        $parentQuery = "SELECT * FROM parent_table WHERE ParentId IN (?, ?)";
         $stmt = $conn->prepare($parentQuery);
         if ($stmt) {
             $fatherParentId = 'father_' . $student_id;
@@ -195,16 +207,22 @@ try {
             $stmt->bind_param("ss", $fatherParentId, $motherParentId);
             if ($stmt->execute()) {
                 $result = $stmt->get_result();
+                // Match each row by its own ParentId instead of assuming row
+                // order, so a missing father/mother record doesn't shift the
+                // other parent's data into the wrong slot.
                 while ($row = $result->fetch_assoc()) {
-                    $parents[] = $row;
+                    if ($row['ParentId'] === $fatherParentId) {
+                        $father = $row;
+                    } elseif ($row['ParentId'] === $motherParentId) {
+                        $mother = $row;
+                    }
                 }
             }
             $stmt->close();
         }
     }
 
-    $father = $parents[0] ?? [];
-    $mother = $parents[1] ?? [];
+    $parents = array_values(array_filter([$father, $mother]));
 
     // Fetch guardian records
     $guardians = [];

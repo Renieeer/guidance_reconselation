@@ -63,11 +63,36 @@ let allCasesData = {
 let currentSchool = "school1";
 let casesData = {};
 
+// Grades this account is allowed to see (e.g. a coordinator scoped to
+// Grades 7-10, or all six if unassigned/no restriction).
+const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
+let visibleGrades = ALL_REPORT_GRADES;
+
+function computeVisibleGrades() {
+    const scoped = gradeScopeToList(getCurrentGradeScope());
+    return scoped.length ? scoped : ALL_REPORT_GRADES;
+}
+
+// Remove the header column-groups for any grade outside this account's
+// scope (e.g. a Grade 7-10 coordinator never sees Grade 11/12 columns).
+// Removed (not just hidden) so the remaining header/body columns stay
+// aligned once buildCasesTable() only emits cells for visibleGrades.
+function applyGradeColumnVisibility() {
+    document.querySelectorAll('#reportCasesTable .grade-col').forEach(el => {
+        const grade = parseInt(el.getAttribute('data-grade'), 10);
+        if (!visibleGrades.includes(grade)) {
+            el.remove();
+        }
+    });
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     checkAuth();
     initializeCoordinator();
     loadUserInfo();
+    visibleGrades = computeVisibleGrades();
+    applyGradeColumnVisibility();
     loadCasesFromStorage();
     buildCasesTable();
     setupEventListeners();
@@ -113,20 +138,23 @@ function buildCasesTable() {
 
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
-        
+
         const gradeData = casesData[category];
         let grandTotalM = 0, grandTotalF = 0;
-        
+
         let htmlContent = `<td style="font-weight: 500;">${category}</td>`;
-        
-        for (let i = 7; i <= 12; i++) {
+
+        // Grand totals only sum the grades this account is scoped to see —
+        // a Grade 7-10 coordinator's "Totals" column shouldn't include
+        // hidden Grade 11/12 counts.
+        visibleGrades.forEach(i => {
             const m = gradeData[i]?.m || 0;
             const f = gradeData[i]?.f || 0;
             const total = m + f;
             grandTotalM += m;
             grandTotalF += f;
             htmlContent += `<td class="text-center" style="font-size: 0.9em;">${m}</td><td class="text-center" style="font-size: 0.9em;">${f}</td><td class="text-center" style="font-weight: 600;">${total}</td>`;
-        }
+        });
         
         htmlContent += `<td class="text-center" style="font-size: 0.9em;">${grandTotalM}</td><td class="text-center" style="font-size: 0.9em;">${grandTotalF}</td><td class="text-center" style="font-weight: 600;">${grandTotalM + grandTotalF}</td>`;
         row.innerHTML = htmlContent;
@@ -140,20 +168,20 @@ function showCaseDetails(category) {
     const modal = document.getElementById('caseModal');
     const gradeData = casesData[category];
     let total = 0;
-    for (let i = 7; i <= 12; i++) {
+    visibleGrades.forEach(i => {
         total += parseInt(gradeData[i] || 0);
-    }
+    });
 
     document.getElementById('caseId').value = `CASE-${currentSchool.toUpperCase()}-${Date.now()}`;
     document.getElementById('caseCategory').value = category;
-    document.getElementById('caseGrade').value = 'Grades 7-12';
+    document.getElementById('caseGrade').value = `Grades ${visibleGrades[0]}-${visibleGrades[visibleGrades.length - 1]}`;
     document.getElementById('caseStatus').value = 'Active';
     document.getElementById('caseDate').value = new Date().toLocaleDateString();
-    
+
     let notes = `Total Cases: ${total}\n\n`;
-    for (let grade = 7; grade <= 12; grade++) {
+    visibleGrades.forEach(grade => {
         notes += `Grade ${grade}: ${gradeData[grade] || 0} cases\n`;
-    }
+    });
     document.getElementById('caseNotes').value = notes;
 
     modal.style.display = 'flex';
@@ -240,17 +268,16 @@ function submitNewCase() {
 }
 
 function exportReport() {
-    let csv = 'Category of Cases,Grade 7,Grade 8,Grade 9,Grade 10,Grade 11,Grade 12,Totals\n';
+    const header = ['Category of Cases', ...visibleGrades.map(g => `Grade ${g}`), 'Totals'];
+    let csv = header.join(',') + '\n';
 
     caseCategories.forEach(category => {
         if (casesData[category]) {
             const gradeData = casesData[category];
-            let total = 0;
-            for (let i = 7; i <= 12; i++) {
-                total += parseInt(gradeData[i] || 0);
-            }
+            const gradeTotals = visibleGrades.map(g => (gradeData[g]?.m || 0) + (gradeData[g]?.f || 0));
+            const total = gradeTotals.reduce((sum, n) => sum + n, 0);
 
-            csv += `"${category}",${gradeData[7] || 0},${gradeData[8] || 0},${gradeData[9] || 0},${gradeData[10] || 0},${gradeData[11] || 0},${gradeData[12] || 0},${total}\n`;
+            csv += `"${category}",${gradeTotals.join(',')},${total}\n`;
         }
     });
 

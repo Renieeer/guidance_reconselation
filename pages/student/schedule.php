@@ -63,7 +63,12 @@
                             </button>
                         </div>
                     </div>
-                    <div style="padding: 20px; background: #f8f9fa; display: flex; gap: 20px; min-height: 600px;">
+                    <div class="schedule-legend">
+                        <span class="schedule-legend-item cat-event"><i class="bi bi-calendar2-week"></i> Event</span>
+                        <span class="schedule-legend-item cat-online"><i class="bi bi-laptop"></i> Online Appointment</span>
+                        <span class="schedule-legend-item cat-counseling"><i class="bi bi-person-check-fill"></i> Counseling Appointment</span>
+                    </div>
+                    <div style="padding: 20px; background: #f8fafc; display: flex; gap: 20px; min-height: 600px;">
                         <!-- Appointment Request Form Panel (Left) -->
                         <div id="appointmentFormPanel" style="flex: 0 0 35%; display: none; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background: white; overflow-y: auto;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -78,7 +83,28 @@
                                 </div>
                                 <div class="form-group" style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1e293b;">Preferred Time</label>
-                                    <input type="time" id="appointmentTimeInput" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px;">
+                                    <select id="appointmentTimeInput" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px;">
+                                        <option value="">Select a time...</option>
+                                        <optgroup label="Morning (8:00 AM - 12:00 PM)">
+                                            <option value="08:00">8:00 AM</option>
+                                            <option value="08:30">8:30 AM</option>
+                                            <option value="09:00">9:00 AM</option>
+                                            <option value="09:30">9:30 AM</option>
+                                            <option value="10:00">10:00 AM</option>
+                                            <option value="10:30">10:30 AM</option>
+                                            <option value="11:00">11:00 AM</option>
+                                            <option value="11:30">11:30 AM</option>
+                                        </optgroup>
+                                        <optgroup label="Afternoon (1:00 PM - 4:00 PM)">
+                                            <option value="13:00">1:00 PM</option>
+                                            <option value="13:30">1:30 PM</option>
+                                            <option value="14:00">2:00 PM</option>
+                                            <option value="14:30">2:30 PM</option>
+                                            <option value="15:00">3:00 PM</option>
+                                            <option value="15:30">3:30 PM</option>
+                                        </optgroup>
+                                    </select>
+                                    <small style="color: #64748b; display: block; margin-top: 5px;">School hours only: 8:00 AM–12:00 PM and 1:00 PM–4:00 PM</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1e293b;">Reason</label>

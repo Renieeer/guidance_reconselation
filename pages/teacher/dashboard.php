@@ -23,7 +23,7 @@
 
             <!-- Page Content -->
             <div class="page-content">
-                <div class="alert alert-success" id="successMessage" style="display: none;"></div>
+                <div class="alert alert-success" id="successMessage"></div>
 
                 <!-- Dashboard Grid -->
                 <div class="dashboard-grid">

@@ -6,6 +6,12 @@ let scheduleEventsCache = [];
 const SCHEDULE_API_URL = '/guidancemanagment/api/schedule-events.php';
 let currentEditingAppointmentId = null;
 let currentAppointmentRequest = null;
+let editingScheduleEventId = null; // set when createScheduleModal is opened to edit an existing event
+
+function getTodayDateStr() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
 
 function getCurrentUser() {
     try {
@@ -269,8 +275,16 @@ function renderScheduleCalendar() {
 }
 
 function openCreateScheduleModal(dateStr) {
+    // Check if the date has already passed
+    if (dateStr < getTodayDateStr()) {
+        showAlert('You cannot schedule an event for a date that has already passed.', 'error');
+        return;
+    }
+
+    editingScheduleEventId = null;
     selectedScheduleDate = dateStr;
     const modal = document.getElementById('createScheduleModal');
+    const modalTitle = modal?.querySelector('.modal-header h2');
     const startInput = document.getElementById('modalEventStart');
     const titleInput = document.getElementById('modalEventTitle');
     const descriptionInput = document.getElementById('modalEventDescription');
@@ -278,6 +292,7 @@ function openCreateScheduleModal(dateStr) {
     const allDayInput = document.getElementById('modalEventAllDay');
     const labelSelect = document.getElementById('modalEventLabel');
 
+    if (modalTitle) modalTitle.textContent = 'Create Schedule';
     if (startInput) {
         startInput.value = `${dateStr} 00:00`;
     }
@@ -294,12 +309,50 @@ function openCreateScheduleModal(dateStr) {
     setTimeout(() => titleInput?.focus(), 50);
 }
 
+// Opens the same modal pre-filled with an existing event's data so editing
+// title/description updates that one event record (covering its whole date
+// range) instead of creating a duplicate.
+function openEditScheduleModal(eventId) {
+    const event = scheduleEventsCache.find(e => e.id === eventId);
+    if (!event) {
+        showAlert('Unable to find this event to edit.', 'error');
+        return;
+    }
+
+    editingScheduleEventId = eventId;
+    selectedScheduleDate = event.date || '';
+
+    const modal = document.getElementById('createScheduleModal');
+    const modalTitle = modal?.querySelector('.modal-header h2');
+    const startInput = document.getElementById('modalEventStart');
+    const titleInput = document.getElementById('modalEventTitle');
+    const descriptionInput = document.getElementById('modalEventDescription');
+    const endInput = document.getElementById('modalEventEnd');
+    const allDayInput = document.getElementById('modalEventAllDay');
+    const labelSelect = document.getElementById('modalEventLabel');
+
+    if (modalTitle) modalTitle.textContent = 'Edit Schedule';
+    if (startInput) startInput.value = `${event.date || ''} ${event.allDay ? '00:00' : (event.time || '00:00')}`;
+    if (titleInput) titleInput.value = event.title || '';
+    if (descriptionInput) descriptionInput.value = event.description || '';
+    if (endInput) endInput.value = event.endDate ? `${event.endDate}T00:00` : '';
+    if (allDayInput) allDayInput.checked = !!event.allDay;
+    if (labelSelect) labelSelect.value = event.type || 'None';
+
+    const viewModal = document.getElementById('viewEventModal');
+    if (viewModal) viewModal.style.display = 'none';
+
+    if (modal) modal.style.display = 'flex';
+    setTimeout(() => titleInput?.focus(), 50);
+}
+
 function closeCreateScheduleModal() {
     const modal = document.getElementById('createScheduleModal');
     if (modal) {
         modal.style.display = 'none';
     }
     selectedScheduleDate = '';
+    editingScheduleEventId = null;
 }
 
 async function submitCreateScheduleModal(e) {
@@ -317,10 +370,19 @@ async function submitCreateScheduleModal(e) {
         return;
     }
 
+    const isEditing = !!editingScheduleEventId;
+
+    // Check if the date has already passed (only relevant when scheduling a
+    // new event - editing an existing past event's details should still work)
+    if (!isEditing && selectedScheduleDate < getTodayDateStr()) {
+        showAlert('You cannot schedule an event for a date that has already passed.', 'error');
+        return;
+    }
+
     const user = getCurrentUser();
     const school = getCurrentSchool();
     const event = {
-        id: generateId(),
+        id: isEditing ? editingScheduleEventId : generateId(),
         title,
         type: label,
         date: selectedScheduleDate,
@@ -337,7 +399,7 @@ async function submitCreateScheduleModal(e) {
 
     try {
         const response = await fetch(SCHEDULE_API_URL, {
-            method: 'POST',
+            method: isEditing ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(event)
         });
@@ -346,7 +408,7 @@ async function submitCreateScheduleModal(e) {
             throw new Error(result.message || 'Unable to save schedule event');
         }
 
-        showAlert('Schedule saved successfully!', 'success');
+        showAlert(isEditing ? 'Schedule updated successfully!' : 'Schedule saved successfully!', 'success');
         closeCreateScheduleModal();
         await loadScheduleEvents();
     } catch (error) {
@@ -520,7 +582,8 @@ function openViewEventModal(eventId) {
 let currentViewingEventId = '';
 
 function editViewingEvent() {
-    showAlert('Edit event: ' + currentViewingEventId, 'info');
+    if (!currentViewingEventId) return;
+    openEditScheduleModal(currentViewingEventId);
 }
 
 function loadAppointmentRequests() {
@@ -541,7 +604,7 @@ function loadAppointmentRequests() {
         return;
     }
 
-    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(user.school_attended)}&role=coordinator`;
+    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(user.school_attended)}&role=coordinator&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
 
     fetch(apiUrl)
         .then(response => {
@@ -627,7 +690,7 @@ function loadAppointmentRequests() {
 
 function viewRequestDetails(requestId) {
     // Find the request in the current data
-    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}&role=coordinator`;
+    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}&role=coordinator&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     fetch(apiUrl)
         .then(response => response.json())

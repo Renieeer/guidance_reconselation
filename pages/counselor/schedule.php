@@ -72,7 +72,12 @@
                             <button type="button" class="btn btn-outline-primary" id="scheduleTodayBtn">Today</button>
                         </div>
                     </div>
-                    <div style="padding: 20px; background: #f8f9fa; min-height: 600px; display: flex;">
+                    <div class="schedule-legend">
+                        <span class="schedule-legend-item cat-event"><i class="bi bi-calendar2-week"></i> Event</span>
+                        <span class="schedule-legend-item cat-online"><i class="bi bi-laptop"></i> Online Appointment</span>
+                        <span class="schedule-legend-item cat-counseling"><i class="bi bi-person-check-fill"></i> Counseling Appointment</span>
+                    </div>
+                    <div style="padding: 12px; background: #f8fafc; min-height: 600px; display: flex;">
                         <div style="flex:1; overflow-y:auto;">
                             <div id="scheduleCalendar"></div>
                         </div>

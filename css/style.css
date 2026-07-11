@@ -287,6 +287,15 @@ body.auth-page {
     animation: slideOut 0.3s ease forwards;
 }
 
+#loginError {
+    position: static;
+    width: 100%;
+    max-width: none;
+    margin-bottom: 20px;
+    box-shadow: none;
+    border: 1px solid #fca5a5;
+}
+
 .success-alert {
     background: #dcfce7;
     color: #166534;
@@ -1115,6 +1124,106 @@ body.auth-page {
     font-size: 13px;
 }
 
+.recent-drafts-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    flex-wrap: wrap;
+    background: var(--light-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+}
+
+.recent-drafts-toolbar .toolbar-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding-bottom: 9px;
+}
+
+.recent-drafts-toolbar .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 170px;
+}
+
+.recent-drafts-toolbar label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.recent-drafts-toolbar select {
+    padding: 9px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-color);
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.recent-drafts-toolbar select:hover {
+    border-color: var(--secondary-color);
+}
+
+.recent-drafts-toolbar select:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
+}
+
+.btn-clear-filters {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 9px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text-light);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.btn-clear-filters:hover {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+    background: #fef2f2;
+}
+
+@media (max-width: 700px) {
+    .recent-drafts-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .recent-drafts-toolbar .toolbar-label {
+        padding-bottom: 0;
+    }
+    .recent-drafts-toolbar .filter-group {
+        min-width: 0;
+    }
+    .btn-clear-filters {
+        margin-left: 0;
+        justify-content: center;
+    }
+}
+
 .pill {
     display: inline-flex;
     align-items: center;
@@ -1180,16 +1289,40 @@ body.auth-page {
 }
 
 .student-add-grid {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+/* Student name sits in its own column since its autocomplete status message
+   (e.g. "Selected: ...") grows/shrinks in height - keeping it separate from
+   Grade/section, Role, and Add student means their alignment never shifts. */
+.student-name-field {
+    flex: 1.4 1 0;
+    max-width: 520px;
+}
+
+.student-add-row {
+    flex: 1.8 1 0;
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.4fr) minmax(180px, 0.8fr) auto;
+    grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.8fr) auto;
     gap: 14px;
     align-items: end;
-    margin-bottom: 16px;
+}
+
+/* A global .form-field rule elsewhere adds margin-bottom: 28px, which made
+   Grade/section and Role's grid cells taller than the button (no such
+   margin) - align-items:end was then aligning the button to the bottom of
+   that invisible margin instead of the visible input edge. Cancel it here. */
+.student-add-grid .student-name-field,
+.student-add-row .form-field {
+    margin-bottom: 0;
 }
 
 .add-student-btn {
     height: 46px;
-    align-self: stretch;
+    align-self: end;
 }
 
 .student-list {
@@ -1305,6 +1438,7 @@ body.auth-page {
 }
 
 .student-drawer {
+    position: relative;
     background: #f8fafc;
     padding: 16px 20px;
 }
@@ -1332,9 +1466,52 @@ body.auth-page {
     background: #e2e8f0;
 }
 
+.drawer-columns {
+    display: grid;
+    grid-template-columns: minmax(200px, 260px) 1fr;
+    gap: 16px;
+    align-items: start;
+}
+
+.drawer-case-summary {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.drawer-case-summary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.drawer-case-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.drawer-case-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.drawer-case-value {
+    font-size: 13px;
+    color: #1e293b;
+    word-break: break-word;
+}
+
 .student-drawer-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: 1fr;
     gap: 12px;
 }
 
@@ -1385,10 +1562,69 @@ body.auth-page {
     flex-shrink: 0;
 }
 
+.drawer-student-more {
+    border-style: dashed;
+    background: #f8fafc;
+}
+
+.drawer-student-more:hover {
+    background: #eef2ff;
+}
+
+.cp-avatar-more {
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 16px;
+}
+
+.student-more-popover-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    border-radius: 10px;
+    z-index: 25;
+}
+
+.student-more-popover {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(380px, 90%);
+    z-index: 30;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md), 0 20px 45px rgba(15, 23, 42, 0.2);
+    padding: 14px;
+}
+
+.student-more-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 4px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 8px;
+}
+
+.student-more-popover-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
 /* Follow-up modal — two-column layout */
 .fu-layout {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: 200px minmax(0, 1fr);
     min-height: 320px;
 }
 
@@ -1400,7 +1636,26 @@ body.auth-page {
     flex-direction: column;
     gap: 2px;
     overflow-y: auto;
+    overflow-x: hidden;
     max-height: 400px;
+}
+
+.fu-student-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.fu-student-list::-webkit-scrollbar-track {
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.fu-student-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.fu-student-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 .fu-student-row {
@@ -1481,8 +1736,22 @@ body.auth-page {
 
 .fu-form-row-two {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 14px;
+}
+
+.fu-form-row-three {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+}
+
+.fu-form-select,
+.fu-form-input,
+.fu-form-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .fu-form-field {
@@ -1536,6 +1805,152 @@ body.auth-page {
     box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
 }
 
+/* Follow-up modal — single-column layout (no student-picker sidebar; the
+   shared category/date above applies to the whole case). Each student is
+   a collapsed rectangle that expands in place to reveal their own note,
+   accordion-style, so a long roster doesn't turn into a wall of open
+   textareas. Beyond FOLLOW_UP_PREVIEW_LIMIT students, the rest collapse
+   into a "+N more" tile that opens a popover — same pattern as the "View
+   students" drawer elsewhere on this page. */
+.fu-layout-single {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 20px 24px;
+}
+
+.fu-note-tiles {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.fu-note-tile {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.fu-note-tile-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+}
+
+.fu-note-tile-header:hover {
+    background: #f8fafc;
+}
+
+.fu-note-tile-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.fu-note-tile-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fu-note-tile-sub {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fu-note-tile-caret {
+    color: #94a3b8;
+    font-size: 13px;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+.fu-note-tile.expanded .fu-note-tile-caret {
+    transform: rotate(180deg);
+}
+
+.fu-note-tile-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+}
+
+.fu-note-tile.expanded .fu-note-tile-body {
+    max-height: 160px;
+}
+
+.fu-note-tile-body .fu-note-textarea {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 0 12px 12px;
+    background: #f8fafc;
+}
+
+.fu-note-tile.fu-note-more {
+    border-style: dashed;
+    background: #f8fafc;
+}
+
+.fu-note-more-wrapper {
+    position: relative;
+}
+
+.fu-note-more-popover-backdrop,
+.fu-note-more-popover {
+    display: none;
+}
+
+.fu-note-more-wrapper.open .fu-note-more-popover-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1100;
+}
+
+.fu-note-more-wrapper.open .fu-note-more-popover {
+    display: block;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(440px, 92vw);
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 1101;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+    padding: 16px;
+}
+
+.fu-note-more-popover-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+
 /* Legacy — keep for counselingInfoModal if referenced elsewhere */
 .fu-recorded-tag {
     margin-left: auto;
@@ -1545,6 +1960,366 @@ body.auth-page {
     background: #dcfce7;
     padding: 2px 7px;
     border-radius: 99px;
+}
+
+/* Appoint modal — reuses the fu-* follow-up modal styles, but the student
+   rows are multi-select checkboxes instead of a single radio choice. */
+.fu-student-row--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.fu-check-icon {
+    margin-left: auto;
+    color: #e2e8f0;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.fu-student-row--active .fu-check-icon {
+    color: #22c55e;
+}
+
+.fu-select-all-row {
+    padding: 8px 14px 10px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.fu-select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+}
+
+.appoint-count-hint {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    margin: 0;
+}
+
+/* Appoint modal v2 — student picker (left) + calendar (right) on top,
+   date/time/reason fields on a full-width row underneath. The calendar
+   mirrors the main schedule calendar's visual language (today ring, busy
+   dot) but uses date-picker-style circular day badges so it reads as a
+   deliberate, polished control rather than a plain grid of boxes. */
+/* .modal-body defaults to flex:1, which always stretches to fill the
+   modal's full available height — leaving dead white space below this
+   modal's (comparatively short) calendar content. Let it hug its content
+   instead; overflow-y:auto on .modal-body still kicks in to scroll if a
+   case has enough students to need it. */
+#appointModal .modal-body {
+    flex: 0 1 auto;
+}
+
+.appoint-layout {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+}
+
+/* Student list and calendar are independent cards, stretched to match
+   each other's height (align-items: stretch, the flex default) so
+   their bottoms stay flush with no visible gap between the two cards. */
+.appoint-top-row {
+    display: flex;
+    gap: 14px;
+    padding: 14px;
+    background: #f1f5f9;
+}
+
+.appoint-calendar-col {
+    flex: 1;
+    min-width: 0;
+    padding: 22px 26px 24px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.appoint-student-list {
+    flex: 0 0 220px;
+    border-right: none;
+    max-height: 520px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.appoint-calendar-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.appoint-calendar-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.appoint-calendar-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.appoint-calendar-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 19px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.appoint-calendar-title i {
+    color: #6366f1;
+    font-size: 17px;
+}
+
+.appoint-calendar-nav {
+    display: flex;
+    gap: 8px;
+}
+
+.appoint-calendar-nav-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.appoint-calendar-nav-btn:hover {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #4338ca;
+}
+
+.appoint-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 56px);
+    justify-content: center;
+    gap: 8px;
+}
+
+.appoint-mini-weekday {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding-bottom: 12px;
+}
+
+.appoint-mini-day {
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.appoint-mini-day.is-outside {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.appoint-mini-day.is-disabled {
+    cursor: not-allowed;
+}
+
+.appoint-day-num {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: 600;
+    color: #334155;
+    border: 2px solid transparent;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+.appoint-mini-day:hover:not(.is-disabled):not(.is-selected) .appoint-day-num {
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.appoint-mini-day.is-today .appoint-day-num {
+    border-color: #6366f1;
+    color: #4338ca;
+    font-weight: 700;
+}
+
+.appoint-mini-day.is-disabled .appoint-day-num {
+    color: #cbd5e1;
+}
+
+.appoint-mini-day.is-selected .appoint-day-num {
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+    border-color: transparent;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.35);
+}
+
+.appoint-mini-day.is-busy::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f97316;
+}
+
+.appoint-calendar-legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    font-size: 12.5px;
+    color: #64748b;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #eef1f6;
+}
+
+.appoint-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.appoint-legend-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #f97316;
+    display: inline-block;
+}
+
+.appoint-legend-ring {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid #6366f1;
+    display: inline-block;
+}
+
+.appoint-legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+    display: inline-block;
+}
+
+.appoint-day-events {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.55;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.appoint-day-events i {
+    margin-top: 1px;
+    font-size: 14px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+.appoint-day-events.is-vacant {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.appoint-day-events.is-vacant i {
+    color: #16a34a;
+}
+
+.appoint-day-events.is-busy-day {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.appoint-day-events.is-busy-day i {
+    color: #ea580c;
+}
+
+.appoint-bottom-row {
+    padding: 18px 26px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+}
+
+.appoint-details-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.appoint-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.appoint-selected-date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.appoint-selected-date-chip i {
+    font-size: 13px;
+}
+
+.appoint-selected-date-chip .placeholder {
+    color: #94a3b8;
+    font-weight: 500;
 }
 
 @media (max-width: 1100px) {
@@ -1557,7 +2332,16 @@ body.auth-page {
 @media (max-width: 900px) {
     .form-grid.two-up,
     .form-grid.three-up,
+    .student-add-row {
+        grid-template-columns: 1fr;
+    }
     .student-add-grid {
+        flex-direction: column;
+    }
+    .student-name-field {
+        max-width: none;
+    }
+    .drawer-columns {
         grid-template-columns: 1fr;
     }
 }
@@ -1565,8 +2349,8 @@ body.auth-page {
 /* ========== SCHEDULE CALENDAR ========== */
 .schedule-calendar-card {
     background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    border-radius: 18px;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
     border: 1px solid #e5e7eb;
     overflow: hidden;
     margin-bottom: 28px;
@@ -1578,7 +2362,7 @@ body.auth-page {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 18px 20px;
+    padding: 20px 24px;
     background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
     border-bottom: 1px solid #e5e7eb;
     flex-wrap: wrap;
@@ -1605,16 +2389,16 @@ body.auth-page {
 }
 
 .schedule-calendar-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
     background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
     color: #ffffff;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
-    box-shadow: 0 10px 18px rgba(59, 130, 246, 0.24);
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.28);
 }
 
 .schedule-calendar-actions {
@@ -1631,18 +2415,20 @@ body.auth-page {
 }
 
 .schedule-calendar-month {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     color: #1e293b;
-    padding: 0 4px;
+    padding: 0 6px;
     white-space: nowrap;
+    min-width: 150px;
+    text-align: center;
 }
 
 .schedule-calendar-nav {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     border-radius: 10px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #dde2ea;
     background: #ffffff;
     color: #475569;
     display: inline-flex;
@@ -1655,16 +2441,63 @@ body.auth-page {
 .schedule-calendar-nav:hover {
     border-color: #3b82f6;
     color: #3b82f6;
+    background: #eff6ff;
     box-shadow: 0 8px 16px rgba(59, 130, 246, 0.12);
 }
 
 .schedule-calendar-view {
     min-width: 130px;
     padding: 10px 14px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #dde2ea;
+    border-radius: 10px;
     background: #ffffff;
     color: #334155;
     font-weight: 600;
+}
+
+/* Type legend shown above the grid */
+.schedule-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: #f8fafc;
+    border-bottom: 1px solid #eef1f6;
+}
+
+.schedule-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    border: 1px solid transparent;
+}
+
+.schedule-legend-item i {
+    font-size: 12px;
+}
+
+.schedule-legend-item.cat-event {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+
+.schedule-legend-item.cat-online {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+}
+
+.schedule-legend-item.cat-counseling {
+    background: #dcfce7;
+    color: #15803d;
+    border-color: #a7f3d0;
 }
 
 .schedule-calendar-grid {
@@ -1672,60 +2505,56 @@ body.auth-page {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     border-top: 1px solid #e5e7eb;
     width: 100%;
-}
-
-/* Improve visibility: add spacing and subtle shadows to day cells */
-.schedule-calendar-grid {
-    gap: 10px;
-    padding: 10px 6px 6px 6px;
-}
-
-.schedule-calendar-weekday {
-    padding: 14px 8px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: #64748b;
-    background: #fbfdff;
-    border-right: 1px solid #e5e7eb;
-}
-
-.schedule-calendar-weekday:last-child {
-    border-right: none;
-}
-
-.schedule-calendar-day {
-    min-height: 140px;
-    padding: 10px;
-    border-right: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
-    background: #ffffff;
-    position: relative;
-}
-
-.schedule-calendar-day {
-    box-shadow: 0 1px 3px rgba(2,6,23,0.06);
-    border-radius: 6px;
-}
-
-.schedule-calendar-day:nth-child(7n) {
-    border-right: none;
-}
-
-.schedule-calendar-day.is-outside {
+    gap: 8px;
+    padding: 12px;
     background: #f8fafc;
 }
 
+.schedule-calendar-weekday {
+    padding: 8px 8px 12px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.schedule-calendar-day {
+    min-height: 128px;
+    padding: 8px;
+    background: #ffffff;
+    border: 1px solid #eef1f6;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    position: relative;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.schedule-calendar-day:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+}
+
+.schedule-calendar-day.is-outside {
+    background: #fbfcfe;
+}
+
+.schedule-calendar-day.is-outside .schedule-day-number {
+    color: #cbd5e1;
+}
+
 .schedule-calendar-day.is-today {
-    background: linear-gradient(180deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.05));
-    box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3);
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.07), rgba(6, 182, 212, 0.04));
+    border-color: #93c5fd;
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
 }
 
 .schedule-day-number {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     margin-bottom: 6px;
     border-radius: 50%;
     background: #f1f5f9;
@@ -1734,35 +2563,75 @@ body.auth-page {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .schedule-calendar-day.is-today .schedule-day-number {
     background: #3b82f6;
     color: #ffffff;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
 }
 
-/* Multi-day event blocks */
+.schedule-event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+/* Event / appointment chips */
 .schedule-event-block {
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
     line-height: 1.3;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
     white-space: nowrap;
     overflow: hidden;
+    border: 1px solid transparent;
+}
+
+.schedule-event-block i {
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.schedule-event-block .chip-label {
+    overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 3px;
-    display: block;
+    white-space: nowrap;
 }
 
 .schedule-event-block:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
 }
 
+.schedule-event-block.cat-event {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+
+.schedule-event-block.cat-online {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+}
+
+.schedule-event-block.cat-counseling {
+    background: #dcfce7;
+    color: #065f46;
+    border-color: #a7f3d0;
+    border-left: 3px solid #10b981;
+    font-weight: 800;
+}
+
+/* Legacy status-based classes (kept for any other callers) */
 .schedule-event-block.event-default {
     background: #dbeafe;
     color: #1d4ed8;
@@ -2814,6 +3683,36 @@ body.auth-page {
     color: var(--primary-color);
 }
 
+.assignment-role-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 14px 18px;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+.assignment-role-hint i {
+    font-size: 18px;
+    color: #94a3b8;
+}
+
+/* Tighter, modal-scoped spacing so the form doesn't leave a large empty gap
+   above the Save button when no role is selected yet (assignment-person-card
+   sections start hidden). */
+.sdo-assignment-modal .modal-body {
+    padding: 4px 32px 28px;
+}
+
+.sdo-assignment-modal .form-actions {
+    margin-top: 20px;
+    padding-top: 20px;
+}
+
 /* ========== TABLES ========== */
 .table-container {
     background: white;
@@ -2881,6 +3780,11 @@ tr:hover {
 .badge-rejected {
     background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
     color: #991b1b;
+}
+
+.badge-empty {
+    background: var(--light-gray);
+    color: var(--text-light);
 }
 
 /* ========== REFERRAL STATUS STAGES ========== */
@@ -3140,6 +4044,7 @@ tr:hover {
 .modal-body {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding-left: 8px;
     color: var(--text-color);
     line-height: 1.7;
@@ -3259,17 +4164,30 @@ tr:hover {
 
 /* ========== ALERTS ========== */
 .alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    min-width: 280px;
+    max-width: 380px;
     padding: 16px 18px;
     border-radius: 8px;
-    margin-bottom: 20px;
     display: none;
     border-left: 4px solid;
     font-size: 14px;
     line-height: 1.6;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+    opacity: 0;
 }
 
 .alert.show {
     display: block;
+    opacity: 1;
+    animation: slideIn 0.3s ease;
+}
+
+.alert:not(.show) {
+    animation: slideOut 0.3s ease forwards;
 }
 
 .alert-success {
@@ -5615,18 +6533,18 @@ footer {
 }
 /* ========== GUIDANCE CASE REPORT CARD MODAL ========== */
 .modal-content-wide {
-    max-width: 780px;
-    width: 92vw;
+    max-width: 1080px;
+    width: 94vw;
 }
 
 /* Report card header */
 .rc-report-header {
     background: var(--secondary-color);
     color: #fff;
-    padding: 10px 16px;
+    padding: 16px 26px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 36px;
     border-radius: 0;
     flex-wrap: nowrap;
 }
@@ -5634,8 +6552,8 @@ footer {
 .rc-report-title-block {
     display: flex;
     align-items: center;
-    gap: 7px;
-    font-size: 11px;
+    gap: 9px;
+    font-size: 15px;
     font-weight: 800;
     letter-spacing: 0.8px;
     text-transform: uppercase;
@@ -5644,23 +6562,23 @@ footer {
 }
 
 .rc-report-title-block i {
-    font-size: 16px;
+    font-size: 19px;
 }
 
 .rc-report-header-meta {
     display: flex;
-    gap: 18px;
-    flex: 1;
+    gap: 32px;
+    flex: 0 1 auto;
 }
 
 .rc-header-meta-item {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
 }
 
 .rc-header-meta-label {
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 700;
     opacity: 0.7;
     text-transform: uppercase;
@@ -5668,7 +6586,7 @@ footer {
 }
 
 .rc-header-meta-val {
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 700;
 }
 
@@ -5692,21 +6610,21 @@ footer {
 .rc-modal-body {
     padding: 0 !important;
     overflow-y: auto;
-    max-height: calc(85vh - 120px);
+    max-height: calc(90vh - 110px);
 }
 
 /* Two-column layout */
 .rc-layout {
     display: flex;
-    min-height: 380px;
+    min-height: 460px;
 }
 
 /* LEFT sidebar — narrower, scrollable */
 .rc-sidebar {
-    flex: 0 0 155px;
+    flex: 0 0 260px;
     background: #f8fafc;
     border-right: 1px solid #e2e8f0;
-    padding: 14px 12px 12px;
+    padding: 18px 20px 14px;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -5739,12 +6657,12 @@ footer {
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid #e2e8f0;
-    padding: 5px 0;
-    gap: 1px;
+    padding: 7px 0;
+    gap: 2px;
 }
 
 .rc-label {
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 700;
     color: #94a3b8;
     text-transform: uppercase;
@@ -5752,34 +6670,41 @@ footer {
 }
 
 .rc-value {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
     color: #1e293b;
     word-break: break-word;
 }
 
 .rc-inline-input {
-    width: 100%;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    font-size: 12px;
-    font-weight: 400;
+    width: calc(100% + 8px);
+    border: 1px solid transparent;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
     color: #1e293b;
-    padding: 3px 6px;
+    padding: 2px 4px;
     border-radius: 4px;
     outline: none;
     font-family: inherit;
     box-sizing: border-box;
-    margin-top: 2px;
+    margin: 2px 0 0 -4px;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.rc-inline-input:hover {
+    background: #eef2f7;
 }
 
 .rc-inline-input:focus {
+    background: #fff;
     border-color: var(--secondary-color);
     box-shadow: 0 0 0 2px rgba(13,110,253,0.08);
 }
 
 .rc-inline-input::placeholder {
-    color: #cbd5e1;
+    color: #94a3b8;
+    font-weight: 500;
 }
 
 .rc-sidebar-footer {
@@ -5791,7 +6716,7 @@ footer {
 /* RIGHT main panel */
 .rc-main {
     flex: 1;
-    padding: 16px 18px 12px;
+    padding: 22px 28px 16px;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -5861,9 +6786,17 @@ footer {
     margin-bottom: 14px;
 }
 
+.rc-form-row-three {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .rc-layout { flex-direction: column; }
+    .rc-form-row-three { grid-template-columns: 1fr; }
     .rc-sidebar {
         flex: none;
         flex-direction: row;
@@ -5874,5 +6807,333 @@ footer {
     }
     .rc-report-header-meta { flex-wrap: wrap; gap: 10px; }
     .modal-content-wide { width: 100vw; max-width: 100vw; }
+}
+
+/* ========== SCHOOL MANAGEMENT — FOLDER CARDS ========== */
+.school-folders-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 28px 0 24px;
+}
+
+.school-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 260px;
+}
+
+.school-search-wrap i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+.school-search-wrap input {
+    width: 100%;
+    padding: 11px 16px 11px 40px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: #fff;
+    font-size: 14px;
+    color: var(--text-color);
+    transition: var(--transition-fast);
+}
+
+.school-search-wrap input:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
+}
+
+.school-filter-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.school-filter-btn {
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: #fff;
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.school-filter-btn:hover {
+    border-color: var(--secondary-color);
+}
+
+.school-filter-btn.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-color: transparent;
+    color: #fff;
+}
+
+.school-folder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 28px;
+    align-items: start;
+}
+
+.school-folder-grid.is-empty {
+    display: block;
+}
+
+/* Matches the system's standard .card/.stat-card formula (white,
+   12px radius, var(--shadow), #e8ecf1 border) with a top accent bar
+   like .card::before — colored by whether the school has staff, so the
+   grid keeps that status legible even collapsed. */
+.school-folder {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    border: 1px solid #e8ecf1;
+    transition: box-shadow 0.2s ease;
+}
+
+.school-folder:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* Expanding a folder floats its body over whatever sits below it in the
+   grid (see .school-folder-body) instead of pushing the whole grid down,
+   so the card needs to paint above its later, unexpanded siblings. */
+.school-folder.is-expanded {
+    z-index: 20;
+}
+
+.school-folder::before {
+    content: '';
+    display: block;
+    height: 4px;
+    border-radius: 12px 12px 0 0;
+    background: var(--border-color);
+}
+
+.school-folder.has-staff::before {
+    background: var(--brand-gradient);
+}
+
+.school-folder-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 20px 22px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.school-folder-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--primary-color);
+    line-height: 1.35;
+}
+
+.school-folder-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.12), rgba(20, 184, 166, 0.12));
+    color: var(--secondary-color);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.school-folder-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-left: 44px;
+}
+
+.school-folder-dots {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.school-folder-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border-color);
+}
+
+.school-folder-dot.is-filled {
+    background: var(--accent-emerald);
+}
+
+.school-folder-count {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+.school-folder-chevron {
+    color: var(--text-light);
+    font-size: 15px;
+    margin-top: 8px;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.school-folder.is-expanded .school-folder-chevron {
+    transform: rotate(90deg);
+}
+
+.school-folder-body {
+    display: none;
+}
+
+/* Absolutely positioned so an expanded card overlaps the cards below it
+   in the grid rather than growing its row height and pushing everything
+   down — the grid keeps its original, compact layout either way. */
+.school-folder.is-expanded .school-folder-body {
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: -1px;
+    right: -1px;
+    background: white;
+    border: 1px solid #e8ecf1;
+    border-top: 1px solid #eef1f5;
+    border-radius: 0 0 12px 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 4px 22px 20px;
+}
+
+.school-role-slot {
+    padding: 16px 0;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.school-role-slot:last-of-type {
+    border-bottom: none;
+}
+
+.school-role-slot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.school-role-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-light);
+}
+
+.school-role-name {
+    margin-top: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--primary-color);
+}
+
+.school-role-email {
+    font-size: 12.5px;
+    color: var(--text-light);
+    margin-top: 1px;
+}
+
+.school-role-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.school-role-controls select {
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.school-role-empty-text {
+    font-size: 13px;
+    color: var(--text-light);
+    font-style: italic;
+    margin-top: 6px;
+}
+
+.school-role-assign-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 9px;
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+    background: transparent;
+    color: var(--text-light);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.school-role-assign-btn:hover {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+    background: rgba(13, 110, 253, 0.05);
+}
+
+.school-folder-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 0 2px;
+    margin-top: 4px;
+    border-top: 1px solid #eef1f5;
+    font-size: 11.5px;
+}
+
+.school-folder-id {
+    color: var(--text-light);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.school-folder-revoke {
+    color: var(--danger-color);
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 11.5px;
+    padding: 0;
+}
+
+.school-folder-revoke:hover {
+    color: #b91c1c;
+}
+
+@media (max-width: 600px) {
+    .school-folders-toolbar { flex-direction: column; align-items: stretch; }
+    .school-filter-group { justify-content: flex-start; }
     .rc-form-row-two { grid-template-columns: 1fr; }
 }

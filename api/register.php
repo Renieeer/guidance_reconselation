@@ -71,10 +71,14 @@ try {
         exit;
     }
 
-    // Validate role
-    $validRoles = ['student', 'teacher', 'coordinator', 'counselor', 'counselor-and-coordinator'];
+    // Self-registration is limited to student and teacher. Counselor,
+    // coordinator, and the combined counselor-and-coordinator role are
+    // SDO-only (created via School Management) so their grade-scope
+    // assignment stays under district control — this is enforced here
+    // regardless of which frontend form the request came from.
+    $validRoles = ['student', 'teacher'];
     if (!in_array($role, $validRoles)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid role selected']);
+        echo json_encode(['success' => false, 'message' => 'Counselor and Coordinator accounts are created by the SDO. Please contact your school district office.']);
         exit;
     }
 

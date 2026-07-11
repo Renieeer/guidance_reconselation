@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'conn.php';
+require_once 'grade-scope.php';
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
@@ -177,6 +178,7 @@ try {
     if ($method === 'GET') {
         $role = trim((string)($_GET['role'] ?? ''));
         $school = trim((string)($_GET['school'] ?? ''));
+        $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
         $userId = trim((string)($_GET['user_id'] ?? ''));
         $studentId = trim((string)($_GET['student_id'] ?? ''));
         $referralId = trim((string)($_GET['id'] ?? $_GET['referral_id'] ?? ''));
@@ -235,6 +237,14 @@ try {
             $types .= 'ss';
             $params[] = $school;
             $params[] = $school;
+
+            $gradeClause = build_grade_in_clause('Grade', $gradeScope);
+            if ($gradeClause !== null) {
+                [$clauseSql, $clauseParams, $clauseTypes] = $gradeClause;
+                $sql .= " AND {$clauseSql}";
+                $types .= $clauseTypes;
+                $params = array_merge($params, $clauseParams);
+            }
         } elseif ($studentId !== '') {
             $sql .= ' AND (student_id = ? OR StudentID = ?)';
             $types .= 'ss';

@@ -52,8 +52,9 @@ function fetchCoordinatorReferrals() {
     };
     const userSchool = getUserSchool();
     
-    // Coordinators can see all referrals from their school
-    const apiUrl = `/guidancemanagment/api/referral.php?role=coordinator&school=${encodeURIComponent(userSchool)}`;
+    // Coordinators can see referrals from their school, scoped to their
+    // assigned grade(s) if one is set (e.g. Grades 7-10).
+    const apiUrl = `/guidancemanagment/api/referral.php?role=coordinator&school=${encodeURIComponent(userSchool)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     return fetch(apiUrl)
         .then(response => response.json())

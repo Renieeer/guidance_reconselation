@@ -157,8 +157,9 @@ async function loadStudentAppointmentRequests() {
             return;
         }
 
-        // Filter requests for this student
-        studentAppointmentRequests = (result.data || []).filter(req => req.student_id === user.id);
+        // Filter requests for this student (compare as strings in case one
+        // side is a number and the other a string, e.g. from JSON parsing)
+        studentAppointmentRequests = (result.data || []).filter(req => String(req.student_id) === String(user.id));
     } catch (error) {
         console.error('Error loading student appointment requests:', error);
         studentAppointmentRequests = [];
@@ -178,22 +179,16 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
-function getEventColor(eventId) {
-    const colors = [
-        { bg: '#dbeafe', text: '#1d4ed8' },
-        { bg: '#dcfce7', text: '#15803d' },
-        { bg: '#fef3c7', text: '#b45309' },
-        { bg: '#fee2e2', text: '#b91c1c' },
-        { bg: '#fecccc', text: '#c2185b' },
-        { bg: '#e9d5ff', text: '#7c3aed' },
-        { bg: '#cffafe', text: '#0891b2' },
-        { bg: '#fce7f3', text: '#be185d' },
-        { bg: '#fed7aa', text: '#92400e' },
-        { bg: '#d1fae5', text: '#047857' }
-    ];
-    const hash = (eventId || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-}
+// Fixed category per event (instead of a per-event color hash) so the
+// calendar reads consistently at a glance: manually scheduled events,
+// appointments the student booked themselves online, and counseling
+// appointments the counselor scheduled directly. Each maps to a CSS class +
+// icon — see the SCHEDULE CALENDAR section of css/style.css for the chip styling.
+const SCHEDULE_CATEGORY_META = {
+    event: { className: 'cat-event', icon: 'bi-calendar2-week', label: 'Event' },
+    online: { className: 'cat-online', icon: 'bi-laptop', label: 'Online Appointment' },
+    counseling: { className: 'cat-counseling', icon: 'bi-person-check-fill', label: 'Counseling Appointment' }
+};
 
 function getScheduleEvents() {
     return scheduleEventsCache;
@@ -276,27 +271,22 @@ function renderAppointmentCalendar() {
         }
 
         const dateStr = `${cellYear}-${String(cellMonth + 1).padStart(2, '0')}-${String(cellDay).padStart(2, '0')}`;
-        const hasAppt = appointments.some(a => String(a.date || '').includes(dateStr));
-        const hasSchedule = scheduleEvents.some(event => isDateInEvent(event, dateStr));
-        const hasRequest = appointmentRequests.some(req => req.preferred_date === dateStr);
         const isToday = cellDay === today.getDate() && cellMonth === today.getMonth() && cellYear === today.getFullYear();
-        
-        const bgColor = isToday ? '#dbeafe' : ((hasAppt || hasSchedule || hasRequest) ? '#dcfce7' : '#ffffff');
-        const borderColor = (hasAppt || hasSchedule || hasRequest) ? '#10b981' : (isToday ? '#3b82f6' : '#e2e8f0');
+
         const dayEvents = [
-            ...appointments.filter(a => String(a.date || '').startsWith(dateStr)).map(a => ({ id: a.id || '', title: a.reason || 'Appointment', type: a.status || 'Pending', description: a.notes || '', start: a.date || '', end: a.endDate || '', isRequest: false })),
-            ...scheduleEvents.filter(event => isDateInEvent(event, dateStr)).map(event => ({ id: event.id || '', title: event.title || 'Schedule', type: event.type || 'Event', description: event.description || '', start: event.date || '', end: event.endDate || '', isRequest: false })),
-            ...appointmentRequests.filter(req => req.preferred_date === dateStr).map(req => ({ id: req.id || '', title: req.student_name || 'Request', type: 'pending', description: req.reason || '', start: req.preferred_date || '', end: req.preferred_date || '', isRequest: true, requestData: req }))
+            ...appointments.filter(a => String(a.date || '').startsWith(dateStr)).map(a => ({ id: a.id || '', title: a.reason || 'Appointment', type: a.status || 'Pending', description: a.notes || '', start: a.date || '', end: a.endDate || '', isRequest: false, category: 'counseling' })),
+            ...scheduleEvents.filter(event => isDateInEvent(event, dateStr)).map(event => ({ id: event.id || '', title: event.title || 'Schedule', type: event.type || 'Event', description: event.description || '', start: event.date || '', end: event.endDate || '', isRequest: false, category: 'event' })),
+            ...appointmentRequests.filter(req => req.preferred_date === dateStr).map(req => ({ id: req.id || '', title: req.student_name || 'Request', type: 'pending', description: req.reason || '', start: req.preferred_date || '', end: req.preferred_date || '', isRequest: true, requestData: req, category: req.counselor_notes === 'Scheduled directly by counselor' ? 'counseling' : 'online' }))
         ];
-        
-        html += `<div class="schedule-calendar-day ${isOutside ? 'is-outside' : ''} ${isToday ? 'is-today' : ''}" style="border: 2px solid ${borderColor}; background: ${bgColor}; cursor: pointer; border-radius: 6px;">
-            <div class="schedule-day-number" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-weight:700; font-size:13px; margin-bottom:6px; ${isToday ? 'background:#3b82f6; color:white;' : 'background:#f1f5f9; color:#64748b;'}">${cellDay}</div>
+
+        html += `<div class="schedule-calendar-day ${isOutside ? 'is-outside' : ''} ${isToday ? 'is-today' : ''}" data-date="${dateStr}">
+            <div class="schedule-day-number">${cellDay}</div>
             <div class="schedule-event-list">`;
 
         dayEvents.forEach(item => {
             const itemTitle = escapeHtml(item.title);
-            const color = getEventColor(item.id);
-            html += `<div class="schedule-event-block" onclick="openViewEventModal('${item.id}')" data-event-id="${item.id}" style="padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; line-height: 1.3; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; display: block; background: ${color.bg}; color: ${color.text};">${itemTitle}</div>`;
+            const meta = SCHEDULE_CATEGORY_META[item.category] || SCHEDULE_CATEGORY_META.event;
+            html += `<div class="schedule-event-block ${meta.className}" onclick="openViewEventModal('${item.id}')" data-event-id="${item.id}" title="${meta.label}: ${itemTitle}"><i class="bi ${meta.icon}"></i><span class="chip-label">${itemTitle}</span></div>`;
         });
 
         html += '</div></div>';
@@ -313,14 +303,49 @@ function attachCalendarClickHandlers() {
     if (container.dataset.listenerAttached) return;
     container.addEventListener('click', function(e) {
         const chip = e.target.closest('.schedule-event-block');
-        if (!chip) return;
-        const id = chip.getAttribute('data-event-id');
-        if (id) {
-            openViewEventModal(id);
+        if (chip) {
+            const id = chip.getAttribute('data-event-id');
+            if (id) openViewEventModal(id);
             return;
+        }
+
+        const dayCell = e.target.closest('.schedule-calendar-day');
+        if (dayCell && dayCell.dataset.date) {
+            openRequestFormForDate(dayCell.dataset.date);
         }
     });
     container.dataset.listenerAttached = '1';
+}
+
+// Clicking a day directly on the calendar starts a new appointment request for that date,
+// so students don't have to open the panel and re-pick the date manually.
+function openRequestFormForDate(dateStr) {
+    const formPanel = document.getElementById('appointmentFormPanel');
+    const dateInput = document.getElementById('appointmentDateInput');
+    const timeInput = document.getElementById('appointmentTimeInput');
+    if (!formPanel || !dateInput) return;
+
+    if (dateStr < getTodayDateStr()) {
+        showAlert('You cannot request an appointment for a date that has already passed.', 'error');
+        return;
+    }
+
+    if (isWeekend(dateStr)) {
+        const dayName = getWeekendName(dateStr);
+        showAlert(`${dayName} is not available. Please select a weekday.`, 'error');
+        return;
+    }
+
+    const booked = getBookedDates();
+    if (booked.has(dateStr)) {
+        showAlert('This date already has scheduled events. Please choose another date.', 'error');
+        return;
+    }
+
+    dateInput.min = getTodayDateStr();
+    dateInput.value = dateStr;
+    formPanel.style.display = 'block';
+    timeInput?.focus();
 }
 
 function getStatusColor(status) {
@@ -480,6 +505,11 @@ document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
 });
 
 // ===== APPOINTMENT REQUEST FORM =====
+function getTodayDateStr() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 function setupAppointmentForm() {
     const requestBtn = document.getElementById('requestAppointmentBtn');
     const formPanel = document.getElementById('appointmentFormPanel');
@@ -487,22 +517,43 @@ function setupAppointmentForm() {
     const form = document.getElementById('appointmentRequestForm');
     const dateInput = document.getElementById('appointmentDateInput');
 
+    // Prevent picking a date that has already passed
+    if (dateInput) dateInput.min = getTodayDateStr();
+
     requestBtn?.addEventListener('click', () => {
         formPanel.style.display = 'block';
+        dateInput.min = getTodayDateStr();
         dateInput.focus();
     });
+
+    // Open the calendar picker as soon as the date field is clicked or focused,
+    // so the student doesn't have to hit the tiny calendar icon precisely.
+    const openDatePicker = () => {
+        if (typeof dateInput.showPicker === 'function') {
+            try { dateInput.showPicker(); } catch (err) { /* ignore unsupported/blocked cases */ }
+        }
+    };
+    dateInput?.addEventListener('click', openDatePicker);
+    dateInput?.addEventListener('focus', openDatePicker);
 
     closeBtn?.addEventListener('click', () => {
         formPanel.style.display = 'none';
     });
 
     form?.addEventListener('submit', submitAppointmentRequest);
-    
+
     // Add validation for date input using both input and change events for reliability
     const validateDateInput = function() {
         const selectedDate = this.value;
         if (!selectedDate) return;
-        
+
+        // Check if the date is today or later
+        if (selectedDate < getTodayDateStr()) {
+            showAlert('You cannot request an appointment for a date that has already passed.', 'error');
+            this.value = '';
+            return;
+        }
+
         // Check if weekend
         if (isWeekend(selectedDate)) {
             const dayName = getWeekendName(selectedDate);
@@ -510,7 +561,7 @@ function setupAppointmentForm() {
             this.value = '';
             return;
         }
-        
+
         // Check if booked
         const booked = getBookedDates();
         if (booked.has(selectedDate)) {
@@ -519,7 +570,7 @@ function setupAppointmentForm() {
             return;
         }
     };
-    
+
     dateInput?.addEventListener('input', validateDateInput);
     dateInput?.addEventListener('change', validateDateInput);
     dateInput?.addEventListener('blur', validateDateInput);
@@ -540,6 +591,12 @@ async function submitAppointmentRequest(e) {
 
     if (!dateInput || !timeInput || !reasonSelect) {
         showAlert('Please fill all required fields', 'error');
+        return;
+    }
+
+    // Check if the date is today or later
+    if (dateInput < getTodayDateStr()) {
+        showAlert('You cannot request an appointment for a date that has already passed.', 'error');
         return;
     }
 
@@ -585,8 +642,10 @@ async function submitAppointmentRequest(e) {
         document.getElementById('appointmentRequestForm').reset();
         document.getElementById('appointmentFormPanel').style.display = 'none';
         
-        // Refresh calendar to show any updates
+        // Refresh calendar and the student's own request list so the new
+        // request shows up on the calendar immediately, not just the toast.
         await refreshScheduleEventsSafely();
+        await loadStudentAppointmentRequests();
         renderAppointmentCalendar();
     } catch (error) {
         console.error('Error submitting appointment request:', error);

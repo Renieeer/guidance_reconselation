@@ -7400,3 +7400,972 @@
 [2026-06-28 07:07:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
 [2026-06-28 07:48:34] GET request: {"school":"Oriental Mindoro National High School","month":"2026-06"}
 [2026-06-28 07:48:34] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
+[2026-07-03 22:59:43] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-03 22:59:43] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:10:39] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:10:39] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:12:53] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:12:53] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:14:55] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:14:55] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:15:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:15:02] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:15:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:15:32] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:16:01] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:16:01] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:16:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:16:03] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:16:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:16:32] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:16:44] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:16:44] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:17:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:17:02] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:17:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:17:32] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:18:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:18:03] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:18:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:18:07] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:18:33] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:18:33] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:19:00] POST raw: {"id":"id_1783142340880_hqsyio6te","title":"hello guys","type":"None","date":"2026-07-06","time":"All Day","endDate":"2026-07-08T13:18","allDay":true,"description":"qweqweqwe","location":"Guidance Office","createdAt":"2026-07-04T05:19:00.880Z","school":"Oriental Mindoro National High School","createdBy":"19","createdRole":"coordinator"}
+[2026-07-04 05:19:00] POST decoded: {"id":"id_1783142340880_hqsyio6te","title":"hello guys","type":"None","date":"2026-07-06","time":"All Day","endDate":"2026-07-08T13:18","allDay":true,"description":"qweqweqwe","location":"Guidance Office","createdAt":"2026-07-04T05:19:00.880Z","school":"Oriental Mindoro National High School","createdBy":"19","createdRole":"coordinator"}
+[2026-07-04 05:19:00] POST saved event: id_1783142340880_hqsyio6te school=Oriental Mindoro National High School createdBy=19 role=coordinator
+[2026-07-04 05:19:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:19:01] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:19:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:19:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:19:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:19:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:19:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:19:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:20:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:20:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:20:33] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:20:33] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:21:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:21:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:21:52] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:21:52] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:22:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:22:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:22:33] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:22:33] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:23:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:23:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:24:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:24:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:25:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:25:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:25:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:25:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:31:25] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:31:25] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:31:46] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:31:46] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:31:52] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:31:52] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:32:22] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:32:22] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:32:52] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:32:52] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:33:22] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:33:22] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:33:52] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:33:52] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:34:22] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:34:22] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:34:52] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:34:52] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:35:22] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:35:22] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:36:23] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:36:23] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:37:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:37:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:38:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:38:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:39:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:39:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:40:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:40:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:41:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:41:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:42:13] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:42:13] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:42:16] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:42:16] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:42:28] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:42:28] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:42:46] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:42:46] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:43:16] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:43:16] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:43:46] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:43:46] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:44:16] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:44:16] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:44:46] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:44:46] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:45:16] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:45:16] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:45:46] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:45:46] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:46:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:46:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:47:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:47:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:48:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:48:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:49:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:49:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:50:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:50:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:51:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:51:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:52:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:52:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:53:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:53:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:54:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:54:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:54:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:54:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:55:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:55:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:55:10] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:55:10] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:55:40] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:55:40] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:55:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-06"}
+[2026-07-04 05:55:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
+[2026-07-04 05:56:04] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:56:04] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:56:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-06"}
+[2026-07-04 05:56:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
+[2026-07-04 05:56:06] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:56:06] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:56:10] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:56:10] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:56:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:56:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:56:23] GET request: {"school":"Oriental Mindoro National High School","month":"2026-06"}
+[2026-07-04 05:56:23] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
+[2026-07-04 05:56:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-06"}
+[2026-07-04 05:56:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
+[2026-07-04 05:57:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:57:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:57:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:57:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:57:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:57:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:58:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:58:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:58:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:58:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:59:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:59:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 05:59:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 05:59:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:00:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:00:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:01:22] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:01:22] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:01:52] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:01:52] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:02:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:02:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:02:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:02:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:03:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:03:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:04:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:04:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:05:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:05:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:05:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:05:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:06:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:06:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:06:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:06:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:07:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:07:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:07:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:07:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:08:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:08:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:08:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:08:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:09:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:09:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:09:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:09:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:10:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:10:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:10:55] POST raw: {
+  "id": "evt_testedit123",
+  "title": "hello guys",
+  "type": "None",
+  "date": "2026-07-06",
+  "endDate": "2026-07-08",
+  "time": "All Day",
+  "allDay": true,
+  "description": "qweqweqwe",
+  "location": "Guidance Office",
+  "school": "Test School",
+  "createdBy": "1",
+  "createdRole": "counselor"
+}
+[2026-07-04 06:10:55] POST decoded: {"id":"evt_testedit123","title":"hello guys","type":"None","date":"2026-07-06","endDate":"2026-07-08","time":"All Day","allDay":true,"description":"qweqweqwe","location":"Guidance Office","school":"Test School","createdBy":"1","createdRole":"counselor"}
+[2026-07-04 06:10:55] POST saved event: evt_testedit123 school=Test School createdBy=1 role=counselor
+[2026-07-04 06:10:55] PUT raw: {
+  "id": "evt_testedit123",
+  "title": "Updated Title",
+  "type": "Meeting",
+  "date": "2026-07-06",
+  "endDate": "2026-07-08",
+  "time": "All Day",
+  "allDay": true,
+  "description": "updated description text",
+  "location": "Guidance Office",
+  "school": "Test School",
+  "createdRole": "counselor"
+}
+[2026-07-04 06:10:55] PUT updated event: evt_testedit123 school=Test School
+[2026-07-04 06:10:56] GET request: {"school":"Test School","month":"2026-07"}
+[2026-07-04 06:10:56] GET returned 1 rows for school=Test School month=2026-07
+[2026-07-04 06:11:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:11:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:11:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:11:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:12:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:12:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:12:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:12:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:13:15] PUT raw: {
+  "id": "evt_testedit123",
+  "title": "Updated Title 2",
+  "type": "Meeting",
+  "date": "2026-07-06",
+  "endDate": "2026-07-08",
+  "time": "All Day",
+  "allDay": true,
+  "description": "second update",
+  "location": "Guidance Office",
+  "school": "Test School",
+  "createdRole": "counselor"
+}
+[2026-07-04 06:13:15] PUT updated event: evt_testedit123 school=Test School
+[2026-07-04 06:13:15] GET request: {"school":"Test School","month":"2026-07"}
+[2026-07-04 06:13:15] GET returned 1 rows for school=Test School month=2026-07
+[2026-07-04 06:13:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:13:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:13:56] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:13:56] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:14:01] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:14:01] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:14:18] PUT raw: {"id":"id_1783142340880_hqsyio6te","title":"ARISE double rice","type":"None","date":"2026-07-06","time":"All Day","endDate":"2026-07-07T00:00","allDay":true,"description":"qweqweqwe","location":"Guidance Office","createdAt":"2026-07-04T06:14:18.235Z","school":"Oriental Mindoro National High School","createdBy":"20","createdRole":"counselor"}
+[2026-07-04 06:14:18] PUT updated event: id_1783142340880_hqsyio6te school=Oriental Mindoro National High School
+[2026-07-04 06:14:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:14:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:14:31] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:14:31] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:15:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:15:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:15:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:15:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:16:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:16:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:16:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:16:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:17:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:17:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:17:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:17:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:18:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:18:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:18:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:18:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:19:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:19:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:20:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:20:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:21:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:21:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:21:48] POST raw: {
+  "title": "Test Past Event", "date": "2026-07-01", "time": "09:00",
+  "school": "Test School", "createdBy": "1", "createdRole": "counselor"
+}
+[2026-07-04 06:21:48] POST decoded: {"title":"Test Past Event","date":"2026-07-01","time":"09:00","school":"Test School","createdBy":"1","createdRole":"counselor"}
+[2026-07-04 06:21:48] POST raw: {
+  "id": "evt_futuretest01", "title": "Test Future Event", "date": "2026-07-20", "time": "09:00",
+  "school": "Test School", "createdBy": "1", "createdRole": "counselor"
+}
+[2026-07-04 06:21:48] POST decoded: {"id":"evt_futuretest01","title":"Test Future Event","date":"2026-07-20","time":"09:00","school":"Test School","createdBy":"1","createdRole":"counselor"}
+[2026-07-04 06:21:48] POST saved event: evt_futuretest01 school=Test School createdBy=1 role=counselor
+[2026-07-04 06:22:16] PUT raw: {
+  "id": "evt_pasttest01", "title": "Old Session Corrected", "date": "2026-06-01", "time": "09:00",
+  "description": "corrected typo", "school": "Test School", "createdRole": "counselor"
+}
+[2026-07-04 06:22:16] PUT updated event: evt_pasttest01 school=Test School
+[2026-07-04 06:22:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:22:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:23:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:23:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:24:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:24:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:24:41] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:24:41] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:24:43] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:24:43] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:25:13] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:25:13] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:25:43] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:25:43] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:26:13] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:26:13] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:26:43] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:26:43] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:27:13] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:27:13] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:27:43] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:27:43] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:28:13] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:28:13] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:29:14] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:29:14] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:30:15] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:30:15] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:31:16] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:31:16] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:32:17] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:32:17] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:33:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:33:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:34:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:34:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:34:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:34:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:34:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:34:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:35:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:35:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:35:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:35:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:36:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:36:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:36:46] GET request: {"school":"Oriental Mindoro National High School","month":"2026-06"}
+[2026-07-04 06:36:46] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
+[2026-07-04 06:36:47] GET request: {"school":"Oriental Mindoro National High School","month":"2026-05"}
+[2026-07-04 06:36:47] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-05
+[2026-07-04 06:36:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-06"}
+[2026-07-04 06:36:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
+[2026-07-04 06:36:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:36:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:36:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:36:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:36:54] GET request: {"school":"Oriental Mindoro National High School","month":"2026-06"}
+[2026-07-04 06:36:54] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-06
+[2026-07-04 06:36:56] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:36:56] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:36:56] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-04 06:36:56] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-04 06:36:56] GET request: {"school":"Oriental Mindoro National High School","month":"2026-09"}
+[2026-07-04 06:36:56] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-09
+[2026-07-04 06:36:58] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-04 06:36:58] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-04 06:36:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:36:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:37:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:37:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:37:44] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:37:44] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:37:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:37:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:38:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:38:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:39:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:39:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:40:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:40:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:41:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:41:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:42:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:42:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:43:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:43:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:44:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:44:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:45:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:45:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:46:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:46:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:47:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:47:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:48:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:48:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:49:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:49:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 06:50:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 06:50:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:10:34] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:10:34] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:12:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:12:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:12:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:12:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:13:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:13:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:13:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:13:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:14:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:14:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:14:31] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:14:31] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:14:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:14:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:15:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:15:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:15:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:15:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:16:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:16:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:17:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:17:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:18:04] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:18:04] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:19:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:19:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:20:06] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:20:06] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:21:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:21:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:22:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:22:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:23:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:23:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:23:32] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:23:32] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:24:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:24:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:25:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:25:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:26:04] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:26:04] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:27:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:27:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:28:06] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:28:06] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:28:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:28:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:29:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:29:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:30:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:30:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:31:09] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:31:09] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:32:10] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:32:10] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:33:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:33:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:33:41] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:33:41] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:33:46] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-04 07:33:46] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-04 07:33:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:33:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:34:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:34:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:35:13] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:35:13] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:36:14] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:36:14] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:36:39] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:36:39] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:37:15] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:37:15] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:38:16] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:38:16] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:38:42] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-04 07:38:42] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-04 07:38:44] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:38:44] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:38:57] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:38:57] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:39:14] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:39:14] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:39:17] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:39:17] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:39:31] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:39:31] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:39:35] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:39:35] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:39:38] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:39:38] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:40:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:40:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:40:35] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:40:35] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:41:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:41:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:41:35] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:41:35] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:42:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:42:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:42:35] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:42:35] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:43:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:43:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:44:06] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:44:06] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:45:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:45:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:46:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:46:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:47:09] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:47:09] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:48:10] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:48:10] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:49:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:49:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:50:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:50:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:51:13] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:51:13] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:52:14] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:52:14] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 07:53:15] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 07:53:15] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:21:22] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:21:22] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:22:22] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:22:22] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:23:23] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:23:23] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:24:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:24:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:25:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:25:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:26:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:26:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:27:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:27:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:28:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:28:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:29:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:29:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:01] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:01] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:34] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-04 08:30:34] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-04 08:30:38] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:38] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:39] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:39] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:40] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:40] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:40] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:40] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:44] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:44] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:47] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-04 08:30:47] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-04 08:30:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:30:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:30:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-04 08:31:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-04 08:31:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 05:08:57] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 05:08:57] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:21:42] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:21:42] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:22:40] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-06 16:22:40] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-06 16:22:41] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:22:41] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:22:43] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-06 16:22:43] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-06 16:22:44] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:22:44] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:24:29] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:24:29] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:29:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:29:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:30:47] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:30:47] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:31:10] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:31:10] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:34:10] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:34:10] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:34:27] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:34:27] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:34:58] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:34:58] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:39:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:39:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:39:58] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-06 16:39:58] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-06 16:39:58] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:39:58] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:39:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-06 16:39:59] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-06 16:40:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:40:00] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:40:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-06 16:40:00] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-06 16:40:01] GET request: {"school":"Oriental Mindoro National High School","month":"2026-09"}
+[2026-07-06 16:40:01] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-09
+[2026-07-06 16:40:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-08"}
+[2026-07-06 16:40:02] GET returned 0 rows for school=Oriental Mindoro National High School month=2026-08
+[2026-07-06 16:40:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:40:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:40:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:40:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:47:58] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:47:58] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:52:37] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:52:37] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:56:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:56:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:56:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:56:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 16:57:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 16:57:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 17:01:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 17:01:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 17:01:16] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 17:01:16] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 17:01:24] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 17:01:24] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 17:01:37] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 17:01:37] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-06 17:01:53] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-06 17:01:53] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:24:15] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:24:15] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:24:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:24:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:25:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:25:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:25:29] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:25:29] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:25:43] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:25:43] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:25:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:25:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:26:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:26:00] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:36:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:36:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-07 15:37:23] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-07 15:37:23] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:06:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:06:00] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:10:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:10:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:10:41] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:10:41] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:11:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:11:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:11:42] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:11:42] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:12:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:12:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:12:42] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:12:42] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:13:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:13:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:13:42] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:13:42] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:14:15] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:14:15] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:14:15] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:14:15] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:14:30] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:14:30] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:15:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:15:00] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:15:30] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:15:30] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:16:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:16:00] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:16:30] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:16:30] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:17:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:17:00] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:17:30] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:17:30] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:18:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:18:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:18:26] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:18:26] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:18:57] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:18:57] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:19:27] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:19:27] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:19:57] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:19:57] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:29:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:29:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:30:54] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:30:54] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:31:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:31:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 03:34:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 03:34:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:15:19] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:15:19] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:23:33] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:23:33] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:30:23] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:30:23] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:30:38] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:30:38] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:33:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:33:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:34:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:34:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:34:29] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:34:29] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:34:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:34:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:35:29] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:35:29] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:35:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:35:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:36:29] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:36:29] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:36:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:36:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:37:29] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:37:29] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:38:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:38:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:39:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:39:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:40:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:40:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:41:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:41:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:42:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:42:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:42:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:42:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:42:14] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:42:14] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:42:44] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:42:44] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:43:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:43:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:43:14] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:43:14] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:43:44] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:43:44] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:44:14] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:44:14] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:45:27] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:45:27] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:45:39] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:45:39] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:45:42] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:45:42] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:46:12] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:46:12] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:46:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:46:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:46:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:46:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:46:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:46:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:47:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:47:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:47:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:47:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:48:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:48:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:48:47] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:48:47] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:48:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:48:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:49:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:49:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:49:41] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:49:41] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:49:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:49:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:50:22] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:50:22] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:50:42] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:50:42] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:50:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:50:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:50:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:50:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:51:15] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:51:15] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:51:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:51:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:51:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:51:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:52:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:52:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:53:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:53:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:54:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:54:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:54:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:54:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:55:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:55:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:56:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:56:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:57:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:57:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:58:52] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:58:52] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 14:59:53] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 14:59:53] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:00:54] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:00:54] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:01:55] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:01:55] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:02:56] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:02:56] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:03:57] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:03:57] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:04:58] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:04:58] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:05:59] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:05:59] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:07:00] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:07:00] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:08:01] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:08:01] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:09:02] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:09:02] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:10:03] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:10:03] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:11:04] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:11:04] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:12:05] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:12:05] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:13:06] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:13:06] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:14:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:14:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:15:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:15:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:16:09] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:16:09] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:17:10] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:17:10] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:18:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:18:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:19:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:19:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:20:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:20:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:21:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:21:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:22:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:22:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:23:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:23:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:24:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:24:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:25:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:25:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:25:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:25:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:25:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:25:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:26:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:26:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:26:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:26:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:27:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:27:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:27:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:27:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:28:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:28:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:28:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:28:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:29:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:29:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:29:51] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:29:51] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:30:21] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:30:21] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:31:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:31:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:32:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:32:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:33:11] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:33:11] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:33:47] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:33:47] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-08 15:33:55] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-08 15:33:55] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-09 16:38:49] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-09 16:38:49] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-09 16:39:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-09 16:39:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-09 16:39:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-09 16:39:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-09 16:40:20] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-09 16:40:20] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-09 16:40:50] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-09 16:40:50] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-09 16:41:19] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-09 16:41:19] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-09 16:56:37] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-09 16:56:37] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 05:54:46] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 05:54:46] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 05:55:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 05:55:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 05:56:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 05:56:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 05:57:08] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 05:57:08] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 05:58:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 05:58:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 05:59:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 05:59:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:00:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:00:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:01:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:01:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:02:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:02:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:02:28] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:02:28] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:02:48] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:02:48] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:03:18] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:03:18] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:04:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:04:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:05:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:05:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:06:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:06:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:07:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:07:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:08:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:08:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:09:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:09:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:10:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:10:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:11:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:11:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07
+[2026-07-10 06:12:07] GET request: {"school":"Oriental Mindoro National High School","month":"2026-07"}
+[2026-07-10 06:12:07] GET returned 1 rows for school=Oriental Mindoro National High School month=2026-07

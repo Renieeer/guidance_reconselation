@@ -44,33 +44,33 @@
                             <thead>
                                 <tr>
                                     <th rowspan="2" class="category-col">CATEGORY OF CASES</th>
-                                    <th colspan="3">GRADE 7</th>
-                                    <th colspan="3">GRADE 8</th>
-                                    <th colspan="3">GRADE 9</th>
-                                    <th colspan="3">GRADE 10</th>
-                                    <th colspan="3">GRADE 11</th>
-                                    <th colspan="3">GRADE 12</th>
+                                    <th colspan="3" class="grade-col" data-grade="7">GRADE 7</th>
+                                    <th colspan="3" class="grade-col" data-grade="8">GRADE 8</th>
+                                    <th colspan="3" class="grade-col" data-grade="9">GRADE 9</th>
+                                    <th colspan="3" class="grade-col" data-grade="10">GRADE 10</th>
+                                    <th colspan="3" class="grade-col" data-grade="11">GRADE 11</th>
+                                    <th colspan="3" class="grade-col" data-grade="12">GRADE 12</th>
                                     <th colspan="3">TOTALS</th>
                                 </tr>
                                 <tr>
-                                    <th>MALE</th>
-                                    <th>FEMALE</th>
-                                    <th>TOTAL</th>
-                                    <th>MALE</th>
-                                    <th>FEMALE</th>
-                                    <th>TOTAL</th>
-                                    <th>MALE</th>
-                                    <th>FEMALE</th>
-                                    <th>TOTAL</th>
-                                    <th>MALE</th>
-                                    <th>FEMALE</th>
-                                    <th>TOTAL</th>
-                                    <th>MALE</th>
-                                    <th>FEMALE</th>
-                                    <th>TOTAL</th>
-                                    <th>MALE</th>
-                                    <th>FEMALE</th>
-                                    <th>TOTAL</th>
+                                    <th class="grade-col" data-grade="7">MALE</th>
+                                    <th class="grade-col" data-grade="7">FEMALE</th>
+                                    <th class="grade-col" data-grade="7">TOTAL</th>
+                                    <th class="grade-col" data-grade="8">MALE</th>
+                                    <th class="grade-col" data-grade="8">FEMALE</th>
+                                    <th class="grade-col" data-grade="8">TOTAL</th>
+                                    <th class="grade-col" data-grade="9">MALE</th>
+                                    <th class="grade-col" data-grade="9">FEMALE</th>
+                                    <th class="grade-col" data-grade="9">TOTAL</th>
+                                    <th class="grade-col" data-grade="10">MALE</th>
+                                    <th class="grade-col" data-grade="10">FEMALE</th>
+                                    <th class="grade-col" data-grade="10">TOTAL</th>
+                                    <th class="grade-col" data-grade="11">MALE</th>
+                                    <th class="grade-col" data-grade="11">FEMALE</th>
+                                    <th class="grade-col" data-grade="11">TOTAL</th>
+                                    <th class="grade-col" data-grade="12">MALE</th>
+                                    <th class="grade-col" data-grade="12">FEMALE</th>
+                                    <th class="grade-col" data-grade="12">TOTAL</th>
                                     <th>MALE</th>
                                     <th>FEMALE</th>
                                     <th>TOTAL</th>
