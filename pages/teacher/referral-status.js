@@ -60,9 +60,6 @@ function loadReferralDetail(referral) {
     document.getElementById('refReason').textContent = referral.referral_reason;
     document.getElementById('refDescription').textContent = referral.description || 'No description provided';
 
-    // Load stages and handle conditional visibility
-    loadStages(referral);
-    
     // Show/hide referral information section based on stage
     // Hide while counseling is in progress (stages 1-5)
     const referralInfoSection = document.getElementById('referralInfoSection');
@@ -82,43 +79,6 @@ function loadReferralDetail(referral) {
     } else {
         acknowledgementSection.style.display = 'none';
     }
-}
-
-function loadStages(referral) {
-    const stagesContainer = document.getElementById('stagesContainer');
-    
-    let html = '<div class="referral-stages">';
-    const stages = getAllStages();
-    
-    stages.forEach(stage => {
-        const isActive = stage.id === referral.stage;
-        const isCompleted = stage.id < referral.stage;
-        const stageClass = isActive ? 'active' : (isCompleted ? 'completed' : '');
-        
-        html += `<div class="stage ${stageClass}">
-                    <div class="stage-circle">${stage.id}</div>
-                    <div class="stage-name">${stage.name}</div>
-                </div>`;
-    });
-    
-    html += '</div>';
-
-    // Add stage descriptions
-    const stageDescriptions = {
-        1: 'Your referral has been submitted successfully.',
-        2: 'The coordinator is reviewing your referral.',
-        3: 'Follow-up information is required from the counselor.',
-        4: 'The student is in active counseling.',
-        5: 'Ongoing support and monitoring.',
-        6: 'The case has been closed.'
-    };
-
-    html += `<div style="background: #f9f9f9; padding: 15px; border-radius: 4px; margin-top: 20px;">
-                <p><strong>Current Stage:</strong> ${getAllStages()[referral.stage - 1].name}</p>
-                <p>${stageDescriptions[referral.stage]}</p>
-            </div>`;
-
-    stagesContainer.innerHTML = html;
 }
 
 function loadReferralsList() {

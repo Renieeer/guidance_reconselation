@@ -1,64 +1,78 @@
 // Case Categories matching SDO system
 const caseCategories = [
-    "A. CAT / Learning Disability",
-    "B. Family Conflict / Broken Home",
-    "C. Bullying / Peer Pressure / Gang Related",
-    "D. LGBTQIA+ Concerns",
-    "E. Family-Related (Substance, Abuse, Neglect)",
-    "F. Poverty / Financial Hardship",
-    "G. Social / Emotional Issues",
-    "H. Physical / Mental Health",
-    "I. Special Needs / PWD",
-    "J. Underachievement / School Performance",
-    "K. Truancy / Absenteeism",
-    "L. Discipline / Conduct Issues"
+    'A. CAT',
+    'Misbehavior / Truancy / Absenteeism / Unwarranted Group',
+    'Smoking',
+    'Drinking',
+    'Drug Abuse',
+    'Carrying Deadly Weapons',
+    'Total A: CAT',
+    'B. FAMILY: ADULTS',
+    'Non-displaced',
+    'Deprivation',
+    'Family Conflict',
+    'Suicide Completed',
+    'Situational / MENTAL HEALTH',
+    'Total B: MENTAL HEALTH',
+    'C. BULLYING',
+    'Physical',
+    'Verbal',
+    'Emotional',
+    'Cyber',
+    'Total C: BULLYING',
+    'D. LGBTQIA ISSUES',
+    'Underachievement',
+    'Abuse/Neglect (Academic Performance)',
+    'Conflict In Adapting to Environment',
+    'Early Marriage',
+    'Learning Disability',
+    'Transfers or Changing Schools',
+    'Total D: FAMILY RELATED',
+    'E. Family-Related',
+    'Family Problems',
+    'Use of Illegal Drugs',
+    'All Sorts of Alcohol/Drinks/Cannabis',
+    'Overall TOTAL'
 ];
 
-// All cases data organized by category and grade with gender breakdown
-let allCasesData = {
-    "school1": {
-        "A. CAT / Learning Disability": { "7": {m: 2, f: 1}, "8": {m: 3, f: 2}, "9": {m: 1, f: 1}, "10": {m: 2, f: 2}, "11": {m: 2, f: 1}, "12": {m: 1, f: 0} },
-        "B. Family Conflict / Broken Home": { "7": {m: 1, f: 1}, "8": {m: 2, f: 1}, "9": {m: 2, f: 2}, "10": {m: 1, f: 1}, "11": {m: 3, f: 2}, "12": {m: 1, f: 1} },
-        "C. Bullying / Peer Pressure / Gang Related": { "7": {m: 2, f: 2}, "8": {m: 4, f: 2}, "9": {m: 2, f: 1}, "10": {m: 3, f: 2}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "D. LGBTQIA+ Concerns": { "7": {m: 1, f: 0}, "8": {m: 1, f: 1}, "9": {m: 1, f: 0}, "10": {m: 2, f: 1}, "11": {m: 2, f: 2}, "12": {m: 1, f: 1} },
-        "E. Family-Related (Substance, Abuse, Neglect)": { "7": {m: 1, f: 1}, "8": {m: 1, f: 1}, "9": {m: 2, f: 1}, "10": {m: 1, f: 1}, "11": {m: 2, f: 1}, "12": {m: 1, f: 0} },
-        "F. Poverty / Financial Hardship": { "7": {m: 0, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 1}, "10": {m: 1, f: 0}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "G. Social / Emotional Issues": { "7": {m: 3, f: 2}, "8": {m: 2, f: 2}, "9": {m: 3, f: 3}, "10": {m: 3, f: 2}, "11": {m: 2, f: 2}, "12": {m: 1, f: 2} },
-        "H. Physical / Mental Health": { "7": {m: 1, f: 0}, "8": {m: 1, f: 1}, "9": {m: 2, f: 1}, "10": {m: 2, f: 2}, "11": {m: 2, f: 1}, "12": {m: 1, f: 1} },
-        "I. Special Needs / PWD": { "7": {m: 1, f: 1}, "8": {m: 1, f: 0}, "9": {m: 1, f: 1}, "10": {m: 1, f: 0}, "11": {m: 1, f: 0}, "12": {m: 0, f: 0} },
-        "J. Underachievement / School Performance": { "7": {m: 2, f: 1}, "8": {m: 2, f: 2}, "9": {m: 3, f: 2}, "10": {m: 4, f: 2}, "11": {m: 2, f: 2}, "12": {m: 2, f: 1} },
-        "K. Truancy / Absenteeism": { "7": {m: 1, f: 1}, "8": {m: 2, f: 1}, "9": {m: 2, f: 2}, "10": {m: 3, f: 2}, "11": {m: 2, f: 1}, "12": {m: 1, f: 1} },
-        "L. Discipline / Conduct Issues": { "7": {m: 2, f: 2}, "8": {m: 3, f: 2}, "9": {m: 4, f: 2}, "10": {m: 2, f: 2}, "11": {m: 2, f: 1}, "12": {m: 1, f: 1} }
-    },
-    "school2": {
-        "A. CAT / Learning Disability": { "7": {m: 1, f: 1}, "8": {m: 2, f: 2}, "9": {m: 2, f: 1}, "10": {m: 1, f: 1}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "B. Family Conflict / Broken Home": { "7": {m: 1, f: 0}, "8": {m: 1, f: 1}, "9": {m: 2, f: 1}, "10": {m: 1, f: 0}, "11": {m: 2, f: 2}, "12": {m: 1, f: 0} },
-        "C. Bullying / Peer Pressure / Gang Related": { "7": {m: 2, f: 1}, "8": {m: 2, f: 2}, "9": {m: 1, f: 1}, "10": {m: 2, f: 2}, "11": {m: 1, f: 0}, "12": {m: 1, f: 0} },
-        "D. LGBTQIA+ Concerns": { "7": {m: 0, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 0}, "10": {m: 1, f: 1}, "11": {m: 2, f: 1}, "12": {m: 1, f: 0} },
-        "E. Family-Related (Substance, Abuse, Neglect)": { "7": {m: 1, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 1}, "10": {m: 1, f: 0}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "F. Poverty / Financial Hardship": { "7": {m: 1, f: 0}, "8": {m: 1, f: 1}, "9": {m: 1, f: 0}, "10": {m: 1, f: 1}, "11": {m: 1, f: 0}, "12": {m: 1, f: 0} },
-        "G. Social / Emotional Issues": { "7": {m: 2, f: 2}, "8": {m: 2, f: 1}, "9": {m: 3, f: 2}, "10": {m: 2, f: 2}, "11": {m: 2, f: 1}, "12": {m: 1, f: 1} },
-        "H. Physical / Mental Health": { "7": {m: 1, f: 1}, "8": {m: 1, f: 0}, "9": {m: 1, f: 1}, "10": {m: 2, f: 1}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "I. Special Needs / PWD": { "7": {m: 1, f: 0}, "8": {m: 1, f: 1}, "9": {m: 1, f: 0}, "10": {m: 1, f: 0}, "11": {m: 1, f: 0}, "12": {m: 0, f: 0} },
-        "J. Underachievement / School Performance": { "7": {m: 1, f: 1}, "8": {m: 2, f: 1}, "9": {m: 2, f: 2}, "10": {m: 3, f: 2}, "11": {m: 2, f: 1}, "12": {m: 1, f: 1} },
-        "K. Truancy / Absenteeism": { "7": {m: 1, f: 0}, "8": {m: 1, f: 1}, "9": {m: 2, f: 1}, "10": {m: 2, f: 2}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "L. Discipline / Conduct Issues": { "7": {m: 2, f: 1}, "8": {m: 2, f: 2}, "9": {m: 3, f: 2}, "10": {m: 2, f: 1}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} }
-    },
-    "school3": {
-        "A. CAT / Learning Disability": { "7": {m: 1, f: 0}, "8": {m: 2, f: 1}, "9": {m: 1, f: 1}, "10": {m: 2, f: 1}, "11": {m: 1, f: 0}, "12": {m: 0, f: 0} },
-        "B. Family Conflict / Broken Home": { "7": {m: 1, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 1}, "10": {m: 1, f: 1}, "11": {m: 2, f: 1}, "12": {m: 1, f: 0} },
-        "C. Bullying / Peer Pressure / Gang Related": { "7": {m: 1, f: 1}, "8": {m: 2, f: 1}, "9": {m: 1, f: 0}, "10": {m: 2, f: 1}, "11": {m: 1, f: 0}, "12": {m: 0, f: 0} },
-        "D. LGBTQIA+ Concerns": { "7": {m: 0, f: 0}, "8": {m: 1, f: 0}, "9": {m: 0, f: 0}, "10": {m: 1, f: 0}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "E. Family-Related (Substance, Abuse, Neglect)": { "7": {m: 0, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 0}, "10": {m: 1, f: 0}, "11": {m: 1, f: 0}, "12": {m: 0, f: 0} },
-        "F. Poverty / Financial Hardship": { "7": {m: 1, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 0}, "10": {m: 1, f: 0}, "11": {m: 1, f: 0}, "12": {m: 1, f: 0} },
-        "G. Social / Emotional Issues": { "7": {m: 2, f: 1}, "8": {m: 1, f: 1}, "9": {m: 2, f: 2}, "10": {m: 2, f: 1}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "H. Physical / Mental Health": { "7": {m: 1, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 0}, "10": {m: 1, f: 1}, "11": {m: 1, f: 0}, "12": {m: 1, f: 0} },
-        "I. Special Needs / PWD": { "7": {m: 1, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 0}, "10": {m: 0, f: 0}, "11": {m: 1, f: 0}, "12": {m: 0, f: 0} },
-        "J. Underachievement / School Performance": { "7": {m: 1, f: 1}, "8": {m: 1, f: 1}, "9": {m: 2, f: 1}, "10": {m: 2, f: 2}, "11": {m: 1, f: 1}, "12": {m: 1, f: 0} },
-        "K. Truancy / Absenteeism": { "7": {m: 1, f: 0}, "8": {m: 1, f: 0}, "9": {m: 1, f: 1}, "10": {m: 2, f: 1}, "11": {m: 1, f: 0}, "12": {m: 1, f: 0} },
-        "L. Discipline / Conduct Issues": { "7": {m: 1, f: 1}, "8": {m: 2, f: 1}, "9": {m: 2, f: 2}, "10": {m: 1, f: 1}, "11": {m: 1, f: 0}, "12": {m: 1, f: 0} }
+const REPORT_GRADE_MAX = { 7: 5, 8: 5, 9: 6, 10: 6, 11: 5, 12: 4 };
+
+// Generate sample case data (male/female per grade) for one school
+function generateCaseData() {
+    const data = {};
+    caseCategories.forEach(category => {
+        data[category] = {};
+        ALL_REPORT_GRADES.forEach(grade => {
+            const total = Math.floor(Math.random() * REPORT_GRADE_MAX[grade]);
+            const male = Math.floor(Math.random() * (total + 1));
+            data[category][grade] = { m: male, f: total - male };
+        });
+    });
+    return data;
+}
+
+const COORDINATOR_SCHOOLS = ["school1", "school2", "school3"];
+
+// All cases data organized by category and grade with gender breakdown.
+// Generated once per browser and cached in localStorage so the demo
+// numbers stay stable across reloads instead of reshuffling every visit.
+let allCasesData = {};
+
+function loadOrGenerateAllCasesData() {
+    const stored = localStorage.getItem('coordinator_base_cases_data');
+    const parsed = stored ? JSON.parse(stored) : null;
+    const isCurrentShape = parsed?.school1?.['A. CAT']?.['7']?.m !== undefined;
+
+    if (parsed && isCurrentShape) {
+        allCasesData = parsed;
+    } else {
+        allCasesData = {};
+        COORDINATOR_SCHOOLS.forEach(school => {
+            allCasesData[school] = generateCaseData();
+        });
+        localStorage.setItem('coordinator_base_cases_data', JSON.stringify(allCasesData));
     }
-};
+}
 
 let currentSchool = "school1";
 let casesData = {};
@@ -90,9 +104,10 @@ function applyGradeColumnVisibility() {
 document.addEventListener('DOMContentLoaded', function() {
     checkAuth();
     initializeCoordinator();
-    loadUserInfo();
+    setUserInfo();
     visibleGrades = computeVisibleGrades();
     applyGradeColumnVisibility();
+    loadOrGenerateAllCasesData();
     loadCasesFromStorage();
     buildCasesTable();
     setupEventListeners();
@@ -131,7 +146,7 @@ function buildCasesTable() {
     caseCategories.forEach(category => {
         if (!casesData[category]) {
             casesData[category] = {
-                "7": {m: 0, f: 0}, "8": {m: 0, f: 0}, "9": {m: 0, f: 0}, 
+                "7": {m: 0, f: 0}, "8": {m: 0, f: 0}, "9": {m: 0, f: 0},
                 "10": {m: 0, f: 0}, "11": {m: 0, f: 0}, "12": {m: 0, f: 0}
             };
         }
@@ -139,24 +154,24 @@ function buildCasesTable() {
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
 
+        // Highlight subtotal/overall rows the same way the SDO district
+        // report does, so the grouped category headings stand out.
+        if (category.includes('Total')) {
+            row.style.fontWeight = '700';
+            row.style.backgroundColor = '#f1f5f9';
+        }
+
         const gradeData = casesData[category];
-        let grandTotalM = 0, grandTotalF = 0;
 
         let htmlContent = `<td style="font-weight: 500;">${category}</td>`;
 
-        // Grand totals only sum the grades this account is scoped to see —
-        // a Grade 7-10 coordinator's "Totals" column shouldn't include
-        // hidden Grade 11/12 counts.
         visibleGrades.forEach(i => {
             const m = gradeData[i]?.m || 0;
             const f = gradeData[i]?.f || 0;
             const total = m + f;
-            grandTotalM += m;
-            grandTotalF += f;
-            htmlContent += `<td class="text-center" style="font-size: 0.9em;">${m}</td><td class="text-center" style="font-size: 0.9em;">${f}</td><td class="text-center" style="font-weight: 600;">${total}</td>`;
+            htmlContent += `<td class="text-center" style="font-size: 0.9em;">${m}</td><td class="text-center" style="font-size: 0.9em;">${f}</td><td class="text-center">${total > 0 ? `<span class="badge badge-in-progress">${total}</span>` : '0'}</td>`;
         });
-        
-        htmlContent += `<td class="text-center" style="font-size: 0.9em;">${grandTotalM}</td><td class="text-center" style="font-size: 0.9em;">${grandTotalF}</td><td class="text-center" style="font-weight: 600;">${grandTotalM + grandTotalF}</td>`;
+
         row.innerHTML = htmlContent;
 
         row.addEventListener('click', () => showCaseDetails(category));
@@ -169,7 +184,7 @@ function showCaseDetails(category) {
     const gradeData = casesData[category];
     let total = 0;
     visibleGrades.forEach(i => {
-        total += parseInt(gradeData[i] || 0);
+        total += (gradeData[i]?.m || 0) + (gradeData[i]?.f || 0);
     });
 
     document.getElementById('caseId').value = `CASE-${currentSchool.toUpperCase()}-${Date.now()}`;
@@ -180,7 +195,9 @@ function showCaseDetails(category) {
 
     let notes = `Total Cases: ${total}\n\n`;
     visibleGrades.forEach(grade => {
-        notes += `Grade ${grade}: ${gradeData[grade] || 0} cases\n`;
+        const m = gradeData[grade]?.m || 0;
+        const f = gradeData[grade]?.f || 0;
+        notes += `Grade ${grade}: ${m + f} (M: ${m} / F: ${f})\n`;
     });
     document.getElementById('caseNotes').value = notes;
 

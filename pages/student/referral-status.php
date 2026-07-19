@@ -168,12 +168,12 @@
                                     <div id="refProgressBar" style="height: 100%; width: 16.67%; background: #f59e0b; transition: width 0.3s ease;"></div>
                                 </div>
                                 <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; font-size: 12px; text-align: center;">
-                                    <div style="color: #6b7280;">📋 Submitted</div>
-                                    <div style="color: #6b7280;">👀 Under Review</div>
-                                    <div style="color: #6b7280;">📅 Scheduled</div>
-                                    <div style="color: #6b7280;">⚙️ In Progress</div>
-                                    <div style="color: #6b7280;">✅ Follow-up</div>
-                                    <div style="color: #6b7280;">🎯 Completed</div>
+                                    <div style="color: #6b7280;">📋 Admission of Case</div>
+                                    <div style="color: #6b7280;">👀 Initial Screening</div>
+                                    <div style="color: #6b7280;">📅 Parent Consent</div>
+                                    <div style="color: #6b7280;">⚙️ Assessment Proper</div>
+                                    <div style="color: #6b7280;">✅ Parent Conference</div>
+                                    <div style="color: #6b7280;">🎯 External Referral</div>
                                 </div>
                             </div>
                         </div>

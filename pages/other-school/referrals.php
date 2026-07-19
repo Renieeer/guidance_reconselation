@@ -30,12 +30,12 @@
                             <label for="filterStage">Filter by Stage:</label>
                             <select id="filterStage" class="form-control">
                                 <option value="">All Stages</option>
-                                <option value="1">Submitted</option>
-                                <option value="2">Under Review</option>
-                                <option value="3">Follow Up</option>
-                                <option value="4">Counseling</option>
-                                <option value="5">In Progress</option>
-                                <option value="6">Closed</option>
+                                <option value="1">Admission of Case</option>
+                                <option value="2">Initial Screening</option>
+                                <option value="3">Parent Consent</option>
+                                <option value="4">Assessment Proper</option>
+                                <option value="5">Parent Conference</option>
+                                <option value="6">External Referral</option>
                             </select>
                         </div>
                         <div class="filter-group">

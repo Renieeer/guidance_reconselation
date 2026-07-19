@@ -53,27 +53,93 @@
 
                         <hr>
 
-                        <!-- Follow-up Form (Stage 3) -->
-                        <div id="followUpFormSection" style="display: none;">
-                            <h3 class="text-primary">Follow-up Form (Stage 3)</h3>
-                            <form id="followUpForm">
+                        <!-- Referral Reason & Description -->
+                        <h3 class="text-primary">Referral Information</h3>
+                        <p><strong>Reason for Referral:</strong> <span id="detReferralReason"></span></p>
+                        <p><strong>Description:</strong></p>
+                        <p id="detDescription" class="bg-light p-3 rounded"></p>
+
+                        <div class="mt-3">
+                            <p><strong>Intervention Attempts:</strong></p>
+                            <p id="detIntervention" class="bg-light p-3 rounded"></p>
+                        </div>
+
+                        <div class="mt-3">
+                            <p><strong>Observed Behaviors:</strong></p>
+                            <p id="detBehaviors" class="bg-light p-3 rounded"></p>
+                        </div>
+
+                        <hr>
+
+                        <!-- Family Information -->
+                        <h3 class="text-primary">Family/Contact Information</h3>
+                        <div class="form-row">
+                            <div>
+                                <p><strong>Parent/Guardian:</strong> <span id="detParent"></span></p>
+                                <p><strong>Contact Number:</strong> <span id="detContactNum"></span></p>
+                            </div>
+                            <div>
+                                <p><strong>Email:</strong> <span id="detContactEmail"></span></p>
+                                <p><strong>Family Background:</strong></p>
+                                <p id="detFamilyBg" class="bg-light p-3 rounded"></p>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Initial Screening (Stage 2) -->
+                        <div id="screeningFormSection" style="display: none;">
+                            <h3 class="text-primary">Initial Screening (Stage 2)</h3>
+                            <p class="text-muted" style="margin-top:-6px;">Document the interview, observations, and risk level assessment for this student.</p>
+
+                            <div id="screeningHistoryList" style="margin-bottom: 16px;"></div>
+
+                            <form id="screeningForm">
                                 <div class="form-group">
-                                    <label for="followUpObservations">Student Observations</label>
-                                    <textarea id="followUpObservations" name="followUpObservations" placeholder="Document your observations of the student..."></textarea>
+                                    <label for="screeningInterview">Interview Notes</label>
+                                    <textarea id="screeningInterview" name="screeningInterview" placeholder="What was discussed during the interview..."></textarea>
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="followUpInterventions">Interventions Applied</label>
-                                    <textarea id="followUpInterventions" name="followUpInterventions" placeholder="Describe interventions or support provided..."></textarea>
+                                    <label for="screeningObservations">Observations</label>
+                                    <textarea id="screeningObservations" name="screeningObservations" placeholder="Document your observations of the student..."></textarea>
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="followUpRecommendations">Recommendations for Next Stage</label>
-                                    <textarea id="followUpRecommendations" name="followUpRecommendations" placeholder="What should happen next?"></textarea>
+                                    <label for="screeningRiskLevel">Risk Level</label>
+                                    <select id="screeningRiskLevel" name="screeningRiskLevel">
+                                        <option value="">Select level</option>
+                                        <option value="Low">Low</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="High">High</option>
+                                        <option value="Critical">Critical</option>
+                                    </select>
                                 </div>
 
-                                <button type="submit" class="btn btn-success">Save Follow-up</button>
+                                <button type="submit" class="btn btn-success">Save Screening Notes</button>
                             </form>
+                        </div>
+
+                        <!-- Parent Consent (Stage 3) -->
+                        <div id="consentSection" style="display: none;">
+                            <h3 class="text-primary">Parent Consent (Stage 3)</h3>
+                            <p class="text-muted" style="margin-top:-6px;">Upload the signed parent consent form for assessment and interventions.</p>
+
+                            <div id="consentFileList" style="margin-bottom: 16px;"></div>
+
+                            <form id="consentUploadForm">
+                                <div class="form-group">
+                                    <label for="consentFile">Consent Form (PDF, JPG, or PNG — max 5 MB)</label>
+                                    <input type="file" id="consentFile" name="consentFile" accept=".pdf,.jpg,.jpeg,.png" required>
+                                </div>
+
+                                <button type="submit" class="btn btn-success">Upload Consent Form</button>
+                            </form>
+                        </div>
+
+                        <!-- Stages 1, 4, 5, 6 have no dedicated documentation form yet -->
+                        <div id="noStageDocSection" style="display: none;">
+                            <p class="text-muted">No additional documentation is required at this stage.</p>
                         </div>
 
                         <hr>
@@ -92,9 +158,9 @@
                                 <label style="display: block; margin-bottom: 5px; font-weight: 500;">Stage</label>
                                 <select id="stageFilter" style="padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
                                     <option value="">All Stages</option>
-                                    <option value="3">Follow-up Needed (3)</option>
-                                    <option value="4">In Counseling (4)</option>
-                                    <option value="5">In Progress (5)</option>
+                                    <option value="3">Parent Consent (3)</option>
+                                    <option value="4">Assessment Proper (4)</option>
+                                    <option value="5">Parent Conference (5)</option>
                                 </select>
                             </div>
                             <button class="btn btn-primary" onclick="applyStageFilter()">Filter</button>

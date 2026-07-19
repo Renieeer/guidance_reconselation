@@ -392,7 +392,7 @@ function submitWithStudentId(studentId, studentName, teacherSchool, formData, us
         teacher_name: user.name || user.email,
         school_attended: teacherSchool,
         student_school: formData.get('studentSchool') || teacherSchool,
-        stage: 1, // Stage 1: Submitted
+        stage: 1, // Stage 1: Admission of Case
         status: 'pending'
     };
 

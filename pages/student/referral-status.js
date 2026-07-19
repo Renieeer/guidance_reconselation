@@ -121,12 +121,12 @@ function displayProgressOverview(referrals) {
     const progressList = document.getElementById('referralProgressList');
     
     const stageLabels = {
-        1: 'Submitted',
-        2: 'Under Review',
-        3: 'Scheduled',
-        4: 'In Progress',
-        5: 'Follow-up',
-        6: 'Completed'
+        1: 'Admission of Case',
+        2: 'Initial Screening',
+        3: 'Parent Consent',
+        4: 'Assessment Proper',
+        5: 'Parent Conference',
+        6: 'External Referral'
     };
     
     const stageIcons = {
@@ -239,12 +239,12 @@ function viewReferral(referralId) {
                 // Update phase display
                 const phase = parseInt(ref.stage) || 1;
                 const phaseLabels = {
-                    1: 'Phase 1: Submitted',
-                    2: 'Phase 2: Under Review',
-                    3: 'Phase 3: Scheduled',
-                    4: 'Phase 4: In Progress',
-                    5: 'Phase 5: Follow-up',
-                    6: 'Phase 6: Completed'
+                    1: 'Phase 1: Admission of Case',
+                    2: 'Phase 2: Initial Screening',
+                    3: 'Phase 3: Parent Consent',
+                    4: 'Phase 4: Assessment Proper',
+                    5: 'Phase 5: Parent Conference',
+                    6: 'Phase 6: External Referral'
                 };
                 document.getElementById('refPhase').value = phaseLabels[phase] || 'Phase ' + phase;
                 

@@ -53,7 +53,7 @@ function loadDetailedStats(referrals, total) {
     const stats = [
         { metric: 'Total Referrals', value: total, percentage: 100, trend: '→' },
         { metric: 'Pending Review', value: referrals.filter(r => r.stage <= 2).length, percentage: Math.round((referrals.filter(r => r.stage <= 2).length / total * 100) || 0), trend: '↓' },
-        { metric: 'In Counseling Stage', value: referrals.filter(r => r.stage >= 3 && r.stage < 6).length, percentage: Math.round(((referrals.filter(r => r.stage >= 3 && r.stage < 6).length) / total * 100) || 0), trend: '↑' },
+        { metric: 'In Active Casework (Stage 3-5)', value: referrals.filter(r => r.stage >= 3 && r.stage < 6).length, percentage: Math.round(((referrals.filter(r => r.stage >= 3 && r.stage < 6).length) / total * 100) || 0), trend: '↑' },
         { metric: 'Closed Cases', value: referrals.filter(r => r.stage === 6).length, percentage: Math.round((referrals.filter(r => r.stage === 6).length / total * 100) || 0), trend: '↑' },
         { metric: 'High Urgency Cases', value: referrals.filter(r => r.urgency === 'High' || r.urgency === 'Crisis').length, percentage: Math.round(((referrals.filter(r => r.urgency === 'High' || r.urgency === 'Crisis').length) / total * 100) || 0), trend: '→' }
     ];
@@ -258,7 +258,7 @@ function initializeChartsWithFallback() {
             values: [12, 18, 14, 10, 8]
         },
         reportCaseStatus: {
-            labels: ['Submitted', 'In Review', 'In Counseling', 'In Progress', 'Closed'],
+            labels: ['Admission of Case', 'Initial Screening', 'Assessment Proper', 'Parent Conference', 'External Referral'],
             values: [15, 20, 12, 8, 10]
         },
         followUpStatus: {

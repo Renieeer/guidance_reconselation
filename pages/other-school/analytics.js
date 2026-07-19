@@ -40,12 +40,12 @@ function calculateAverageProcessTime(referrals) {
 
 function loadStageDistribution(referrals) {
     const stages = {
-        'Submitted': referrals.filter(r => r.stage === 1).length,
-        'Under Review': referrals.filter(r => r.stage === 2).length,
-        'Follow Up': referrals.filter(r => r.stage === 3).length,
-        'Counseling': referrals.filter(r => r.stage === 4).length,
-        'In Progress': referrals.filter(r => r.stage === 5).length,
-        'Closed': referrals.filter(r => r.stage === 6).length
+        'Admission of Case': referrals.filter(r => r.stage === 1).length,
+        'Initial Screening': referrals.filter(r => r.stage === 2).length,
+        'Parent Consent': referrals.filter(r => r.stage === 3).length,
+        'Assessment Proper': referrals.filter(r => r.stage === 4).length,
+        'Parent Conference': referrals.filter(r => r.stage === 5).length,
+        'External Referral': referrals.filter(r => r.stage === 6).length
     };
 
     const total = referrals.length;

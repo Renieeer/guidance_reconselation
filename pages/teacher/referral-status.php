@@ -39,23 +39,12 @@
                                 <p><strong>Status:</strong> <span id="refStatus"></span></p>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Status Stages -->
-                    <div class="card">
-                        <h2 class="card-title">Referral Progress (6 Stages)</h2>
-                        <div id="stagesContainer"></div>
-                    </div>
-
-                    <!-- Referral Information (Hidden while counseling is in progress) -->
-                    <div class="card mt-5" id="referralInfoSection" style="display: none;">
-                        <h2 class="card-title">Referral Information</h2>
-                        <div class="form-row">
-                            <div>
-                                <p><strong>Reason:</strong> <span id="refReason"></span></p>
-                                <p><strong>Description:</strong></p>
-                                <p id="refDescription" class="bg-light p-2 rounded"></p>
-                            </div>
+                        <!-- Reason/Description (hidden while counseling is in progress) -->
+                        <div id="referralInfoSection" class="mt-4" style="display: none;">
+                            <p><strong>Reason:</strong> <span id="refReason"></span></p>
+                            <p><strong>Description:</strong></p>
+                            <p id="refDescription" class="bg-light p-2 rounded"></p>
                         </div>
                     </div>
 

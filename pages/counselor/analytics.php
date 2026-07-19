@@ -47,11 +47,11 @@
                         </div>
                         <div class="card-content">
                             <div class="text-sm lh-lg">
-                                <p><strong>Submitted:</strong> <span id="analyticsSub">0</span></p>
-                                <p><strong>In Review:</strong> <span id="analyticsReview">0</span></p>
-                                <p><strong>In Counseling:</strong> <span id="analyticsCounseling">0</span></p>
-                                <p><strong>In Progress:</strong> <span id="analyticsProgress">0</span></p>
-                                <p><strong>Closed:</strong> <span id="analyticsClosed">0</span></p>
+                                <p><strong>Admission of Case:</strong> <span id="analyticsSub">0</span></p>
+                                <p><strong>Initial Screening:</strong> <span id="analyticsReview">0</span></p>
+                                <p><strong>Assessment Proper:</strong> <span id="analyticsCounseling">0</span></p>
+                                <p><strong>Parent Conference:</strong> <span id="analyticsProgress">0</span></p>
+                                <p><strong>External Referral:</strong> <span id="analyticsClosed">0</span></p>
                             </div>
                         </div>
                     </div>

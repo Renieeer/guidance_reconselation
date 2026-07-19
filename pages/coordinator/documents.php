@@ -9,24 +9,12 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
         .document-container {
-            max-width: 1200px;
-            margin: 0 auto;
+            width: 100%;
         }
 
-        .upload-section {
-            background: white;
+        .upload-modal-body {
+            text-align: left;
             padding: 24px;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            margin-bottom: 24px;
-        }
-
-        .upload-section h3 {
-            color: var(--primary-color);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .form-group {
@@ -340,7 +328,7 @@
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             }
 
-            .upload-section,
+            .upload-modal-body,
             .documents-section {
                 padding: 16px;
             }
@@ -374,64 +362,14 @@
                     <h2 class="page-hero-title">Document Library</h2>
                     <p class="page-hero-text">Access and manage guidance documents, forms, and resources for your school.</p>
                 </div>
+                <button type="button" class="btn btn-primary" id="openUploadBtn">
+                    <i class="fas fa-upload"></i> Upload File
+                </button>
             </div>
 
             <!-- Page Content -->
             <div class="page-content">
                 <div class="document-container">
-                    <!-- Upload Section -->
-                    <div class="upload-section">
-                        <h3><i class="fas fa-cloud-upload-alt"></i> Upload Document for Student</h3>
-                        <form id="uploadForm">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="studentId">Student ID <span style="color: #ef4444;">*</span></label>
-                                    <input type="text" id="studentId" name="student_id" placeholder="e.g., STU001" required>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="documentType">Document Type <span style="color: #ef4444;">*</span></label>
-                                    <select id="documentType" name="document_type" required>
-                                        <option value="">Select Document Type</option>
-                                        <option value="inventory">Individual Inventory Form</option>
-                                        <option value="referral">Referral Form</option>
-                                        <option value="follow-up">Follow-up Form</option>
-                                        <option value="case">Case Document</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="fileInput">Select Image File <span style="color: #ef4444;">*</span></label>
-                                <div class="file-input-wrapper">
-                                    <label for="fileInput" class="file-input-label">
-                                        <i class="fas fa-image"></i>
-                                        <span>Click to select or drag and drop images (JPG, PNG)</span>
-                                    </label>
-                                    <input type="file" id="fileInput" name="file" accept="image/*" required>
-                                </div>
-                                <small style="color: #64748b; margin-top: 8px; display: block;">
-                                    Max file size: 10MB | Supported: JPG, PNG, GIF, WebP
-                                </small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="description">Description (Optional)</label>
-                                <textarea id="description" name="description" placeholder="Add any notes or description..."></textarea>
-                            </div>
-
-                            <button type="submit" class="upload-btn">
-                                <i class="fas fa-upload"></i> Upload Document
-                            </button>
-
-                            <div class="upload-progress">
-                                <div class="progress-bar">
-                                    <div class="progress-bar-fill"></div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-
                     <!-- Documents Section -->
                     <div class="documents-section">
                         <h3><i class="fas fa-folder"></i> Student Documents</h3>
@@ -457,6 +395,66 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Document Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4><i class="fas fa-cloud-upload-alt"></i> Upload Document for Student</h4>
+                <button class="modal-close" onclick="hideUploadForm()">&times;</button>
+            </div>
+            <div class="modal-body upload-modal-body">
+                <form id="uploadForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="studentId">Student ID <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="studentId" name="student_id" placeholder="e.g., STU001" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="documentType">Document Type <span style="color: #ef4444;">*</span></label>
+                            <select id="documentType" name="document_type" required>
+                                <option value="">Select Document Type</option>
+                                <option value="inventory">Individual Inventory Form</option>
+                                <option value="referral">Referral Form</option>
+                                <option value="follow-up">Follow-up Form</option>
+                                <option value="case">Case Document</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fileInput">Select Image File <span style="color: #ef4444;">*</span></label>
+                        <div class="file-input-wrapper">
+                            <label for="fileInput" class="file-input-label">
+                                <i class="fas fa-image"></i>
+                                <span>Click to select or drag and drop images (JPG, PNG)</span>
+                            </label>
+                            <input type="file" id="fileInput" name="file" accept="image/*" required>
+                        </div>
+                        <small style="color: #64748b; margin-top: 8px; display: block;">
+                            Max file size: 10MB | Supported: JPG, PNG, GIF, WebP
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description (Optional)</label>
+                        <textarea id="description" name="description" placeholder="Add any notes or description..."></textarea>
+                    </div>
+
+                    <button type="submit" class="upload-btn">
+                        <i class="fas fa-upload"></i> Upload Document
+                    </button>
+
+                    <div class="upload-progress">
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill"></div>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -492,7 +490,7 @@
             const userAvatar = document.getElementById('userAvatar');
 
             if (userName) {
-                userNameElement.textContent = userName;
+                if (userNameElement) userNameElement.textContent = userName;
                 if (userRoleElement) {
                     userRoleElement.textContent = userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1).replace('-', ' ') : 'Coordinator';
                 }
@@ -503,6 +501,12 @@
 
         // Setup event listeners
         function setupEventListeners() {
+            // Upload modal toggle
+            document.getElementById('openUploadBtn').addEventListener('click', openUploadForm);
+            document.getElementById('uploadModal').addEventListener('click', (e) => {
+                if (e.target.id === 'uploadModal') hideUploadForm();
+            });
+
             // Upload form
             document.getElementById('uploadForm').addEventListener('submit', handleUpload);
 
@@ -545,6 +549,16 @@
             document.getElementById('logoutBtn').addEventListener('click', logout);
         }
 
+        // Show upload modal
+        function openUploadForm() {
+            document.getElementById('uploadModal').classList.add('show');
+        }
+
+        // Hide upload modal
+        function hideUploadForm() {
+            document.getElementById('uploadModal').classList.remove('show');
+        }
+
         // Handle file upload
         async function handleUpload(e) {
             e.preventDefault();
@@ -585,6 +599,7 @@
                     document.getElementById('fileInput').value = '';
                     progressDiv.style.display = 'none';
                     loadDocuments(studentId);
+                    hideUploadForm();
                 } else {
                     showNotification(data.message || 'Upload failed', 'error');
                 }

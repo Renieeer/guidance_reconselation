@@ -91,12 +91,12 @@ function displayReferralProgress(referrals) {
     const progress = (currentStage / 6) * 100;
     
     const stageLabels = {
-        1: 'Submitted',
-        2: 'Under Review',
-        3: 'Scheduled',
-        4: 'In Progress',
-        5: 'Follow-up',
-        6: 'Completed'
+        1: 'Admission of Case',
+        2: 'Initial Screening',
+        3: 'Parent Consent',
+        4: 'Assessment Proper',
+        5: 'Parent Conference',
+        6: 'External Referral'
     };
     
     const statusColor = getProgressColor(latest.status);

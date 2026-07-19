@@ -37,23 +37,21 @@
                         <thead>
                             <tr>
                                 <th>Category of Cases</th>
-                                <th colspan="3" style="text-align: center;">Grade 7</th>
-                                <th colspan="3" style="text-align: center;">Grade 8</th>
-                                <th colspan="3" style="text-align: center;">Grade 9</th>
-                                <th colspan="3" style="text-align: center;">Grade 10</th>
-                                <th colspan="3" style="text-align: center;">Grade 11</th>
-                                <th colspan="3" style="text-align: center;">Grade 12</th>
-                                <th colspan="3" style="text-align: center;">Totals</th>
+                                <th colspan="3" class="grade-col" data-grade="7" style="text-align: center;">Grade 7</th>
+                                <th colspan="3" class="grade-col" data-grade="8" style="text-align: center;">Grade 8</th>
+                                <th colspan="3" class="grade-col" data-grade="9" style="text-align: center;">Grade 9</th>
+                                <th colspan="3" class="grade-col" data-grade="10" style="text-align: center;">Grade 10</th>
+                                <th colspan="3" class="grade-col" data-grade="11" style="text-align: center;">Grade 11</th>
+                                <th colspan="3" class="grade-col" data-grade="12" style="text-align: center;">Grade 12</th>
                             </tr>
                             <tr>
                                 <th></th>
-                                <th>Male</th><th>Female</th><th>Total</th>
-                                <th>Male</th><th>Female</th><th>Total</th>
-                                <th>Male</th><th>Female</th><th>Total</th>
-                                <th>Male</th><th>Female</th><th>Total</th>
-                                <th>Male</th><th>Female</th><th>Total</th>
-                                <th>Male</th><th>Female</th><th>Total</th>
-                                <th>Male</th><th>Female</th><th>Total</th>
+                                <th class="grade-col" data-grade="7">Male</th><th class="grade-col" data-grade="7">Female</th><th class="grade-col" data-grade="7">Total</th>
+                                <th class="grade-col" data-grade="8">Male</th><th class="grade-col" data-grade="8">Female</th><th class="grade-col" data-grade="8">Total</th>
+                                <th class="grade-col" data-grade="9">Male</th><th class="grade-col" data-grade="9">Female</th><th class="grade-col" data-grade="9">Total</th>
+                                <th class="grade-col" data-grade="10">Male</th><th class="grade-col" data-grade="10">Female</th><th class="grade-col" data-grade="10">Total</th>
+                                <th class="grade-col" data-grade="11">Male</th><th class="grade-col" data-grade="11">Female</th><th class="grade-col" data-grade="11">Total</th>
+                                <th class="grade-col" data-grade="12">Male</th><th class="grade-col" data-grade="12">Female</th><th class="grade-col" data-grade="12">Total</th>
                             </tr>
                         </thead>
                         <tbody id="casesTableBody">

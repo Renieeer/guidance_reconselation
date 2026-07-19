@@ -78,51 +78,204 @@ function loadDetailView(referral) {
     document.getElementById('detStatus').innerHTML = createBadge(getStatusLabel(referral.stage));
     document.getElementById('detStage').textContent = referral.stage + '/6';
 
+    // Referral Information
+    document.getElementById('detReferralReason').textContent = referral.referral_reason || 'Not provided';
+    document.getElementById('detDescription').textContent = referral.description || 'Not provided';
+    document.getElementById('detIntervention').textContent = referral.intervention_attempts || 'Not provided';
+    document.getElementById('detBehaviors').textContent = referral.observed_behaviors || 'Not provided';
+
+    // Family/Contact Information
+    document.getElementById('detParent').textContent = referral.parent_guardian || 'Not provided';
+    document.getElementById('detContactNum').textContent = referral.parent_contact || 'Not provided';
+    document.getElementById('detContactEmail').textContent = referral.parent_email || 'Not provided';
+    document.getElementById('detFamilyBg').textContent = referral.family_background || 'Not provided';
+
     // Load stages
     const stageContainer = document.getElementById('detailStagesContainer');
     stageContainer.innerHTML = createStageIndicator(referral.stage);
 
-    // Show follow-up form for stage 3
-    const followUpSection = document.getElementById('followUpFormSection');
-    if (referral.stage === 3) {
-        followUpSection.style.display = 'block';
-        document.getElementById('followUpForm').addEventListener('submit', submitFollowUp);
+    // Show the Initial Screening interview form for stage 2
+    const screeningSection = document.getElementById('screeningFormSection');
+    if (referral.stage === 2) {
+        screeningSection.style.display = 'block';
+        document.getElementById('screeningForm').onsubmit = submitScreeningNotes;
+        loadScreeningHistory(referral.id);
     } else {
-        followUpSection.style.display = 'none';
+        screeningSection.style.display = 'none';
     }
+
+    // Show the Parent Consent file upload for stage 3
+    const consentSection = document.getElementById('consentSection');
+    if (referral.stage === 3) {
+        consentSection.style.display = 'block';
+        document.getElementById('consentUploadForm').onsubmit = submitConsentUpload;
+        loadConsentFiles(referral.id);
+    } else {
+        consentSection.style.display = 'none';
+    }
+
+    // Stages 1, 4, 5, 6 don't have a dedicated documentation form yet —
+    // say so explicitly instead of leaving a blank gap that reads as broken.
+    document.getElementById('noStageDocSection').style.display =
+        (referral.stage === 2 || referral.stage === 3) ? 'none' : 'block';
 
     // Load case actions
     loadCaseActions();
 }
 
-function submitFollowUp(e) {
+function loadScreeningHistory(referralId) {
+    const container = document.getElementById('screeningHistoryList');
+    if (!container) return;
+    container.innerHTML = '<p class="text-muted">Loading previous screening notes...</p>';
+
+    fetch(`/guidancemanagment/api/referral-screening.php?referral_id=${referralId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load screening notes');
+            const rows = result.data || [];
+            if (rows.length === 0) {
+                container.innerHTML = '<p class="text-muted">No screening notes recorded yet.</p>';
+                return;
+            }
+            container.innerHTML = rows.map(row => `
+                <div style="background:#f9fafb; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <strong>${escapeHtml(row.counselor_name || 'Counselor')}</strong>
+                        <small class="text-muted">${formatDate(row.created_at)}</small>
+                    </div>
+                    ${row.risk_level ? `<div><strong>Risk Level:</strong> ${escapeHtml(row.risk_level)}</div>` : ''}
+                    ${row.interview_notes ? `<div><strong>Interview Notes:</strong> ${escapeHtml(row.interview_notes)}</div>` : ''}
+                    ${row.observations ? `<div><strong>Observations:</strong> ${escapeHtml(row.observations)}</div>` : ''}
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
+        });
+}
+
+function submitScreeningNotes(e) {
     e.preventDefault();
 
-    const formData = new FormData(document.getElementById('followUpForm'));
+    const interviewNotes = document.getElementById('screeningInterview').value.trim();
+    const observations = document.getElementById('screeningObservations').value.trim();
+    const riskLevel = document.getElementById('screeningRiskLevel').value;
 
-    const followUp = {
-        id: generateId(),
-        observations: formData.get('followUpObservations'),
-        interventions: formData.get('followUpInterventions'),
-        recommendations: formData.get('followUpRecommendations'),
-        submittedAt: new Date().toISOString()
-    };
-
-    if (!currentReferral.followUpForms) {
-        currentReferral.followUpForms = [];
+    if (!interviewNotes && !observations) {
+        showAlert('Enter interview notes or observations before saving.', 'error');
+        return;
     }
 
-    currentReferral.followUpForms.push(followUp);
+    const user = getCurrentUser();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
 
-    // Save updated referral
-    const index = allReferrals.findIndex(r => r.id === currentReferral.id);
-    if (index !== -1) {
-        allReferrals[index] = currentReferral;
-        saveData('referrals', allReferrals);
+    fetch('/guidancemanagment/api/referral-screening.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || '',
+            interview_notes: interviewNotes,
+            observations: observations,
+            risk_level: riskLevel
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) throw new Error(result.message || 'Failed to save screening notes');
+        showAlert('Screening notes saved.', 'success');
+        document.getElementById('screeningForm').reset();
+        loadScreeningHistory(currentReferral.id);
+    })
+    .catch(error => {
+        showAlert(error.message || 'Failed to save screening notes.', 'error');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
+}
+
+function loadConsentFiles(referralId) {
+    const container = document.getElementById('consentFileList');
+    if (!container) return;
+    container.innerHTML = '<p class="text-muted">Loading uploaded files...</p>';
+
+    fetch(`/guidancemanagment/api/referral-consent.php?referral_id=${referralId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load consent files');
+            const rows = result.data || [];
+            if (rows.length === 0) {
+                container.innerHTML = '<p class="text-muted">No consent form uploaded yet.</p>';
+                return;
+            }
+            container.innerHTML = rows.map(row => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f9fafb; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
+                    <div>
+                        <a href="${row.url}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-check"></i> ${escapeHtml(row.fileName)}</a>
+                        <div><small class="text-muted">${((row.fileSize || 0) / 1024).toFixed(1)} KB • Uploaded by ${escapeHtml(row.uploadedBy || 'Unknown')} on ${formatDate(row.uploadedAt)}</small></div>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
+        });
+}
+
+function submitConsentUpload(e) {
+    e.preventDefault();
+
+    const fileInput = document.getElementById('consentFile');
+    const file = fileInput.files[0];
+    if (!file) {
+        showAlert('Choose a file to upload.', 'error');
+        return;
     }
 
-    showAlert('Follow-up form submitted successfully! Ready to move to next stage.', 'success');
-    document.getElementById('followUpForm').reset();
+    const user = getCurrentUser();
+    const formData = new FormData();
+    formData.append('referral_id', currentReferral.id);
+    formData.append('uploaded_by', user?.name || '');
+    formData.append('file', file);
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading...';
+
+    fetch('/guidancemanagment/api/referral-consent.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) throw new Error(result.message || 'Failed to upload file');
+        showAlert('Consent form uploaded.', 'success');
+        document.getElementById('consentUploadForm').reset();
+        loadConsentFiles(currentReferral.id);
+    })
+    .catch(error => {
+        showAlert(error.message || 'Failed to upload file.', 'error');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function loadCaseActions() {
@@ -143,11 +296,6 @@ function loadCaseActions() {
 }
 
 function advanceStage() {
-    if (currentReferral.stage === 3 && (!currentReferral.followUpForms || currentReferral.followUpForms.length === 0)) {
-        alert('Please complete the follow-up form before advancing.');
-        return;
-    }
-
     const newStage = currentReferral.stage + 1;
     const newStatus = newStage === 6 ? 'completed' : 'in-progress';
 

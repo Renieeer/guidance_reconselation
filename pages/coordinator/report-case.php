@@ -43,7 +43,6 @@
                                 <th colspan="3" class="grade-col" data-grade="10" style="text-align: center;">Grade 10</th>
                                 <th colspan="3" class="grade-col" data-grade="11" style="text-align: center;">Grade 11</th>
                                 <th colspan="3" class="grade-col" data-grade="12" style="text-align: center;">Grade 12</th>
-                                <th colspan="3" style="text-align: center;">Totals</th>
                             </tr>
                             <tr>
                                 <th></th>
@@ -53,7 +52,6 @@
                                 <th class="grade-col" data-grade="10">Male</th><th class="grade-col" data-grade="10">Female</th><th class="grade-col" data-grade="10">Total</th>
                                 <th class="grade-col" data-grade="11">Male</th><th class="grade-col" data-grade="11">Female</th><th class="grade-col" data-grade="11">Total</th>
                                 <th class="grade-col" data-grade="12">Male</th><th class="grade-col" data-grade="12">Female</th><th class="grade-col" data-grade="12">Total</th>
-                                <th>Male</th><th>Female</th><th>Total</th>
                             </tr>
                         </thead>
                         <tbody id="casesTableBody">

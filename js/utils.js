@@ -88,14 +88,15 @@ function createActionButtons(id, canEdit = true, canDelete = true) {
     return html;
 }
 
-// Mock referral stages
+// Referral stages — mirrors the guidance office's official 6-step intake
+// flow (Admission of Case for Referral -> ... -> External Referral).
 const referralStages = [
-    { id: 1, name: 'Submitted' },
-    { id: 2, name: 'Under Review' },
-    { id: 3, name: 'Follow-up Required' },
-    { id: 4, name: 'In Counseling' },
-    { id: 5, name: 'In Progress' },
-    { id: 6, name: 'Closed' }
+    { id: 1, name: 'Admission of Case', description: 'Case admitted for referral (walk-in, or referred by the adviser, subject teacher, or student).' },
+    { id: 2, name: 'Initial Screening', description: 'Initial screening by the counselor — interview, observation, and risk level assessment.' },
+    { id: 3, name: 'Parent Consent', description: 'Parent consent obtained for assessment and interventions.' },
+    { id: 4, name: 'Assessment Proper', description: 'Assessment proper using tools such as GAD-7, PHQ, Columbia Suicide Severity Rating Scale, HEEADSSS, etc.' },
+    { id: 5, name: 'Parent Conference', description: 'Parent conference/discussion — presentation of results and the initial intervention plan.' },
+    { id: 6, name: 'External Referral', description: 'External referral, if necessary.' }
 ];
 
 // Get stage info

@@ -38,44 +38,40 @@ const caseCategories = [
 let currentDistrict = '1';
 let allCasesData = {};
 
-// Initialize district data
-function initializeDistrictData() {
-    for (let d = 1; d <= 11; d++) {
-        const districtKey = `district${d}`;
-        allCasesData[districtKey] = generateCaseData(d);
-    }
-    saveCasesData();
-}
+const COORDINATOR_SCHOOLS = ["school1", "school2", "school3"];
+const GRADE_NUMS = [7, 8, 9, 10, 11, 12];
 
-// Generate sample case data for a district
-function generateCaseData(districtNum) {
+// Build this page's case data from the coordinator's real per-school
+// records (school1/school2/school3), summing male+female across every
+// school. There's no district-to-school assignment anywhere in this app,
+// so every district shows the same real, summed total rather than
+// fabricated per-district numbers.
+function buildCaseDataFromCoordinatorRecords() {
+    const base = JSON.parse(localStorage.getItem('coordinator_base_cases_data') || 'null');
+
     const data = {};
     caseCategories.forEach(category => {
-        data[category] = {
-            grade7: Math.floor(Math.random() * 5),
-            grade8: Math.floor(Math.random() * 5),
-            grade9: Math.floor(Math.random() * 6),
-            grade10: Math.floor(Math.random() * 6),
-            grade11: Math.floor(Math.random() * 5),
-            grade12: Math.floor(Math.random() * 4),
-            notes: ''
-        };
+        data[category] = { notes: '' };
+        GRADE_NUMS.forEach(grade => {
+            let total = 0;
+            if (base) {
+                COORDINATOR_SCHOOLS.forEach(school => {
+                    const cell = base[school]?.[category]?.[grade];
+                    if (cell) total += (cell.m || 0) + (cell.f || 0);
+                });
+            }
+            data[category][`grade${grade}`] = total;
+        });
     });
     return data;
 }
 
-// Save cases data to localStorage
-function saveCasesData() {
-    localStorage.setItem('districtCasesData', JSON.stringify(allCasesData));
-}
-
-// Load cases data from localStorage
+// Load cases data — the same real, coordinator-derived totals for every district.
 function loadCasesData() {
-    const saved = localStorage.getItem('districtCasesData');
-    if (saved) {
-        allCasesData = JSON.parse(saved);
-    } else {
-        initializeDistrictData();
+    const realData = buildCaseDataFromCoordinatorRecords();
+    allCasesData = {};
+    for (let d = 1; d <= 11; d++) {
+        allCasesData[`district${d}`] = realData;
     }
 }
 

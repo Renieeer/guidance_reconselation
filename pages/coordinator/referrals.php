@@ -176,12 +176,12 @@
                 <div class="form-group">
                     <label for="newStage">Select New Stage</label>
                     <select id="newStage">
-                        <option value="1">Stage 1: Submitted</option>
-                        <option value="2">Stage 2: Under Review</option>
-                        <option value="3">Stage 3: Follow-up Required</option>
-                        <option value="4">Stage 4: In Counseling</option>
-                        <option value="5">Stage 5: In Progress</option>
-                        <option value="6">Stage 6: Closed</option>
+                        <option value="1">Stage 1: Admission of Case</option>
+                        <option value="2">Stage 2: Initial Screening</option>
+                        <option value="3">Stage 3: Parent Consent</option>
+                        <option value="4">Stage 4: Assessment Proper</option>
+                        <option value="5">Stage 5: Parent Conference</option>
+                        <option value="6">Stage 6: External Referral</option>
                     </select>
                 </div>
                 <div class="form-group">
