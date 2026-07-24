@@ -691,8 +691,8 @@ body.auth-page {
 
 .referral-sheet {
     background: #ffffff;
-    border: 2px solid #000000;
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     border-radius: 16px;
@@ -700,38 +700,39 @@ body.auth-page {
 
 .referral-sheet-title {
     text-align: center;
-    padding: 18px 24px;
+    padding: 22px 24px;
     font-weight: 800;
-    letter-spacing: 0.5px;
-    font-size: 22px;
+    letter-spacing: 0.4px;
+    font-size: 20px;
     text-transform: none;
-    background: #1a1a1a;
+    background: var(--brand-gradient);
     color: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .referral-sheet-intro {
-    padding: 16px 20px;
-    font-size: 14px;
-    line-height: 1.8;
-    color: #333333;
+    padding: 16px 24px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-light);
     text-align: center;
-    background: #f5f5f5;
-    border-bottom: 2px solid #000000;
-    font-weight: 500;
+    background: var(--light-color);
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .referral-table-row {
     display: grid;
-    grid-template-columns: 260px 1fr;
-    border-bottom: 1px solid #cccccc;
+    grid-template-columns: 220px 1fr;
+    border-bottom: 1px solid var(--border-color);
     min-height: 48px;
     align-items: stretch;
-    transition: all 0.3s ease;
+    transition: var(--transition-fast);
 }
 
 .referral-table-row:hover {
-    background: #f9f9f9;
+    background: var(--light-color);
 }
 
 .referral-table-row:last-child {
@@ -752,15 +753,15 @@ body.auth-page {
 }
 
 .referral-label {
-    padding: 12px 16px;
+    padding: 12px 20px;
     display: flex;
     align-items: center;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    color: #1a1a1a;
-    border-right: 3px solid #000000;
-    background: #eeeeee;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    background: var(--light-color);
     position: relative;
 }
 
@@ -771,18 +772,135 @@ body.auth-page {
     top: 0;
     bottom: 0;
     width: 3px;
-    background: #1a1a1a;
+    background: var(--brand-gradient);
 }
 
 .referral-table-row > .referral-field {
-    padding: 8px 14px;
+    padding: 12px 20px;
     display: flex;
     align-items: center;
     background: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-color);
 }
 
 .referral-table-row:hover .referral-field {
-    background: #f9fafb;
+    background: var(--light-color);
+}
+
+.referral-sheet-section {
+    padding: 22px 28px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text-color);
+}
+
+.referral-sheet-section:last-of-type {
+    border-bottom: none;
+}
+
+.referral-blank {
+    display: inline-block;
+    min-width: 200px;
+    border-bottom: 1px solid #94a3b8;
+    margin: 0 2px;
+}
+
+.referral-checklist-heading {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 14px;
+}
+
+.referral-checklist {
+    display: grid;
+    gap: 8px;
+}
+
+.referral-checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--light-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.referral-checklist-item:hover {
+    background: rgba(13, 110, 253, 0.06);
+    border-color: var(--secondary-color);
+}
+
+.referral-checklist-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--secondary-color);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.referral-checklist-item .referral-blank {
+    min-width: 120px;
+}
+
+/* Read-only rows (teacher's view of a counselor-completed acknowledgement) —
+   no pointer/hover affordance, since nothing here is actually clickable. */
+.referral-checklist-item:has(input:disabled) {
+    cursor: default;
+}
+
+.referral-checklist-item:has(input:disabled):hover {
+    background: var(--light-color);
+    border-color: var(--border-color);
+}
+
+.referral-checklist-item input[type="checkbox"]:disabled {
+    cursor: default;
+    opacity: 1;
+}
+
+.referral-sheet-thanks {
+    padding: 26px 24px;
+    text-align: center;
+    font-style: italic;
+    color: var(--text-light);
+    line-height: 1.7;
+    background: var(--light-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.referral-sheet-signature {
+    padding: 28px 28px 32px;
+}
+
+.referral-signature-title {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 52px;
+}
+
+.referral-signature-line {
+    max-width: 320px;
+    border-top: 1px solid var(--primary-color);
+}
+
+.referral-signature-date {
+    margin-top: 14px;
+    font-size: 14px;
+    color: var(--primary-color);
 }
 
 .form-field {
@@ -2915,13 +3033,9 @@ body.auth-page {
     }
 
     .referral-label {
-        border-right: none;
-        border-bottom: 1px solid #cccccc;
-        font-size: 13px;
-        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 12px;
         padding: 10px 14px;
-        background: #eeeeee;
-        border-left: 3px solid #000000;
     }
 
     .referral-table-row > .referral-field {

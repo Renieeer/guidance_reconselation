@@ -137,7 +137,37 @@
                             </form>
                         </div>
 
-                        <!-- Stages 1, 4, 5, 6 have no dedicated documentation form yet -->
+                        <!-- Case Closing Acknowledgement (Stage 6) -->
+                        <div id="acknowledgementFormSection" style="display: none;">
+                            <h3 class="text-primary">Case Closing Acknowledgement (Stage 6)</h3>
+                            <p class="text-muted" style="margin-top:-6px;">Complete this once counseling has ended — it's shown to the referring teacher as a read-only receipt.</p>
+
+                            <form id="acknowledgementForm">
+                                <div class="form-group">
+                                    <label for="ackAttendedBy">Session attended by</label>
+                                    <input type="text" id="ackAttendedBy" name="ackAttendedBy" placeholder="Counselor name">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Status of the case at hand</label>
+                                    <div id="ackChecklist" class="referral-checklist"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="ackFollowUpCount">Number of follow-ups made by the Counselor</label>
+                                    <input type="text" id="ackFollowUpCount" name="ackFollowUpCount" placeholder="e.g. 3">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="ackReferredTo">Referred to (if applicable)</label>
+                                    <input type="text" id="ackReferredTo" name="ackReferredTo" placeholder="e.g. External specialist / agency name">
+                                </div>
+
+                                <button type="submit" class="btn btn-success">Save Acknowledgement</button>
+                            </form>
+                        </div>
+
+                        <!-- Stages 1, 4, 5 have no dedicated documentation form yet -->
                         <div id="noStageDocSection" style="display: none;">
                             <p class="text-muted">No additional documentation is required at this stage.</p>
                         </div>

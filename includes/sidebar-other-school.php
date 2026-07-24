@@ -8,7 +8,7 @@
         <li><a href="dashboard.php"><i class="bi bi-graph-up"></i> Dashboard</a></li>
         <li><a href="referrals.php"><i class="bi bi-clipboard-data"></i> Referrals</a></li>
         <li><a href="analytics.php"><i class="bi bi-bar-chart"></i> Analytics</a></li>
-        <li><a href="student-record.php"><i class="bi bi-people"></i> Student Records</a></li>
+        <li><a href="student-history.php"><i class="bi bi-folder2-open"></i> Student History</a></li>
         <li><a href="report-case.php"><i class="bi bi-pencil-square"></i> Report Case</a></li>
         <li><a href="schedule.php"><i class="bi bi-calendar3"></i> Schedule</a></li>
         <li><a href="feedback.php"><i class="bi bi-chat-dots"></i> Feedback</a></li>

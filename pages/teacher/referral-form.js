@@ -112,14 +112,27 @@ function setupStudentSearch() {
 
     let searchTimeout;
     let highlightedIndex = -1;
-    window.referralStudentSuggestion = null;
+
+    // Applies a specific suggestion (by row + its stored student data) —
+    // the one place both mouse selection and keyboard selection go through,
+    // so a keyboard accept can never resolve to a different student than
+    // the one actually highlighted.
+    function applySuggestion(row) {
+        if (!row || !row._studentData) return;
+        const student = row._studentData;
+        const fullName = student.fullName;
+        studentNameInput.value = fullName;
+        populateStudentFromSearch(student);
+        status.textContent = `Selected: ${fullName}`;
+        status.style.color = 'green';
+        hideStudentSuggestions();
+    }
 
     studentNameInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);
         const searchTerm = this.value.trim();
         highlightedIndex = -1;
         status.textContent = '';
-        window.referralStudentSuggestion = null;
 
         // Manual edits invalidate a previously selected student record
         const studentIdField = document.getElementById('studentId');
@@ -150,16 +163,17 @@ function setupStudentSearch() {
         } else if (e.key === 'Enter') {
             if (highlightedIndex >= 0 && items[highlightedIndex]) {
                 e.preventDefault();
-                items[highlightedIndex].click();
+                applySuggestion(items[highlightedIndex]);
             }
-        } else if ((e.key === 'Tab' || e.key === 'ArrowRight') && window.referralStudentSuggestion) {
-            e.preventDefault();
-            const s = window.referralStudentSuggestion;
-            this.value = s.fullName;
-            populateStudentFromSearch(s);
-            status.textContent = `Selected: ${s.fullName}`;
-            status.style.color = 'green';
-            hideStudentSuggestions();
+        } else if (e.key === 'Tab' || e.key === 'ArrowRight') {
+            // Only auto-fill when the user explicitly highlighted a match
+            // with the arrow keys — never silently on a bare Tab, which is
+            // what previously let a plain "move to the next field" keypress
+            // overwrite a typed name with an unrelated first search result.
+            if (highlightedIndex >= 0 && items[highlightedIndex]) {
+                e.preventDefault();
+                applySuggestion(items[highlightedIndex]);
+            }
         } else if (e.key === 'Escape') {
             hideStudentSuggestions();
         }
@@ -179,7 +193,6 @@ function updateSuggestionHighlight(items, idx) {
 function hideStudentSuggestions() {
     const list = document.getElementById('studentSuggestionList');
     if (list) list.innerHTML = '';
-    window.referralStudentSuggestion = null;
 }
 
 // Search for students, restricted to the teacher's own school
@@ -224,10 +237,15 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
                     row.className = 'suggestion-item';
                     row.style.cssText = 'padding:8px 10px;cursor:pointer;border-bottom:1px solid #f2f2f2;';
                     row.innerHTML = `<div style="font-weight:600">${escapeHtml(fullName)}</div><div style="font-size:12px;color:#666">${escapeHtml(gradeLabel)}</div>`;
+                    // Each row carries its own exact match data so keyboard
+                    // selection (Enter/Tab on the highlighted row) and mouse
+                    // selection always resolve to the same student — never
+                    // silently substituting a different match.
+                    row._studentData = Object.assign({}, student, { fullName });
                     row.addEventListener('mousedown', (ev) => {
                         ev.preventDefault();
                         inputField.value = fullName;
-                        populateStudentFromSearch(Object.assign({}, student, { fullName }));
+                        populateStudentFromSearch(row._studentData);
                         statusEl.textContent = `Selected: ${fullName}`;
                         statusEl.style.color = 'green';
                         hideStudentSuggestions();
@@ -235,17 +253,11 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
                     listEl.appendChild(row);
                 });
 
-                // First result stays available for quick Tab acceptance
-                const first = result.data[0];
-                window.referralStudentSuggestion = Object.assign({}, first, {
-                    fullName: `${first.first_name || ''} ${first.last_name || ''}`.trim()
-                });
                 statusEl.textContent = `Found ${result.data.length} match${result.data.length > 1 ? 'es' : ''}`;
                 statusEl.style.color = 'green';
             } else {
                 statusEl.textContent = 'No matching student found in school records.';
                 statusEl.style.color = '#d9534f';
-                window.referralStudentSuggestion = null;
                 hideStudentSuggestions();
             }
         })
@@ -253,7 +265,6 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
             console.error('Error searching students:', error);
             statusEl.textContent = 'Error checking student records.';
             statusEl.style.color = '#d66';
-            window.referralStudentSuggestion = null;
         });
 }
 

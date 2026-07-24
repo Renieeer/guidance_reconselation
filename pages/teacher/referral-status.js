@@ -118,95 +118,122 @@ function selectReferral(referralId) {
     }
 }
 
+function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+}
+
+// Must match ACKNOWLEDGEMENT_CHECKLIST_ITEMS in pages/counselor/referral-status.js
+const ACKNOWLEDGEMENT_CHECKLIST_ITEMS = [
+    { key: 'closed_intake', label: 'Closed at Intake Interview' },
+    { key: 'for_counseling', label: 'For Counseling' },
+    { key: 'sessions_ongoing', label: 'Counseling Sessions are on-going' },
+    { key: 'parent_conference', label: 'Parent/Guardian Conference Conducted' },
+    { key: 'sessions_completed', label: 'Sessions Completed / Case Terminated' },
+    { key: 'no_show', label: 'Student did not show up' },
+    { key: 'under_monitoring', label: 'Under Monitoring' }
+];
+
+// This form is filled out once by the counselor after counseling ends
+// (pages/counselor/referral-status.js, stage 6) — the teacher only ever
+// sees a read-only receipt of what was actually saved, never a blank
+// fillable form of their own.
 function generateAcknowledgementForm(referral) {
     const formDiv = document.getElementById('acknowledgementForm');
-    
-    const today = new Date();
-    const formattedDate = today.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
+    formDiv.innerHTML = '<p class="text-muted" style="text-align:center;padding:30px;">Loading acknowledgement…</p>';
+
+    fetch(`/guidancemanagment/api/referral-acknowledgement.php?referral_id=${referral.id}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load acknowledgement');
+            renderAcknowledgementReadOnly(referral, result.data);
+        })
+        .catch(error => {
+            console.error('Error loading acknowledgement:', error);
+            formDiv.innerHTML = `<p class="text-danger" style="text-align:center;padding:30px;">Couldn't load the acknowledgement form: ${escapeHtml(error.message)}</p>`;
+        });
+}
+
+function renderAcknowledgementReadOnly(referral, ack) {
+    const formDiv = document.getElementById('acknowledgementForm');
+    const studentName = escapeHtml(referral.student_name);
+
+    if (!ack) {
+        formDiv.innerHTML = `
+            <div class="referral-sheet">
+                <div class="referral-sheet-title">Counseling Referral Acknowledgement Form</div>
+                <div class="referral-sheet-section" style="text-align:center;color:var(--text-light);">
+                    <i class="bi bi-hourglass-split" style="font-size:28px;display:block;margin-bottom:10px;"></i>
+                    Your counselor hasn't completed this acknowledgement yet.<br>
+                    It will appear here once counseling for <strong>${studentName}</strong> has ended.
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const checklist = ack.checklist || {};
+    const savedDate = formatDate(ack.updated_at || ack.created_at);
+
     const html = `
         <div class="referral-sheet">
-            <h3 class="referral-sheet-title">COUNSELING REFERRAL ACKNOWLEDGEMENT FORM</h3>
-            
-            <div class="referral-sheet-intro">
-                <table border="1" cellpadding="8" width="100%" style="border-collapse: collapse; font-size: 14px;">
-                    <tr>
-                        <td colspan="2" style="font-weight: bold; background-color: #f0f0f0;">
-                            To: <span style="margin-left: 20px;">${referral.student_name}</span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="font-weight: bold; background-color: #f0f0f0;">
-                            Referring Person / Unit: <span style="margin-left: 20px;">Teacher</span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="font-weight: bold; background-color: #f0f0f0;">
-                            Designation/Department: <span style="margin-left: 20px;">Teaching Staff</span>
-                        </td>
-                    </tr>
-                </table>
+            <div class="referral-sheet-title">Counseling Referral Acknowledgement Form</div>
+            <div class="referral-sheet-intro">Completed by your counselor — read only</div>
+
+            <div class="referral-table-row">
+                <div class="referral-label">To</div>
+                <div class="referral-field">${studentName}</div>
+            </div>
+            <div class="referral-table-row">
+                <div class="referral-label">Referring Person / Unit</div>
+                <div class="referral-field">Teacher</div>
+            </div>
+            <div class="referral-table-row">
+                <div class="referral-label">Designation / Department</div>
+                <div class="referral-field">Teaching Staff</div>
             </div>
 
-            <div style="margin-top: 20px; padding: 15px; border: 1px solid #999;">
-                <p style="line-height: 1.8; font-size: 14px;">
-                    This is to confirm that <strong>${referral.student_name}</strong> whom you referred to us on 
-                    <strong>${formatDate(referral.date_submitted)}</strong> has started his/her session<br/>
-                    and is being attended by <strong>__________________________</strong>
-                </p>
+            <div class="referral-sheet-section">
+                This is to confirm that <strong>${studentName}</strong>, whom you referred to us on
+                <strong>${escapeHtml(formatDate(referral.date_submitted))}</strong>, has started his/her session
+                and is being attended by <strong>${escapeHtml(ack.attended_by) || '—'}</strong>
             </div>
 
-            <div style="margin-top: 20px; padding: 15px; border: 1px solid #999;">
-                <p style="font-weight: bold; margin-bottom: 10px;">Kindly refer to the checklist below on the status of the case at hand:</p>
-                
-                <div style="margin-left: 20px; line-height: 1.8; font-size: 14px;">
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> Closed at Intake Interview
+            <div class="referral-sheet-section">
+                <div class="referral-checklist-heading">Status of the case at hand</div>
+                <div class="referral-checklist">
+                    ${ACKNOWLEDGEMENT_CHECKLIST_ITEMS.map(item => `
+                        <label class="referral-checklist-item">
+                            <input type="checkbox" disabled ${checklist[item.key] ? 'checked' : ''}>
+                            <span>${escapeHtml(item.label)}</span>
+                        </label>
+                    `).join('')}
+                    <label class="referral-checklist-item">
+                        <input type="checkbox" disabled>
+                        <span>Number of follow-ups made by the Counselor: <strong>${escapeHtml(ack.follow_up_count) || '—'}</strong></span>
                     </label>
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> For Counseling
-                    </label>
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> Counseling Sessions are on-going
-                    </label>
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> Parent/Guardian Conference Conducted
-                    </label>
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> Sessions Completed / Case Terminated
-                    </label>
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> Student did not show up
-                    </label>
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> Under Monitoring
-                    </label>
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> Number of follow-ups made by the Counselor: __________
-                    </label>
-                    <label style="display: block; margin-bottom: 8px;">
-                        <input type="checkbox"> Referred to __________________________
+                    <label class="referral-checklist-item">
+                        <input type="checkbox" disabled>
+                        <span>Referred to <strong>${escapeHtml(ack.referred_to) || '—'}</strong></span>
                     </label>
                 </div>
             </div>
 
-            <div style="margin-top: 30px; padding: 15px; text-align: center; font-style: italic; line-height: 1.6; font-size: 14px;">
+            <div class="referral-sheet-thanks">
                 <p>Thank you.</p>
                 <p>Always for the welfare of students,</p>
             </div>
 
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #999;">
-                <p style="margin-bottom: 8px; font-weight: bold;">Attending Guidance Counselor</p>
-                <p style="margin-top: 40px;">_________________________________</p>
-                <p style="margin-top: 20px;">Date: <strong>${formattedDate}</strong></p>
+            <div class="referral-sheet-signature">
+                <p class="referral-signature-title">Attending Guidance Counselor</p>
+                <div class="referral-signature-line"></div>
+                <p class="referral-signature-date">${escapeHtml(ack.counselor_name) || ''}</p>
+                <p class="referral-signature-date">Date: <strong>${savedDate}</strong></p>
             </div>
         </div>
     `;
-    
+
     formDiv.innerHTML = html;
 }
 

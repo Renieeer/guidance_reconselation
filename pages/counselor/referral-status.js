@@ -3,6 +3,19 @@
 let allReferrals = [];
 let currentReferral = null;
 
+// Shared with the teacher-facing read-only view in
+// pages/teacher/referral-status.js — keep both lists in sync if this
+// checklist ever changes.
+const ACKNOWLEDGEMENT_CHECKLIST_ITEMS = [
+    { key: 'closed_intake', label: 'Closed at Intake Interview' },
+    { key: 'for_counseling', label: 'For Counseling' },
+    { key: 'sessions_ongoing', label: 'Counseling Sessions are on-going' },
+    { key: 'parent_conference', label: 'Parent/Guardian Conference Conducted' },
+    { key: 'sessions_completed', label: 'Sessions Completed / Case Terminated' },
+    { key: 'no_show', label: 'Student did not show up' },
+    { key: 'under_monitoring', label: 'Under Monitoring' }
+];
+
 function loadReferralStatus() {
     initPage();
     
@@ -114,13 +127,104 @@ function loadDetailView(referral) {
         consentSection.style.display = 'none';
     }
 
-    // Stages 1, 4, 5, 6 don't have a dedicated documentation form yet —
+    // Show the case-closing acknowledgement form for stage 6 — filled out
+    // here by the counselor, then shown read-only to the referring teacher.
+    const acknowledgementSection = document.getElementById('acknowledgementFormSection');
+    if (referral.stage === 6) {
+        acknowledgementSection.style.display = 'block';
+        renderAcknowledgementChecklist();
+        document.getElementById('acknowledgementForm').onsubmit = submitAcknowledgement;
+        loadAcknowledgement(referral.id);
+    } else {
+        acknowledgementSection.style.display = 'none';
+    }
+
+    // Stages 1, 4, 5 don't have a dedicated documentation form yet —
     // say so explicitly instead of leaving a blank gap that reads as broken.
     document.getElementById('noStageDocSection').style.display =
-        (referral.stage === 2 || referral.stage === 3) ? 'none' : 'block';
+        (referral.stage === 2 || referral.stage === 3 || referral.stage === 6) ? 'none' : 'block';
 
     // Load case actions
     loadCaseActions();
+}
+
+function renderAcknowledgementChecklist() {
+    const container = document.getElementById('ackChecklist');
+    container.innerHTML = ACKNOWLEDGEMENT_CHECKLIST_ITEMS.map(item => `
+        <label class="referral-checklist-item">
+            <input type="checkbox" name="ackChecklist" value="${item.key}">
+            <span>${escapeHtml(item.label)}</span>
+        </label>
+    `).join('');
+}
+
+function loadAcknowledgement(referralId) {
+    fetch(`/guidancemanagment/api/referral-acknowledgement.php?referral_id=${referralId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load acknowledgement');
+
+            document.getElementById('acknowledgementForm').reset();
+            const data = result.data;
+            if (!data) return;
+
+            document.getElementById('ackAttendedBy').value = data.attended_by || '';
+            document.getElementById('ackFollowUpCount').value = data.follow_up_count || '';
+            document.getElementById('ackReferredTo').value = data.referred_to || '';
+
+            const checklist = data.checklist || {};
+            document.querySelectorAll('#ackChecklist input[type="checkbox"]').forEach(cb => {
+                cb.checked = Boolean(checklist[cb.value]);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading acknowledgement:', error);
+        });
+}
+
+function submitAcknowledgement(e) {
+    e.preventDefault();
+
+    const user = getCurrentUser();
+    const attendedBy = document.getElementById('ackAttendedBy').value.trim();
+    const followUpCount = document.getElementById('ackFollowUpCount').value.trim();
+    const referredTo = document.getElementById('ackReferredTo').value.trim();
+
+    const checklist = {};
+    document.querySelectorAll('#ackChecklist input[type="checkbox"]').forEach(cb => {
+        checklist[cb.value] = cb.checked;
+    });
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    fetch('/guidancemanagment/api/referral-acknowledgement.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || attendedBy,
+            attended_by: attendedBy,
+            follow_up_count: followUpCount,
+            referred_to: referredTo,
+            checklist: checklist
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) throw new Error(result.message || 'Failed to save acknowledgement');
+        showAlert('Acknowledgement saved.', 'success');
+    })
+    .catch(error => {
+        showAlert(error.message || 'Failed to save acknowledgement.', 'error');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
 }
 
 function loadScreeningHistory(referralId) {

@@ -1,0 +1,525 @@
+/* Student History page — folder-style record browser.
+   Layered on top of style.css; reuses its color/shadow tokens so this page
+   matches the rest of the app instead of introducing a second design language. */
+
+/* ---------- Student picker ---------- */
+.sh-picker {
+    position: relative;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.sh-picker .sh-picker-field {
+    flex: 1 1 320px;
+    min-width: 260px;
+    position: relative;
+}
+
+.sh-picker label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-color);
+}
+
+.sh-picker input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.sh-picker input[type="text"]:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
+}
+
+/* ---------- Persistent, filterable student list ---------- */
+.sh-slist-count {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.sh-slist-count strong { color: var(--primary-color); }
+
+.sh-slist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.sh-slist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    background: white;
+    transition: var(--transition);
+}
+
+.sh-slist-item:hover {
+    background: var(--light-color);
+    border-color: var(--secondary-color);
+}
+
+.sh-slist-item.active {
+    border-color: var(--secondary-color);
+    background: rgba(13, 110, 253, 0.06);
+}
+
+.sh-slist-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.sh-slist-main { flex: 1; min-width: 0; }
+
+.sh-slist-name {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 13.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sh-slist-meta { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+.sh-slist-empty,
+.sh-slist-loading {
+    grid-column: 1 / -1;
+    padding: 24px 10px;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 13px;
+}
+
+.sh-back-bar { margin-bottom: 16px; }
+
+/* ---------- Selected student header ---------- */
+.sh-student-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.sh-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.sh-student-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--primary-color);
+    letter-spacing: -0.02em;
+}
+
+.sh-student-sub {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+.sh-stat-chips {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.sh-stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--light-color);
+    border: 1px solid var(--border-color);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.sh-stat-chip .sh-stat-count {
+    background: var(--primary-color);
+    color: white;
+    border-radius: 999px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+
+/* ---------- Filter bar ---------- */
+.sh-filter-bar {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr auto;
+    gap: 14px;
+    align-items: end;
+}
+
+@media (max-width: 1100px) {
+    .sh-filter-bar { grid-template-columns: 1fr 1fr; }
+}
+
+.sh-filter-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-light);
+}
+
+.sh-filter-field input,
+.sh-filter-field select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+}
+
+.sh-filter-field input:focus,
+.sh-filter-field select:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+}
+
+.sh-filter-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.sh-result-count {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.sh-result-count strong { color: var(--primary-color); }
+
+/* ---------- Folder nav (left, narrow) + content panel (right, wide) ---------- */
+.sh-folder-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 18px;
+    margin-top: 20px;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .sh-folder-layout { grid-template-columns: 1fr; }
+}
+
+.sh-folder-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sh-folder-tab {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    background: white;
+    border: 1px solid #e8ecf1;
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    user-select: none;
+    transition: var(--transition);
+}
+
+.sh-folder-tab:hover {
+    border-color: var(--secondary-color);
+}
+
+.sh-folder-tab.active {
+    border-color: var(--secondary-color);
+    background: rgba(13, 110, 253, 0.06);
+    box-shadow: var(--shadow-md);
+}
+
+.sh-folder-tab.sh-folder-hidden { display: none; }
+
+.sh-folder-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.sh-folder-tab[data-folder="referrals"] .sh-folder-icon { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+.sh-folder-tab[data-folder="counseling"] .sh-folder-icon { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
+.sh-folder-tab[data-folder="follow_ups"] .sh-folder-icon { background: linear-gradient(135deg, #10b981, #06b6d4); }
+.sh-folder-tab[data-folder="appointments"] .sh-folder-icon { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
+
+.sh-folder-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--primary-color);
+}
+
+.sh-folder-subtitle {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+.sh-folder-count {
+    margin-left: auto;
+    background: var(--light-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    font-weight: 700;
+    font-size: 13px;
+    border-radius: 999px;
+    min-width: 30px;
+    height: 26px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sh-folder-content {
+    background: white;
+    border: 1px solid #e8ecf1;
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    min-height: 380px;
+}
+
+.sh-folder-content-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.sh-folder-content-title {
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--primary-color);
+}
+
+.sh-folder-body {
+    display: none;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.sh-folder-body.active {
+    display: block;
+}
+
+.sh-folder-empty {
+    padding: 24px 10px;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 13px;
+}
+
+/* ---------- File items inside a folder ---------- */
+.sh-file {
+    background: white;
+    border: 1px solid #e8ecf1;
+    border-radius: 10px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.sh-file:first-child { margin-top: 0; }
+
+.sh-file-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+}
+
+.sh-file-icon {
+    color: var(--text-light);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.sh-file-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.sh-file-title {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--primary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sh-file-meta {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 3px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sh-file-chevron {
+    color: var(--text-light);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+
+.sh-file.open .sh-file-chevron {
+    transform: rotate(90deg);
+}
+
+.sh-file-detail {
+    display: none;
+    padding: 0 14px 14px 38px;
+    font-size: 13px;
+    color: var(--text-color);
+}
+
+.sh-file.open .sh-file-detail {
+    display: block;
+}
+
+.sh-detail-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px dashed #eef1f5;
+}
+
+.sh-detail-row:last-child { border-bottom: none; }
+
+.sh-detail-label {
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.sh-detail-value {
+    color: var(--text-color);
+    word-break: break-word;
+    white-space: pre-line;
+}
+
+.sh-subheading {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-light);
+    margin: 12px 0 6px;
+}
+
+.sh-subheading:first-child { margin-top: 0; }
+
+.sh-mini-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sh-mini-item {
+    background: var(--light-color);
+    border-left: 3px solid var(--secondary-color);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+}
+
+.sh-mini-item-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 3px;
+}
+
+/* ---------- Empty / loading states ---------- */
+.sh-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+}
+
+.sh-empty-state i {
+    font-size: 42px;
+    color: #cbd5e1;
+    margin-bottom: 14px;
+    display: block;
+}
+
+.sh-empty-state h3 {
+    color: var(--primary-color);
+    font-size: 17px;
+    margin-bottom: 6px;
+}
+
+.sh-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-light);
+    font-size: 14px;
+}

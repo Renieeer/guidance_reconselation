@@ -74,7 +74,7 @@
                             <p>in your caseload</p>
                         </div>
                         <div class="card-footer">
-                            <a href="student-record.php" class="btn btn-primary btn-sm">Records</a>
+                            <a href="student-history.php" class="btn btn-primary btn-sm">Records</a>
                         </div>
                     </div>
 
