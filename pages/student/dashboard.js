@@ -62,7 +62,7 @@ function loadDashboardData() {
         return;
     }
 
-    fetch(`/guidancemanagment/api/student-history.php?student_id=${encodeURIComponent(studentId)}`)
+    fetch(`../../api/student-history.php?student_id=${encodeURIComponent(studentId)}`)
         .then(response => response.json())
         .then(result => {
             if (!result.success) {
@@ -219,8 +219,4 @@ function loadActivityFeed(data) {
 }
 
 // Logout
-document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
-    e.preventDefault();
-    clearAllUserData();
-    window.location.href = '../../index.php';
-});
+document.getElementById('logoutBtn')?.addEventListener('click', requestLogout);

@@ -1,202 +1,295 @@
-// District Report Cases Data
-const caseCategories = [
-    'A. CAT',
-    'Misbehavior / Truancy / Absenteeism / Unwarranted Group',
-    'Smoking',
-    'Drinking',
-    'Drug Abuse',
-    'Carrying Deadly Weapons',
-    'Total A: CAT',
-    'B. FAMILY: ADULTS',
-    'Non-displaced',
-    'Deprivation',
-    'Family Conflict',
-    'Suicide Completed',
-    'Situational / MENTAL HEALTH',
-    'Total B: MENTAL HEALTH',
-    'C. BULLYING',
-    'Physical',
-    'Verbal',
-    'Emotional',
-    'Cyber',
-    'Total C: BULLYING',
-    'D. LGBTQIA ISSUES',
-    'Underachievement',
-    'Abuse/Neglect (Academic Performance)',
-    'Conflict In Adapting to Environment',
-    'Early Marriage',
-    'Learning Disability',
-    'Transfers or Changing Schools',
-    'Total D: FAMILY RELATED',
-    'E. Family-Related',
-    'Family Problems',
-    'Use of Illegal Drugs',
-    'All Sorts of Alcohol/Drinks/Cannabis',
-    'Overall TOTAL'
-];
+// District Report Cases — real case-category x grade counts per district,
+// sourced from api/case-report.php (same real data source as the
+// coordinator's Report Cases page). Districts are whatever the SDO has
+// assigned to each school in School Management (Edit mode) — until that's done, every school
+// falls into a single real "Unassigned" bucket instead of fake per-district
+// numbers.
 
-let currentDistrict = '1';
-let allCasesData = {};
+const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
 
-const COORDINATOR_SCHOOLS = ["school1", "school2", "school3"];
-const GRADE_NUMS = [7, 8, 9, 10, 11, 12];
+let districtList = ['Unassigned'];
+let currentDistrict = 'Unassigned';
+let sections = [];
+let counts = {};
+let displayRows = [];
+let currentPeriod = 'all';
+let customStart = '';
+let customEnd = '';
 
-// Build this page's case data from the coordinator's real per-school
-// records (school1/school2/school3), summing male+female across every
-// school. There's no district-to-school assignment anywhere in this app,
-// so every district shows the same real, summed total rather than
-// fabricated per-district numbers.
-function buildCaseDataFromCoordinatorRecords() {
-    const base = JSON.parse(localStorage.getItem('coordinator_base_cases_data') || 'null');
+const PERIOD_LABELS = { all: 'All Time', weekly: 'Weekly', monthly: 'Monthly', annually: 'Annually', custom: 'Custom Range' };
 
-    const data = {};
-    caseCategories.forEach(category => {
-        data[category] = { notes: '' };
-        GRADE_NUMS.forEach(grade => {
-            let total = 0;
-            if (base) {
-                COORDINATOR_SCHOOLS.forEach(school => {
-                    const cell = base[school]?.[category]?.[grade];
-                    if (cell) total += (cell.m || 0) + (cell.f || 0);
-                });
-            }
-            data[category][`grade${grade}`] = total;
-        });
-    });
-    return data;
+async function loadDistrictList() {
+    try {
+        const response = await fetch('../../api/case-report.php?action=districts');
+        const data = await response.json();
+        const real = (data.success && Array.isArray(data.districts)) ? data.districts : [];
+        districtList = data.success && data.hasUnassigned ? [...real, 'Unassigned'] : real;
+    } catch (error) {
+        console.error('Error loading district list:', error);
+        districtList = [];
+    }
+    currentDistrict = districtList[0] || 'Unassigned';
 }
 
-// Load cases data — the same real, coordinator-derived totals for every district.
-function loadCasesData() {
-    const realData = buildCaseDataFromCoordinatorRecords();
-    allCasesData = {};
-    for (let d = 1; d <= 11; d++) {
-        allCasesData[`district${d}`] = realData;
+function renderDistrictButtons() {
+    const container = document.getElementById('districtButtons');
+    if (!container) return;
+
+    if (districtList.length === 0) {
+        container.innerHTML = `
+            <p class="text-muted" style="margin: 0;">
+                No active schools found.
+            </p>
+        `;
+        return;
+    }
+
+    container.innerHTML = districtList.map((district, i) => `
+        <button class="district-btn ${district === currentDistrict ? 'active' : ''}" style="--i:${i}" data-district="${escapeHtml(district)}">${escapeHtml(district)}</button>
+    `).join('');
+
+    container.querySelectorAll('.district-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            container.querySelectorAll('.district-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentDistrict = this.getAttribute('data-district');
+            await loadReportData();
+            renderCasesTable();
+        });
+    });
+}
+
+async function loadReportData() {
+    try {
+        const params = new URLSearchParams({ action: 'categories', district: currentDistrict, period: currentPeriod });
+        if (currentPeriod === 'custom' && customStart && customEnd) {
+            params.set('start', customStart);
+            params.set('end', customEnd);
+        }
+        const url = `../../api/case-report.php?${params.toString()}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load district case report');
+        }
+
+        sections = data.sections || [];
+        counts = data.counts || {};
+    } catch (error) {
+        console.error('Error loading district case report:', error);
+        sections = [];
+        counts = {};
     }
 }
 
-// Render cases table for selected district
+function gradeCell(bucketKey, grade) {
+    const bucket = counts[bucketKey];
+    return (bucket && bucket[String(grade)]) || { m: 0, f: 0 };
+}
+
+// Same flattening as pages/coordinator/report-case.js, minus the M/F split
+// (this table only shows one total per grade) — see that file for the
+// full explanation of the section/category/uncategorized/subtotal shape.
+function buildDisplayRows() {
+    const rows = [];
+    const grandTotal = {};
+    ALL_REPORT_GRADES.forEach(g => { grandTotal[g] = 0; });
+
+    sections.forEach(section => {
+        rows.push({ type: 'header', label: `${section.sectionCode}. ${section.sectionName}` });
+
+        const sectionTotal = {};
+        ALL_REPORT_GRADES.forEach(g => { sectionTotal[g] = 0; });
+
+        const addToTotals = (bucketKey) => {
+            ALL_REPORT_GRADES.forEach(g => {
+                const cell = gradeCell(bucketKey, g);
+                const n = cell.m + cell.f;
+                sectionTotal[g] += n;
+                grandTotal[g] += n;
+            });
+        };
+
+        section.categories.forEach(cat => {
+            rows.push({ type: 'category', label: cat.categoryName, bucketKey: cat.categoryId });
+            addToTotals(cat.categoryId);
+        });
+
+        const uncategorizedKey = `section-${section.sectionId}-uncategorized`;
+        rows.push({ type: 'category', label: 'Uncategorized', bucketKey: uncategorizedKey });
+        addToTotals(uncategorizedKey);
+
+        rows.push({ type: 'subtotal', label: `Total ${section.sectionCode}: ${section.sectionName}`, totals: sectionTotal });
+    });
+
+    rows.push({ type: 'subtotal', label: 'Overall Total', totals: grandTotal });
+    return rows;
+}
+
+function rowTotals(row) {
+    if (row.type === 'subtotal') {
+        return row.totals;
+    }
+    const totals = {};
+    ALL_REPORT_GRADES.forEach(g => {
+        const cell = gradeCell(row.bucketKey, g);
+        totals[g] = cell.m + cell.f;
+    });
+    return totals;
+}
+
+// Render cases table for the selected district
 function renderCasesTable() {
     const tableBody = document.getElementById('casesTableBody');
     tableBody.innerHTML = '';
-    
-    const districtData = allCasesData[`district${currentDistrict}`];
-    
-    caseCategories.forEach(category => {
-        const rowData = districtData[category];
-        const grade7 = rowData.grade7;
-        const grade8 = rowData.grade8;
-        const grade9 = rowData.grade9;
-        const grade10 = rowData.grade10;
-        const grade11 = rowData.grade11;
-        const grade12 = rowData.grade12;
-        const total = grade7 + grade8 + grade9 + grade10 + grade11 + grade12;
-        
-        const row = document.createElement('tr');
-        
-        // Highlight totals rows with different styling
-        if (category.includes('Total')) {
-            row.style.fontWeight = '700';
-            row.style.backgroundColor = '#f1f5f9';
+
+    displayRows = buildDisplayRows();
+
+    displayRows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        tr.style.setProperty('--i', index);
+
+        if (row.type === 'header') {
+            tr.innerHTML = `<td colspan="8" style="font-weight: 700; background: #e2e8f0;">${row.label}</td>`;
+            tableBody.appendChild(tr);
+            return;
         }
-        
-        row.innerHTML = `
-            <td><strong>${category}</strong></td>
-            <td class="text-center">${grade7 > 0 ? `<span class="badge badge-in-progress">${grade7}</span>` : '0'}</td>
-            <td class="text-center">${grade8 > 0 ? `<span class="badge badge-in-progress">${grade8}</span>` : '0'}</td>
-            <td class="text-center">${grade9 > 0 ? `<span class="badge badge-in-progress">${grade9}</span>` : '0'}</td>
-            <td class="text-center">${grade10 > 0 ? `<span class="badge badge-in-progress">${grade10}</span>` : '0'}</td>
-            <td class="text-center">${grade11 > 0 ? `<span class="badge badge-in-progress">${grade11}</span>` : '0'}</td>
-            <td class="text-center">${grade12 > 0 ? `<span class="badge badge-warning">${grade12}</span>` : '0'}</td>
-            <td class="text-center"><strong style="color: #3b82f6; font-size: 16px;">${total}</strong></td>
+
+        if (row.type === 'subtotal') {
+            tr.style.fontWeight = '700';
+            tr.style.backgroundColor = '#f1f5f9';
+        }
+
+        const totals = rowTotals(row);
+        const grandTotal = ALL_REPORT_GRADES.reduce((sum, g) => sum + (totals[g] || 0), 0);
+
+        tr.innerHTML = `
+            <td><strong>${row.label}</strong></td>
+            ${ALL_REPORT_GRADES.map(g => {
+                const n = totals[g] || 0;
+                return `<td class="text-center">${n > 0 ? `<span class="badge badge-in-progress">${n}</span>` : '0'}</td>`;
+            }).join('')}
+            <td class="text-center"><strong style="color: #3b82f6; font-size: 16px;">${grandTotal}</strong></td>
         `;
-        
-        row.style.cursor = 'pointer';
-        row.addEventListener('click', () => showCaseDetails(category));
-        tableBody.appendChild(row);
+
+        if (row.type === 'category') {
+            tr.classList.add('row-clickable');
+            tr.addEventListener('click', () => showCaseDetails(index));
+        }
+
+        tableBody.appendChild(tr);
     });
 }
 
 // Show case details modal
-function showCaseDetails(category) {
-    const districtData = allCasesData[`district${currentDistrict}`];
-    const caseData = districtData[category];
-    
-    if (caseData) {
-        document.getElementById('caseId').value = `DIST${currentDistrict}-${category.substring(0, 3)}`;
-        document.getElementById('caseCategory').value = category;
-        document.getElementById('caseGrade').value = 'All Grades (7-12)';
-        document.getElementById('caseStatus').value = 'Active';
-        document.getElementById('caseDate').value = new Date().toLocaleDateString();
-        document.getElementById('caseNotes').value = `Grade 7: ${caseData.grade7} | Grade 8: ${caseData.grade8} | Grade 9: ${caseData.grade9} | Grade 10: ${caseData.grade10} | Grade 11: ${caseData.grade11} | Grade 12: ${caseData.grade12}`;
-        
-        document.getElementById('caseModal').classList.add('show');
-    }
+function showCaseDetails(rowIndex) {
+    const row = displayRows[rowIndex];
+    if (!row) return;
+
+    const totals = rowTotals(row);
+
+    document.getElementById('caseId').value = `DIST-${currentDistrict.toUpperCase().replace(/\s+/g, '-')}-${row.bucketKey || 'ROW'}`;
+    document.getElementById('caseCategory').value = row.label;
+    document.getElementById('caseGrade').value = 'All Grades (7-12)';
+    document.getElementById('caseStatus').value = 'Active';
+    document.getElementById('caseDate').value = new Date().toLocaleDateString();
+    document.getElementById('caseNotes').value = ALL_REPORT_GRADES.map(g => `Grade ${g}: ${totals[g] || 0}`).join(' | ');
+
+    document.getElementById('caseModal').classList.add('show');
 }
 
 // Set up event listeners
 function setupEventListeners() {
-    // District selection buttons
-    document.querySelectorAll('.district-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.district-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentDistrict = this.getAttribute('data-district');
-            renderCasesTable();
-        });
-    });
-    
-    // Modal close buttons
     document.getElementById('closeModal').addEventListener('click', () => {
         document.getElementById('caseModal').classList.remove('show');
     });
-    
+
     document.getElementById('closeCaseModal').addEventListener('click', () => {
         document.getElementById('caseModal').classList.remove('show');
     });
-    
-    // Export button
+
     document.getElementById('exportBtn').addEventListener('click', exportReport);
-    
-    // Filter button
-    document.getElementById('filterBtn').addEventListener('click', () => {
-        alert('Filter functionality coming soon');
+
+    setupPeriodFilter();
+
+    document.getElementById('logoutBtn')?.addEventListener('click', requestLogout);
+}
+
+// Weekly / Monthly / Annually / Custom range period filter for the cases table
+function setupPeriodFilter() {
+    const periodButtons = document.querySelectorAll('.period-btn');
+    const customRangeGroup = document.getElementById('customRangeGroup');
+
+    periodButtons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            periodButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPeriod = btn.getAttribute('data-period');
+            customRangeGroup.hidden = currentPeriod !== 'custom';
+
+            if (currentPeriod === 'custom') {
+                if (!customStart || !customEnd) return;
+            }
+
+            await loadReportData();
+            renderCasesTable();
+        });
     });
-    
-    // Logout
-    document.getElementById('logoutBtn').addEventListener('click', logout);
+
+    document.getElementById('applyRangeBtn').addEventListener('click', async () => {
+        const start = document.getElementById('rangeStart').value;
+        const end = document.getElementById('rangeEnd').value;
+
+        if (!start || !end) {
+            showAlert('error', 'Select both a start and end date.');
+            return;
+        }
+        if (start > end) {
+            showAlert('error', 'Start date must be before the end date.');
+            return;
+        }
+
+        customStart = start;
+        customEnd = end;
+        await loadReportData();
+        renderCasesTable();
+    });
 }
 
 // Export report function
 function exportReport() {
-    const districtData = allCasesData[`district${currentDistrict}`];
-    let csvContent = 'Category of Cases,Grade 7,Grade 8,Grade 9,Grade 10,Grade 11,Grade 12,Totals\n';
-    
-    caseCategories.forEach(category => {
-        const data = districtData[category];
-        const total = data.grade7 + data.grade8 + data.grade9 + data.grade10 + data.grade11 + data.grade12;
-        csvContent += `"${category}",${data.grade7},${data.grade8},${data.grade9},${data.grade10},${data.grade11},${data.grade12},${total}\n`;
+    let csvContent = `Category of Cases,${ALL_REPORT_GRADES.map(g => `Grade ${g}`).join(',')},Totals\n`;
+
+    displayRows.forEach(row => {
+        if (row.type === 'header') return;
+        const totals = rowTotals(row);
+        const gradeTotals = ALL_REPORT_GRADES.map(g => totals[g] || 0);
+        const total = gradeTotals.reduce((sum, n) => sum + n, 0);
+        csvContent += `"${row.label}",${gradeTotals.join(',')},${total}\n`;
     });
-    
-    // Create download link
+
     const element = document.createElement('a');
     element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-    element.setAttribute('download', `District${currentDistrict}_ReportCases_${new Date().toISOString().split('T')[0]}.csv`);
+    element.setAttribute('download', `${currentDistrict.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}.csv`);
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
-    
+
     showAlert('success', 'Report exported successfully!');
 }
 
 // Initialize page
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
-    loadCasesData();
+
+    await loadDistrictList();
+    renderDistrictButtons();
+    await loadReportData();
     renderCasesTable();
     setupEventListeners();
-    
+
     // Update user info
     const user = getCurrentUser();
     if (user) {
@@ -216,10 +309,19 @@ function showAlert(type, message) {
     alert.style.zIndex = '10000';
     alert.style.minWidth = '300px';
     document.body.appendChild(alert);
-    
+
     setTimeout(() => {
         alert.remove();
     }, 3000);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // Logout function
@@ -227,4 +329,3 @@ function logout() {
     localStorage.removeItem('currentUser');
     window.location.href = '../../index.php';
 }
-

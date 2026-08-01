@@ -21,7 +21,7 @@ function loadExistingReferralData() {
         return; // No existing referral to load
     }
     
-    let apiUrl = '/guidancemanagment/api/referral.php?role=teacher';
+    let apiUrl = '../../api/referral.php?role=teacher';
     if (referralId) {
         apiUrl += `&id=${encodeURIComponent(referralId)}`;
     } else if (studentId) {
@@ -60,7 +60,8 @@ function populateReferralForm(referral) {
         parent_contact: 'parentContact',
         parent_email: 'parentEmail',
         family_background: 'familyBackground',
-        urgency: 'urgency'
+        urgency: 'urgency',
+        teacher_contact: 'teacherContact'
     };
     
     Object.entries(fieldMap).forEach(([apiField, formFieldId]) => {
@@ -214,7 +215,7 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
     statusEl.textContent = 'Searching school records...';
     statusEl.style.color = '#666';
 
-    const apiUrl = `/guidancemanagment/api/get-students.php?school=${encodeURIComponent(teacherSchool)}&search=${encodeURIComponent(searchTerm)}&limit=8`;
+    const apiUrl = `../../api/get-students.php?school=${encodeURIComponent(teacherSchool)}&search=${encodeURIComponent(searchTerm)}&limit=8`;
 
     fetch(apiUrl)
         .then(r => r.json())
@@ -353,6 +354,8 @@ function populateTeacherSchool() {
         teacherDesignationField.value = user?.type || user?.role || 'Teacher';
     }
 
+    // Editable (not readonly) — pre-fill from the account if a number is on
+    // file, but the teacher can type/correct their own number either way.
     const teacherContactField = document.getElementById('teacherContact');
     if (teacherContactField) {
         teacherContactField.value = user?.contact || user?.phone || user?.contact_number || '';
@@ -401,6 +404,7 @@ function submitWithStudentId(studentId, studentName, teacherSchool, formData, us
         urgency: formData.get('urgency'),
         teacher_id: user.id || null,
         teacher_name: user.name || user.email,
+        teacher_contact: formData.get('teacherContact'),
         school_attended: teacherSchool,
         student_school: formData.get('studentSchool') || teacherSchool,
         stage: 1, // Stage 1: Admission of Case
@@ -408,7 +412,7 @@ function submitWithStudentId(studentId, studentName, teacherSchool, formData, us
     };
 
     // Save to database
-    const apiUrl = '/guidancemanagment/api/referral.php';
+    const apiUrl = '../../api/referral.php';
     
     fetch(apiUrl, {
         method: 'POST',

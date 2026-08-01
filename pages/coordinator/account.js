@@ -71,7 +71,7 @@ function loadSchoolAccounts() {
         return;
     }
 
-    const apiUrl = `/guidancemanagment/api/manage-accounts.php?school=${encodeURIComponent(school)}`;
+    const apiUrl = `../../api/manage-accounts.php?school=${encodeURIComponent(school)}`;
     
     fetch(apiUrl)
         .then(response => {
@@ -104,7 +104,7 @@ function searchAccounts() {
         return;
     }
 
-    let apiUrl = `/guidancemanagment/api/manage-accounts.php?school=${encodeURIComponent(school)}`;
+    let apiUrl = `../../api/manage-accounts.php?school=${encodeURIComponent(school)}`;
     if (searchTerm) {
         apiUrl += `&search=${encodeURIComponent(searchTerm)}`;
     }
@@ -215,7 +215,7 @@ function saveAccountChanges(e) {
         password: password || ''
     };
 
-    fetch('/guidancemanagment/api/manage-accounts.php', {
+    fetch('../../api/manage-accounts.php', {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'

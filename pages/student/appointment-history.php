@@ -42,16 +42,6 @@
                             <input type="text" id="shSearchText" placeholder="Search reason, notes, case title...">
                         </div>
                         <div class="sh-filter-field">
-                            <label>Record Type</label>
-                            <select id="shTypeFilter">
-                                <option value="">All Records</option>
-                                <option value="referrals">Referrals</option>
-                                <option value="counseling">Counseling Sessions</option>
-                                <option value="follow_ups">Counseling Follow-Ups</option>
-                                <option value="appointments">Online Appointments</option>
-                            </select>
-                        </div>
-                        <div class="sh-filter-field">
                             <label>Status</label>
                             <select id="shStatusFilter">
                                 <option value="">All Statuses</option>

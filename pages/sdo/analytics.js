@@ -2,26 +2,36 @@
 
 function loadAnalytics() {
     initPage();
-    
-    const referrals = getData('referrals') || [];
 
-    // Calculate stats by reason
-    const byReason = {};
-    referrals.forEach(r => {
-        byReason[r.referralReason] = (byReason[r.referralReason] || 0) + 1;
-    });
+    // No role param: falls through to an unfiltered query, which is what
+    // SDO/division-level oversight wants — every referral, every school.
+    fetch('../../api/referral.php')
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to load referrals');
+            }
+            renderAnalytics(result.data || []);
+        })
+        .catch(error => {
+            console.error('Error loading SDO analytics:', error);
+            ['statusSub', 'statusReview', 'statusProcess', 'statusCompleted', 'monthlyAvg', 'avgResTime']
+                .forEach(id => { document.getElementById(id).textContent = '—'; });
+        });
+
+    // Load comparative analytics
+    loadComparativeAnalytics();
+}
+
+function renderAnalytics(referrals) {
+    // NOTE: reasonAcademic/Behavioral/Mental/Other are intentionally left
+    // alone (not written here) — referral_reason is free text typed by the
+    // referring teacher, there's no fixed category on the referral itself,
+    // so it can't be bucketed into those 4 labels by exact match against
+    // real data without either a controlled category field on the referral
+    // form or a mapping decision. See the same note in counselor/analytics.js.
 
     const total = referrals.length;
-    const academia = byReason['Academic Concerns'] || 0;
-    const behavioral = byReason['Behavioral Issues'] || 0;
-    const mental = byReason['Mental Health Concern'] || 0;
-    const other = total - academia - behavioral - mental;
-
-    // Populate reason percentages
-    document.getElementById('reasonAcademic').textContent = total > 0 ? Math.round((academia / total) * 100) + '%' : '0%';
-    document.getElementById('reasonBehavioral').textContent = total > 0 ? Math.round((behavioral / total) * 100) + '%' : '0%';
-    document.getElementById('reasonMental').textContent = total > 0 ? Math.round((mental / total) * 100) + '%' : '0%';
-    document.getElementById('reasonOther').textContent = total > 0 ? Math.round((other / total) * 100) + '%' : '0%';
 
     // Status stats
     const sub = referrals.filter(r => r.stage === 1).length;
@@ -35,42 +45,71 @@ function loadAnalytics() {
     document.getElementById('statusCompleted').textContent = completed;
 
     document.getElementById('monthlyAvg').textContent = Math.ceil(total / 12) + ' referrals/month';
-    document.getElementById('avgResTime').textContent = '15-30 days';
 
-    // Load comparative analytics
-    loadComparativeAnalytics();
+    const resolutionDays = referrals
+        .filter(r => r.stage === 6 && r.date_submitted && r.updated_at)
+        .map(r => Math.max(0, Math.floor((new Date(r.updated_at) - new Date(r.date_submitted)) / (1000 * 60 * 60 * 24))));
+    document.getElementById('avgResTime').textContent = resolutionDays.length > 0
+        ? Math.round(resolutionDays.reduce((sum, d) => sum + d, 0) / resolutionDays.length) + ' days'
+        : 'N/A';
 }
 
+// Real per-district rollup from api/case-report.php (schools grouped by
+// schools.district, staff headcounts from users_tables, referral/resolution
+// counts from the referral table — all joined on school name). Schools
+// without a district assigned yet (the common starting state) show up under
+// a single real "Unassigned" row instead of being split into fake districts.
 function loadComparativeAnalytics() {
-    const districts = [
-        'District 1', 'District 2', 'District 3', 'District 4', 'District 5',
-        'District 6', 'District 7', 'District 8', 'District 9', 'District 10', 'District 11'
-    ];
-
     const tbody = document.getElementById('analyticsTableBody');
-    
-    tbody.innerHTML = districts.map((district, idx) => {
-        const schoolCount = Math.floor(Math.random() * 15) + 5;
-        const teachers = schoolCount * 8;
-        const coordinators = schoolCount * 1;
-        const counselors = schoolCount * 2;
-        const referrals = Math.floor(Math.random() * 100) + 20;
-        const resolution = Math.floor(Math.random() * 40) + 50;
+
+    fetch('../../api/case-report.php?action=district_summary')
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to load district summary');
+            }
+            renderComparativeAnalytics(result.districts || []);
+        })
+        .catch(error => {
+            console.error('Error loading comparative analytics:', error);
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Unable to load district data.</td></tr>';
+        });
+}
+
+function renderComparativeAnalytics(districts) {
+    const tbody = document.getElementById('analyticsTableBody');
+
+    if (districts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No schools found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = districts.map(row => {
+        const resolution = row.referralCount > 0 ? Math.round((row.resolvedCount / row.referralCount) * 100) : 0;
         const performance = resolution > 65 ? 'Excellent' : (resolution > 50 ? 'Good' : 'Needs Improvement');
 
         return `
             <tr>
-                <td><strong>${district}</strong></td>
-                <td>${schoolCount}</td>
-                <td>${teachers}</td>
-                <td>${coordinators}</td>
-                <td>${counselors}</td>
-                <td>${referrals}</td>
+                <td><strong>${escapeHtml(row.district)}</strong></td>
+                <td>${row.schoolCount}</td>
+                <td>${row.teacherCount}</td>
+                <td>${row.coordinatorCount}</td>
+                <td>${row.counselorCount}</td>
+                <td>${row.referralCount}</td>
                 <td>${resolution}%</td>
                 <td>${createBadge(performance === 'Excellent' ? 'completed' : (performance === 'Good' ? 'in-progress' : 'pending'))}</td>
             </tr>
         `;
     }).join('');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 document.addEventListener('DOMContentLoaded', loadAnalytics);

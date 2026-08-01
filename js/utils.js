@@ -129,13 +129,55 @@ function createStageIndicator(currentStage) {
 function initLogout() {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (confirm('Are you sure you want to logout?')) {
-                logout();
-            }
-        });
+        logoutBtn.addEventListener('click', requestLogout);
     }
+}
+
+// Floating "are you sure?" confirmation shown before any logout button
+// actually logs the user out. Builds the dialog on demand and reuses the
+// app's existing .modal/.modal-content styling (css/style.css) so it looks
+// native wherever it's triggered from, instead of the browser's confirm().
+function ensureLogoutConfirmModal() {
+    let modal = document.getElementById('logoutConfirmModal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'logoutConfirmModal';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Log Out</h2>
+                <button type="button" class="modal-close" id="logoutConfirmClose" aria-label="Cancel">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 24px 32px;">
+                <p style="margin: 0;">Are you sure you want to log out?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="logoutConfirmCancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="logoutConfirmOk">Log Out</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const hide = () => modal.classList.remove('show');
+    modal.querySelector('#logoutConfirmClose').addEventListener('click', hide);
+    modal.querySelector('#logoutConfirmCancel').addEventListener('click', hide);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) hide();
+    });
+    modal.querySelector('#logoutConfirmOk').addEventListener('click', () => {
+        hide();
+        logout();
+    });
+
+    return modal;
+}
+
+function requestLogout(e) {
+    if (e) e.preventDefault();
+    ensureLogoutConfirmModal().classList.add('show');
 }
 
 // Set user info in topbar

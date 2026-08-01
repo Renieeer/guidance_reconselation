@@ -37,7 +37,7 @@ function loadTeacherDashboard() {
 
     // Teachers only ever see their own submitted referrals — same
     // endpoint/params referral-status.js already uses successfully.
-    const apiUrl = `/guidancemanagment/api/referral.php?role=teacher&school=${encodeURIComponent(teacherSchool)}&user_id=${encodeURIComponent(teacherId)}`;
+    const apiUrl = `../../api/referral.php?role=teacher&school=${encodeURIComponent(teacherSchool)}&user_id=${encodeURIComponent(teacherId)}`;
 
     fetch(apiUrl)
         .then(response => response.json())

@@ -40,13 +40,22 @@ function ensureSchoolsTable(mysqli $conn): void {
 
     $conn->query($createTable);
 
-    $stmt = $conn->prepare('INSERT IGNORE INTO schools (school_code, school_name, assignment_type, is_active) VALUES (?, ?, ?, 1)');
+    // `district` is newer than the original table shape and MySQL 8 has no
+    // "ADD COLUMN IF NOT EXISTS", so existence is checked via SHOW COLUMNS
+    // first (same pattern as api/follow-up.php / api/case-scenario.php).
+    $districtColumn = $conn->query("SHOW COLUMNS FROM schools LIKE 'district'");
+    if (!$districtColumn || $districtColumn->num_rows === 0) {
+        $conn->query("ALTER TABLE schools ADD COLUMN district VARCHAR(100) DEFAULT NULL");
+        $conn->query("ALTER TABLE schools ADD INDEX idx_school_district (district)");
+    }
+
+    $stmt = $conn->prepare('INSERT IGNORE INTO schools (school_code, school_name, assignment_type, district, is_active) VALUES (?, ?, ?, ?, 1)');
     if (!$stmt) {
         return;
     }
 
     foreach (getDefaultSchoolSeeds() as $school) {
-        $stmt->bind_param('sss', $school['school_code'], $school['school_name'], $school['assignment_type']);
+        $stmt->bind_param('ssss', $school['school_code'], $school['school_name'], $school['assignment_type'], $school['school_name']);
         $stmt->execute();
     }
 
@@ -76,7 +85,7 @@ function getSchoolList(): array {
 
     ensureSchoolsTable($conn);
 
-    $result = $conn->query('SELECT school_code, school_name, assignment_type FROM schools WHERE is_active = 1 ORDER BY school_name ASC');
+    $result = $conn->query('SELECT school_code, school_name, assignment_type, district FROM schools WHERE is_active = 1 ORDER BY school_name ASC');
     if (!$result) {
         return getDefaultSchoolSeeds();
     }
@@ -87,6 +96,7 @@ function getSchoolList(): array {
             'school_code' => $row['school_code'],
             'school_name' => $row['school_name'],
             'assignment_type' => $row['assignment_type'],
+            'district' => $row['district'],
             'availableRoles' => buildAvailableRoles((string)$row['assignment_type'])
         ];
     }
@@ -145,12 +155,15 @@ function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignment
         $check->close();
     }
 
-    $insert = $conn->prepare('INSERT INTO schools (school_code, school_name, assignment_type, is_active) VALUES (?, ?, ?, 1)');
+    // New schools default their district to their own name so they show up
+    // as their own row in per-district reports right away, instead of being
+    // lumped into "Unassigned" until someone remembers to set it manually.
+    $insert = $conn->prepare('INSERT INTO schools (school_code, school_name, assignment_type, district, is_active) VALUES (?, ?, ?, ?, 1)');
     if (!$insert) {
         throw new RuntimeException('Failed to prepare school insert statement');
     }
 
-    $insert->bind_param('sss', $schoolCode, $schoolName, $assignmentType);
+    $insert->bind_param('ssss', $schoolCode, $schoolName, $assignmentType, $schoolName);
     if (!$insert->execute()) {
         $insert->close();
         throw new RuntimeException('Failed to save school record');
@@ -160,7 +173,8 @@ function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignment
     return [
         'school_code' => $schoolCode,
         'school_name' => $schoolName,
-        'assignment_type' => $assignmentType
+        'assignment_type' => $assignmentType,
+        'district' => $schoolName
     ];
 }
 
@@ -174,7 +188,7 @@ function getSchoolConfig(string $school): ?array {
         return null;
     }
 
-    $stmt = $conn->prepare('SELECT school_code, school_name, assignment_type FROM schools WHERE school_code = ? OR school_name = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT school_code, school_name, assignment_type, district FROM schools WHERE school_code = ? OR school_name = ? LIMIT 1');
     if (!$stmt) {
         return null;
     }
@@ -192,6 +206,7 @@ function getSchoolConfig(string $school): ?array {
         'schoolCode' => $row['school_code'],
         'schoolName' => $row['school_name'],
         'assignmentType' => $row['assignment_type'],
+        'district' => $row['district'],
         'type' => 'school',
         'availableRoles' => buildAvailableRoles((string)($row['assignment_type'] ?? 'both'))
     ];

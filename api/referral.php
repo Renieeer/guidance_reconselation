@@ -113,6 +113,7 @@ function ensureReferralSchema(mysqli $conn): void {
         'urgency' => 'ALTER TABLE referral ADD COLUMN urgency VARCHAR(45) NOT NULL DEFAULT "normal" AFTER family_background',
         'teacher_id' => 'ALTER TABLE referral ADD COLUMN teacher_id VARCHAR(45) NULL AFTER TeacherID',
         'teacher_name' => 'ALTER TABLE referral ADD COLUMN teacher_name VARCHAR(255) NULL AFTER TeacherID',
+        'teacher_contact' => 'ALTER TABLE referral ADD COLUMN teacher_contact VARCHAR(100) NULL AFTER teacher_name',
         'school_attended' => 'ALTER TABLE referral ADD COLUMN school_attended VARCHAR(255) NULL AFTER teacher_name',
         'student_school' => 'ALTER TABLE referral ADD COLUMN student_school VARCHAR(255) NULL AFTER school_attended',
         'stage' => 'ALTER TABLE referral ADD COLUMN stage INT NOT NULL DEFAULT 1 AFTER student_school',
@@ -205,6 +206,7 @@ try {
                 urgency,
                 TeacherID AS teacher_id,
                 teacher_name,
+                teacher_contact,
                 school_attended,
                 student_school,
                 COALESCE(stage, 1) AS stage,
@@ -291,6 +293,7 @@ try {
         $urgency = trim((string)($payload['urgency'] ?? 'normal'));
         $teacherId = trim((string)($payload['teacher_id'] ?? $payload['teacherId'] ?? ''));
         $teacherName = trim((string)($payload['teacher_name'] ?? $payload['teacherName'] ?? ''));
+        $teacherContact = trim((string)($payload['teacher_contact'] ?? $payload['teacherContact'] ?? ''));
         $schoolAttended = trim((string)($payload['school_attended'] ?? $payload['schoolAttended'] ?? ''));
         $studentSchool = trim((string)($payload['student_school'] ?? $payload['studentSchool'] ?? $schoolAttended));
         $stage = (int)($payload['stage'] ?? 1);
@@ -355,6 +358,7 @@ try {
                 family_background,
                 urgency,
                 teacher_name,
+                teacher_contact,
                 school_attended,
                 student_school,
                 stage,
@@ -362,7 +366,7 @@ try {
                 date_submitted,
                 updated_at
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         ";
 
@@ -395,6 +399,7 @@ try {
             $familyBackground,
             $urgency,
             $teacherName,
+            $teacherContact,
             $schoolAttended,
             $studentSchool,
             $stage,
@@ -437,6 +442,7 @@ try {
                 'urgency' => $urgency,
                 'teacher_id' => $teacherId,
                 'teacher_name' => $teacherName,
+                'teacher_contact' => $teacherContact,
                 'school_attended' => $schoolAttended,
                 'student_school' => $studentSchool,
                 'stage' => $stage,

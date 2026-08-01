@@ -79,7 +79,7 @@ function shInit() {
         return;
     }
 
-    ['shSearchText', 'shTypeFilter', 'shStatusFilter', 'shDateFrom', 'shDateTo'].forEach(id => {
+    ['shSearchText', 'shStatusFilter', 'shDateFrom', 'shDateTo'].forEach(id => {
         const el = document.getElementById(id);
         el.addEventListener('input', shRenderFolders);
         el.addEventListener('change', shRenderFolders);
@@ -87,7 +87,6 @@ function shInit() {
 
     document.getElementById('shClearFilters').addEventListener('click', () => {
         document.getElementById('shSearchText').value = '';
-        document.getElementById('shTypeFilter').value = '';
         document.getElementById('shStatusFilter').value = '';
         document.getElementById('shDateFrom').value = '';
         document.getElementById('shDateTo').value = '';
@@ -113,7 +112,7 @@ function shInit() {
 function shLoadHistory(studentId) {
     document.getElementById('shLoadingState').style.display = 'block';
 
-    fetch(`/guidancemanagment/api/student-history.php?student_id=${encodeURIComponent(studentId)}`)
+    fetch(`../../api/student-history.php?student_id=${encodeURIComponent(studentId)}`)
         .then(res => res.json())
         .then(result => {
             document.getElementById('shLoadingState').style.display = 'none';
@@ -257,7 +256,6 @@ function shApplyActiveFolder() {
 function shGetFilters() {
     return {
         text: document.getElementById('shSearchText').value.trim().toLowerCase(),
-        type: document.getElementById('shTypeFilter').value,
         status: document.getElementById('shStatusFilter').value.toLowerCase(),
         from: document.getElementById('shDateFrom').value,
         to: document.getElementById('shDateTo').value
@@ -265,7 +263,6 @@ function shGetFilters() {
 }
 
 function shRecordMatches(record, filters) {
-    if (filters.type && record.type !== filters.type) return false;
     if (filters.status && String(record.status || '').toLowerCase() !== filters.status) return false;
     if (filters.text && !record.search.includes(filters.text)) return false;
     if (filters.from || filters.to) {
@@ -278,7 +275,7 @@ function shRecordMatches(record, filters) {
 }
 
 function shHasActiveFilters(filters) {
-    return Boolean(filters.text || filters.type || filters.status || filters.from || filters.to);
+    return Boolean(filters.text || filters.status || filters.from || filters.to);
 }
 
 function shRenderFolders() {
@@ -294,20 +291,6 @@ function shRenderFolders() {
     });
 
     document.getElementById('shResultCount').innerHTML = `Showing <strong>${totalMatches}</strong> of <strong>${shAllRecords.length}</strong> records`;
-
-    // When a specific record type is chosen, hide the other nav tabs and
-    // switch the content panel to it — the fastest path to the records
-    // being looked for. Otherwise leave the active tab alone so changing
-    // other filters (search text, dates) doesn't jump the panel around.
-    const visibleTypes = ['referrals', 'counseling', 'follow_ups', 'appointments'].filter(t => !filters.type || filters.type === t);
-    document.querySelectorAll('.sh-folder-tab[data-folder]').forEach(tab => {
-        tab.classList.toggle('sh-folder-hidden', !visibleTypes.includes(tab.getAttribute('data-folder')));
-    });
-    if (filters.type) {
-        shActiveFolder = filters.type;
-    } else if (!visibleTypes.includes(shActiveFolder)) {
-        shActiveFolder = visibleTypes[0];
-    }
 
     document.getElementById('shCount-referrals').textContent = grouped.referrals.length;
     document.getElementById('shCount-counseling').textContent = grouped.counseling.length;

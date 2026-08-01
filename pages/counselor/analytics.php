@@ -98,8 +98,9 @@
                     <div class="dashboard-grid">
                         <!-- Referral Reason Chart -->
                         <div class="card">
-                            <div class="card-header">
+                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                                 <h3 class="card-title">Referral Reasons Distribution</h3>
+                                <button type="button" class="btn btn-secondary" id="exportReferralDistributionBtn" style="padding: 6px 14px; font-size: 0.85em;"><i class="bi bi-download"></i> Export Report</button>
                             </div>
                             <div class="card-content" style="position: relative; height: 300px;">
                                 <canvas id="referralReasonChart"></canvas>

@@ -23,7 +23,11 @@ function send_json(int $statusCode, array $payload): void {
 // (blocks script execution + directory listing) and are re-named on disk so
 // the original filename never controls a path.
 $consentUploadDir = __DIR__ . '/../uploads/consent-forms/';
-$consentPublicPath = '/guidancemanagment/uploads/consent-forms/';
+// Relative (not root-relative) so it resolves correctly regardless of
+// whether the app is served from a /guidancemanagment/ subfolder or its
+// own vhost root — every page that renders this link lives two levels
+// down at pages/<role>/*.php.
+$consentPublicPath = '../../uploads/consent-forms/';
 $consentAllowedExt = ['pdf', 'jpg', 'jpeg', 'png'];
 $consentMaxBytes = 5 * 1024 * 1024; // 5 MB
 

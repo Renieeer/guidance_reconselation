@@ -56,7 +56,7 @@ function shInit() {
 
     const school = getUserSchool();
     if (school && school !== 'Unknown') {
-        fetch(`/guidancemanagment/api/get-students.php?school=${encodeURIComponent(school)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`)
+        fetch(`../../api/get-students.php?school=${encodeURIComponent(school)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`)
             .then(res => res.json())
             .then(result => {
                 shAllStudents = result.success ? (result.data || []) : [];
@@ -196,7 +196,7 @@ function shLoadStudent(studentId) {
     url.searchParams.set('student_id', studentId);
     window.history.replaceState({}, '', url);
 
-    const apiUrl = `/guidancemanagment/api/student-history.php?student_id=${encodeURIComponent(studentId)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
+    const apiUrl = `../../api/student-history.php?student_id=${encodeURIComponent(studentId)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
 
     fetch(apiUrl)
         .then(res => res.json())

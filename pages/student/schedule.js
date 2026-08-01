@@ -1,5 +1,5 @@
 // Student Schedule
-const SCHEDULE_API_URL = '/guidancemanagment/api/schedule-events.php';
+const SCHEDULE_API_URL = '../../api/schedule-events.php';
 let currentCalendarDate = new Date();
 let scheduleEventsCache = [];
 let studentAppointmentRequests = [];
@@ -149,7 +149,7 @@ async function loadStudentAppointmentRequests() {
         }
 
         // Fetch all appointment requests and filter by student_id
-        const response = await fetch(`/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}`);
+        const response = await fetch(`../../api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}`);
         const result = await response.json();
         
         if (!response.ok || !result.success) {
@@ -498,11 +498,7 @@ function openViewAppointmentRequestModal(request) {
 }
 
 // Logout
-document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
-    e.preventDefault();
-    sessionStorage.removeItem('user');
-    window.location.href = '../../index.php';
-});
+document.getElementById('logoutBtn')?.addEventListener('click', requestLogout);
 
 // ===== APPOINTMENT REQUEST FORM =====
 function getTodayDateStr() {
@@ -627,7 +623,7 @@ async function submitAppointmentRequest(e) {
     };
 
     try {
-        const response = await fetch('http://localhost/guidancemanagment/api/appointment-request.php', {
+        const response = await fetch('../../api/appointment-request.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(appointmentRequest)

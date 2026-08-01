@@ -32,7 +32,7 @@ function fetchTeacherReferrals() {
     const teacherId = user?.id || null;
     
     // Teachers can only see their own referrals
-    const apiUrl = `/guidancemanagment/api/referral.php?role=teacher&school=${encodeURIComponent(teacherSchool)}&user_id=${teacherId}`;
+    const apiUrl = `../../api/referral.php?role=teacher&school=${encodeURIComponent(teacherSchool)}&user_id=${teacherId}`;
     
     return fetch(apiUrl)
         .then(response => response.json())
@@ -143,7 +143,7 @@ function generateAcknowledgementForm(referral) {
     const formDiv = document.getElementById('acknowledgementForm');
     formDiv.innerHTML = '<p class="text-muted" style="text-align:center;padding:30px;">Loading acknowledgement…</p>';
 
-    fetch(`/guidancemanagment/api/referral-acknowledgement.php?referral_id=${referral.id}`)
+    fetch(`../../api/referral-acknowledgement.php?referral_id=${referral.id}`)
         .then(response => response.json())
         .then(result => {
             if (!result.success) throw new Error(result.message || 'Failed to load acknowledgement');

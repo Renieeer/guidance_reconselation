@@ -162,9 +162,5 @@ function showNotification(message) {
 }
 
 // Logout
-document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
-    e.preventDefault();
-    localStorage.removeItem('currentUser');
-    window.location.href = '../../index.php';
-});
+document.getElementById('logoutBtn')?.addEventListener('click', requestLogout);
 

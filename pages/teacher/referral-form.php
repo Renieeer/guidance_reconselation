@@ -26,7 +26,7 @@
             <div class="page-content">
                 <div class="referral-container">
                     <div class="guidelines-section">
-                        <h3 class="guidelines-title">Guidelines in Referring Students to GCO</h3>
+                        <h3 class="guidelines-title"><i class="bi bi-clipboard-check"></i> Guidelines in Referring Students to GCO</h3>
                         
                         <div class="guidelines-part">
                             <h4 class="guidelines-subtitle">A. CHECK THE LEARNER'S BEHAVIORS THAT INDICATE THE NEED FOR HELP:</h4>
@@ -157,7 +157,7 @@
                         <textarea id="interventionAttempts" name="interventionAttempts"></textarea>
                     </div>
 
-                    <div class="form-field">
+                    <div class="form-field form-field-row">
                         <label>Did the student agree to be referred to GCO:</label>
                         <div class="form-radio-inline">
                             <label class="radio-inline"><input type="radio" name="agreement" value="YES" required> YES</label>
@@ -190,7 +190,7 @@
 
                         <div class="form-field">
                             <label>Contact Number:</label>
-                            <input type="tel" id="teacherContact" name="teacherContact" readonly>
+                            <input type="tel" id="teacherContact" name="teacherContact" placeholder="e.g. 0917 123 4567">
                         </div>
                     </div>
 

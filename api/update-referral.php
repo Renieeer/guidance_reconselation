@@ -47,7 +47,7 @@ try {
 
     $stmt->close();
 
-    $fetch = $conn->prepare('SELECT ReferralID AS id, referral_code, student_name, StudentID AS student_id, Grade AS grade, section, age, gender, Reason AS referral_reason, description, intervention_attempts, observed_behaviors, parent_guardian, parent_contact, parent_email, family_background, urgency, TeacherID AS teacher_id, teacher_name, school_attended, student_school, stage, status, date_submitted, updated_at FROM referral WHERE ReferralID = ? OR referral_code = ? LIMIT 1');
+    $fetch = $conn->prepare('SELECT ReferralID AS id, referral_code, student_name, StudentID AS student_id, Grade AS grade, section, age, gender, Reason AS referral_reason, description, intervention_attempts, observed_behaviors, parent_guardian, parent_contact, parent_email, family_background, urgency, TeacherID AS teacher_id, teacher_name, teacher_contact, school_attended, student_school, stage, status, date_submitted, updated_at FROM referral WHERE ReferralID = ? OR referral_code = ? LIMIT 1');
     if (!$fetch) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }

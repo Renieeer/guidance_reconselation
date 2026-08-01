@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account - Guidance Management System (Other School)</title>
+    <title>Manage Accounts - Guidance Management System</title>
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
@@ -12,107 +12,117 @@
         <!-- Sidebar -->
         <?php include '../../includes/sidebar-other-school.php'; ?><!-- Main Content -->
         <div class="main-content">
-            <!-- Page Hero -->
-            <div class="page-hero">
-                <div>
-                    <div class="page-hero-eyebrow"><i class="bi bi-gear"></i> Settings</div>
-                    <h2 class="page-hero-title">Account Settings</h2>
-                    <p class="page-hero-text">Manage your personal account information and preferences.</p>
-                </div>
-            </div>
-
             <!-- Page Content -->
-            <div class="page-content">
-                <!-- Profile Section -->
-                <div class="content-section">
-                    <h2>Profile Information</h2>
-                    <form id="profileForm" class="form-group">
-                        <div class="form-row">
-                            <div class="form-col">
-                                <label for="firstName">First Name:</label>
-                                <input type="text" id="firstName" class="form-control" required>
-                            </div>
-                            <div class="form-col">
-                                <label for="lastName">Last Name:</label>
-                                <input type="text" id="lastName" class="form-control" required>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-col">
-                                <label for="email">Email:</label>
-                                <input type="email" id="email" class="form-control" required>
-                            </div>
-                            <div class="form-col">
-                                <label for="phone">Phone:</label>
-                                <input type="tel" id="phone" class="form-control">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-col">
-                                <label for="position">Position:</label>
-                                <input type="text" id="position" class="form-control" value="Coordinator & Counselor" disabled>
-                            </div>
-                            <div class="form-col">
-                                <label for="schoolName">School:</label>
-                                <input type="text" id="schoolName" class="form-control" value="Other School" disabled>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Update Profile</button>
-                    </form>
+            <div class="account-page-content page-content">
+                <div class="account-hero">
+                    <div>
+                        <div class="account-hero-eyebrow"><i class="bi bi-shield-lock"></i> School Account Administration</div>
+                        <h2 class="account-hero-title">Manage every account in your school</h2>
+                        <p class="account-hero-text">Search by name or email, open any user record, and update account details or reset a password when a staff member or student forgets it.</p>
+                    </div>
                 </div>
 
-                <!-- Security Section -->
-                <div class="content-section">
-                    <h2>Security</h2>
-                    <form id="securityForm" class="form-group">
-                        <div class="form-group">
-                            <label for="currentPassword">Current Password:</label>
-                            <input type="password" id="currentPassword" class="form-control" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="newPassword">New Password:</label>
-                            <input type="password" id="newPassword" class="form-control" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="confirmPassword">Confirm Password:</label>
-                            <input type="password" id="confirmPassword" class="form-control" required>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Change Password</button>
-                    </form>
-                </div>
-
-                <!-- Preferences Section -->
-                <div class="content-section">
-                    <h2>Preferences</h2>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="emailNotifications" checked>
-                            Receive email notifications
-                        </label>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0">School Accounts</h2>
+                        <p style="color: #666; font-size: 14px; margin-top: 5px;">Manage all accounts within your school. Search, edit, or reset passwords as needed.</p>
                     </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="dailyReport" checked>
-                            Receive daily reports
-                        </label>
+
+                    <!-- Search Bar -->
+                    <div style="padding: 20px; border-bottom: 1px solid #eee;">
+                        <div class="search-container">
+                            <input 
+                                type="text" 
+                                id="searchInput" 
+                                placeholder="Search by name or email..."
+                            >
+                            <button class="btn btn-primary" onclick="searchAccounts()">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" onclick="savePreferences()">Save Preferences</button>
+
+                    <!-- Accounts Table -->
+                    <div class="account-table-container">
+                        <table class="accounts-table" id="accountsTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Type</th>
+                                    <th>Created</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody">
+                                <tr>
+                                    <td colspan="5" class="no-accounts">
+                                        <i class="bi bi-hourglass-split" style="font-size: 24px; margin-bottom: 10px;"></i>
+                                        <p>Loading accounts...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="../../js/utils.js"></script>
+    <!-- Edit Account Modal -->
+    <div id="editAccountModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Edit Account</h2>
+                <span class="modal-close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editAccountForm">
+                    <div class="form-group">
+                        <label for="editFirstName">First Name *</label>
+                        <input type="text" id="editFirstName" name="first_name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editLastName">Last Name *</label>
+                        <input type="text" id="editLastName" name="last_name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editEmail">Email (Read-only)</label>
+                        <input type="email" id="editEmail" disabled style="background-color: #f5f5f5;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editUserType">Account Type (Read-only)</label>
+                        <input type="text" id="editUserType" disabled style="background-color: #f5f5f5;">
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <h4 style="margin-bottom: 10px;">Reset Password (Optional)</h4>
+                        <div class="form-group">
+                            <label for="editPassword">New Password</label>
+                            <input type="password" id="editPassword" name="password" placeholder="Leave blank to keep current password">
+                            <small style="color: #666;">Minimum 6 characters</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editPasswordConfirm">Confirm Password</label>
+                            <input type="password" id="editPasswordConfirm" name="password_confirm" placeholder="Leave blank to keep current password">
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-success">Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="../../js/auth.js"></script>
+    <script src="../../js/utils.js"></script>
     <script src="account.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', loadAccountPage);
-    </script>
 </body>
 </html>

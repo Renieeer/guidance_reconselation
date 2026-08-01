@@ -15,12 +15,13 @@
             <!-- Page Hero -->
             <div class="page-hero">
                 <div>
-                    <div class="page-hero-eyebrow"><i class="bi bi-building"></i> Administration</div>
+                    <div class="page-hero-eyebrow"><i class="bi bi-building"></i> School Control</div>
                     <h2 class="page-hero-title">School Management</h2>
-                    <p class="page-hero-text">Oversee all schools in the district, manage staff accounts, and coordinate district activities.</p>
+                    <p class="page-hero-text" id="schoolManagementDesc">A read-only overview of every school in the district and who's assigned to it. Click Edit to add a school or change staff assignments.</p>
                 </div>
-                <div>
-                    <button type="button" id="openSchoolAssignmentModalBtn" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add School</button>
+                <div class="page-hero-actions">
+                    <button type="button" id="openSchoolAssignmentModalBtn" class="btn btn-primary" hidden><i class="bi bi-plus-lg"></i> Add School</button>
+                    <button type="button" id="editModeToggleBtn" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Edit</button>
                 </div>
             </div>
 
@@ -195,6 +196,18 @@
 
                 <div id="schoolFolderGrid" class="school-folder-grid">
                     <p class="text-center p-5 text-muted">Loading schools...</p>
+                </div>
+
+                <!-- Clicking a school card opens it here instead of expanding in the
+                     grid, so it floats front-and-center for focused editing. -->
+                <div id="schoolDetailModal" class="modal">
+                    <div class="modal-content school-detail-modal-content">
+                        <div class="modal-header">
+                            <h2 id="schoolDetailTitle">School</h2>
+                            <button type="button" class="modal-close" id="closeSchoolDetailModal">&times;</button>
+                        </div>
+                        <div class="modal-body" id="schoolDetailBody"></div>
+                    </div>
                 </div>
             </div>
         </div>

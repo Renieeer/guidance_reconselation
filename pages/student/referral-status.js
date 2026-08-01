@@ -43,7 +43,7 @@ function loadReferrals() {
     }
 
     // Build API URL with available data - prioritize student_id
-    let apiUrl = `/guidancemanagment/api/referral.php?role=student`;
+    let apiUrl = `../../api/referral.php?role=student`;
     if (studentId) {
         apiUrl += `&student_id=${encodeURIComponent(studentId)}`;
     }
@@ -207,7 +207,7 @@ function formatDate(dateString) {
 
 function viewReferral(referralId) {
     // Fetch full referral details from the database
-    fetch(`/guidancemanagment/api/referral.php?id=${encodeURIComponent(referralId)}`)
+    fetch(`../../api/referral.php?id=${encodeURIComponent(referralId)}`)
         .then(response => response.json())
         .then(result => {
             if (result.success && result.data) {
@@ -314,10 +314,5 @@ function getStatusColor(status) {
 }
 
 // Logout
-document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
-    e.preventDefault();
-    sessionStorage.removeItem('userInfo');
-    localStorage.removeItem('currentUser');
-    window.location.href = '../../index.php';
-});
+document.getElementById('logoutBtn')?.addEventListener('click', requestLogout);
 

@@ -3,7 +3,7 @@
     // ============================================================
 
     function getApiUrl() {
-        return '/guidancemanagment/api';
+        return '../../api';
     }
 
     function parseStoredJson(storage, key) {
@@ -1944,12 +1944,12 @@ async function fetchAddressOptions(level, params = {}) {
             <p style="margin: 0 0 28px 0; color: #6b7280; font-size: 15px; line-height: 1.6;">${message}</p>
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
                 <button id="confirmCancel" style="
-                    padding: 10px 20px; border: 1px solid #d1d5db; background: white;
+                    padding: 10px 20px; border: 1px solid #d8e0ea; background: white;
                     border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
-                    color: #374151; transition: all 0.3s ease;
+                    color: #16233a; transition: all 0.3s ease;
                 ">Cancel</button>
                 <button id="confirmSave" style="
-                    padding: 10px 24px; background: #10b981; color: white;
+                    padding: 10px 24px; background: #1b7f5a; color: white;
                     border: none; border-radius: 8px; cursor: pointer; font-size: 14px;
                     font-weight: 600; transition: all 0.3s ease;
                 ">Save</button>
@@ -1964,20 +1964,20 @@ async function fetchAddressOptions(level, params = {}) {
         const saveBtn = dialog.querySelector('#confirmSave');
 
         cancelBtn.addEventListener('mouseover', () => {
-            cancelBtn.style.background = '#f9fafb';
-            cancelBtn.style.borderColor = '#9ca3af';
+            cancelBtn.style.background = '#f5f7fa';
+            cancelBtn.style.borderColor = '#8494a7';
         });
         cancelBtn.addEventListener('mouseout', () => {
             cancelBtn.style.background = 'white';
-            cancelBtn.style.borderColor = '#d1d5db';
+            cancelBtn.style.borderColor = '#d8e0ea';
         });
 
         saveBtn.addEventListener('mouseover', () => {
-            saveBtn.style.background = '#059669';
-            saveBtn.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
+            saveBtn.style.background = '#15633f';
+            saveBtn.style.boxShadow = '0 4px 12px rgba(27, 127, 90, 0.4)';
         });
         saveBtn.addEventListener('mouseout', () => {
-            saveBtn.style.background = '#10b981';
+            saveBtn.style.background = '#1b7f5a';
             saveBtn.style.boxShadow = 'none';
         });
 
@@ -2238,11 +2238,7 @@ async function fetchAddressOptions(level, params = {}) {
     window.addEventListener('DOMContentLoaded', () => {
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', e => {
-                e.preventDefault();
-                sessionStorage.clear();
-                window.location.href = '../../index.php';
-            });
+            logoutBtn.addEventListener('click', requestLogout);
         }
 
         // Clear error on input

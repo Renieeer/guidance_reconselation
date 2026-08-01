@@ -83,7 +83,7 @@
 
                 <!-- Sample Reports for Display -->
                 <div class="mt-5">
-                    <h2 class="mb-4">Pre-generated District Reports (Sample)</h2>
+                    <h2 class="mb-4">District Summary Reports</h2>
                     <div class="table-container">
                         <table>
                             <thead>
@@ -98,7 +98,7 @@
                             </thead>
                             <tbody id="sampleReportsBody">
                                 <tr>
-                                    <td colspan="6" class="text-center p-5 text-muted">Loading sample reports...</td>
+                                    <td colspan="6" class="text-center p-5 text-muted">Loading district reports...</td>
                                 </tr>
                             </tbody>
                         </table>

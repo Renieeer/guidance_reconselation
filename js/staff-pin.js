@@ -53,7 +53,7 @@
         submitBtn.innerHTML = '<span>Checking...</span>';
 
         try {
-            const response = await fetch('http://localhost/guidancemanagment/api/verify-staff-pin.php', {
+            const response = await fetch('api/verify-staff-pin.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ pin })

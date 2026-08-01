@@ -118,8 +118,10 @@ try {
     $whereClauses = [];
 
     // School filter — match against users_tables.school_attended.
-    // Students with NULL AccountID (u.school_attended IS NULL) are
-    // always included so they are visible regardless of school filter.
+    // Students with no linked account (AccountID IS NULL, so
+    // u.school_attended is also NULL) have no determinable school and are
+    // therefore EXCLUDED when a school filter is applied — showing them to
+    // every school regardless of the filter would leak them across schools.
     if ($school !== '') {
         // Build allowed-school list (check schools table for aliases)
         $allowedSchools = [$school];
@@ -148,8 +150,7 @@ try {
         $likes        = array_map(fn($v) => "%{$v}%", $allowedSchools);
         $placeholders = implode(' OR ', array_fill(0, count($likes), 'u.school_attended LIKE ?'));
 
-        // Include unlinked students (AccountID IS NULL → u.school_attended IS NULL)
-        $whereClauses[] = "({$placeholders} OR s.AccountID IS NULL)";
+        $whereClauses[] = "({$placeholders})";
         $types          .= str_repeat('s', count($likes));
         $params          = array_merge($params, $likes);
     }

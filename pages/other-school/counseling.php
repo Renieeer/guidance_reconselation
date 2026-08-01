@@ -9,7 +9,7 @@
 </head>
 <body>
     <div class="main-wrapper">
-        <?php include '../../includes/sidebar-counselor.php'; ?>
+        <?php include '../../includes/sidebar-other-school.php'; ?>
 
         <div class="main-content">
             <div class="page-hero">

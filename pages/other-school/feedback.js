@@ -64,8 +64,5 @@ function getBadgeColor(type) {
 }
 
 // Logout functionality
-document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    logout();
-});
+document.getElementById('logoutBtn')?.addEventListener('click', requestLogout);
 

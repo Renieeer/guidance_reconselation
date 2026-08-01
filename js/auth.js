@@ -1,4 +1,18 @@
 
+// This file is loaded from both root-level pages (login.php, at depth 0)
+// and pages/<role>/*.php (depth 2), so a relative "../../api/" path can't
+// work for both. Instead, derive the app's base URL from this script's own
+// <script src> — correct whether the app is served from a subfolder
+// (http://localhost/guidancemanagment/) or its own vhost root
+// (http://guidancemanagment.test/), unlike a hardcoded "http://localhost/guidancemanagment".
+const API_BASE = (function () {
+    const src = document.currentScript && document.currentScript.src;
+    if (src) {
+        return src.replace(/\/js\/[^/]+\.js(?:[?#].*)?$/, '');
+    }
+    return window.location.origin;
+})();
+
 const dashboardRoutes = {
     student: 'pages/student/dashboard.php',
     teacher: 'pages/teacher/dashboard.php',
@@ -34,7 +48,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
 
     try {
         // Try database login first
-        const response = await fetch('http://localhost/guidancemanagment/api/login.php', {
+        const response = await fetch(`${API_BASE}/api/login.php`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -152,7 +166,7 @@ function logout() {
     sessionStorage.removeItem('staffPinVerified');
     // Call logout.php if you want server-side logout
     try {
-        fetch('http://localhost/guidancemanagment/api/logout.php', {
+        fetch(`${API_BASE}/api/logout.php`, {
             method: 'POST'
         }).catch(() => {
             // Ignore errors, just proceed to logout

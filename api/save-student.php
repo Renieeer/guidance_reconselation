@@ -536,6 +536,18 @@ try {
             $studentData['CurrentReligion']
         ];
 
+        // The only caller (student-information.js) always resolves
+        // StudentId from the logged-in student's own account id, so the
+        // two are the same value — link AccountID here or this student
+        // becomes invisible to their own school's staff (see get-students.php,
+        // which excludes unlinked students rather than leaking them to
+        // every school).
+        $accountIdColumn = pickColumn($studentColumns, ['AccountID']);
+        if ($accountIdColumn) {
+            $insertColumns[] = "`{$accountIdColumn}`";
+            $insertValues[] = $studentId;
+        }
+
         if ($currentAddressColumn) {
             $insertColumns[] = "`{$currentAddressColumn}`";
             $insertValues[] = $studentData['CurrentAddress'];

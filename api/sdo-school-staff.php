@@ -58,6 +58,31 @@ try {
             exit;
         }
 
+        if ($action === 'updateDistrict') {
+            $schoolCode = trim((string)($data['schoolCode'] ?? ''));
+            $district = trim((string)($data['district'] ?? ''));
+
+            if ($schoolCode === '') {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'schoolCode is required']);
+                exit;
+            }
+
+            $stmt = $conn->prepare('UPDATE schools SET district = NULLIF(?, "") WHERE school_code = ?');
+            if (!$stmt) {
+                throw new RuntimeException('Failed to prepare district update statement');
+            }
+            $stmt->bind_param('ss', $district, $schoolCode);
+            if (!$stmt->execute()) {
+                $stmt->close();
+                throw new RuntimeException('Failed to update district assignment');
+            }
+            $stmt->close();
+
+            echo json_encode(['success' => true, 'message' => 'District assignment updated.']);
+            exit;
+        }
+
         if ($action === 'revokeSchool') {
             $schoolCode = trim((string)($data['schoolCode'] ?? ''));
 
@@ -338,6 +363,7 @@ function getAssignments(mysqli $conn): array {
                 s.school_code,
                 s.school_name,
                 s.assignment_type,
+                s.district,
                 COUNT(u.AccountID) AS totalAssigned,
                 MAX(CASE WHEN u.Type = 'coordinator' THEN u.AccountID END) AS coordinator_id,
                 MAX(CASE WHEN u.Type = 'coordinator' THEN CONCAT(u.First_name, ' ', u.Last_name) END) AS coordinator_name,
@@ -359,7 +385,7 @@ function getAssignments(mysqli $conn): array {
                 ON (u.school_attended = s.school_code OR u.school_attended = s.school_name)
                 AND u.Type IN ('coordinator', 'counselor', 'counselor-and-coordinator')
             WHERE s.is_active = 1
-            GROUP BY s.school_code, s.school_name, s.assignment_type
+            GROUP BY s.school_code, s.school_name, s.assignment_type, s.district
             ORDER BY s.school_name ASC";
     $result = $conn->query($query);
 
@@ -374,6 +400,7 @@ function getAssignments(mysqli $conn): array {
             'schoolName' => $row['school_name'],
             'schoolCode' => $row['school_code'],
             'assignmentType' => $row['assignment_type'],
+            'district' => $row['district'],
             'coordinator' => $row['coordinator_name'] ? [
                 'accountId' => (int)$row['coordinator_id'],
                 'name' => $row['coordinator_name'],

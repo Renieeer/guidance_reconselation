@@ -24,25 +24,82 @@ function initSidebarActive() {
 function loadCombinedDashboard() {
     initPage();
     initSidebarActive();
-    const referrals = getData('referrals') || [];
 
-    // Calculate statistics
-    const active = referrals.filter(r => r.stage >= 3 && r.stage < 6).length;
-    const followUps = referrals.filter(r => r.stage === 3 || r.stage === 5).length;
-    
-    // Count assigned to counseling
-    const assignedReferrals = referrals.filter(r => r.stage >= 3);
-    const totalStudents = assignedReferrals.length;
-    const weekSessions = Math.floor(active / 2) || 0;
+    const user = getCurrentUser();
+    const school = (user && user.school_attended) || '';
 
-    // Update stats
-    document.getElementById('activeCases').textContent = active;
-    document.getElementById('totalStudents').textContent = totalStudents;
-    document.getElementById('weekSessions').textContent = weekSessions;
-    document.getElementById('followUps').textContent = followUps;
+    loadReferralStats(school);
+    loadWeekSessions(school);
+}
 
-    // Load recent referrals
-    loadRecentReferrals(referrals);
+function loadReferralStats(school) {
+    // `role=other-school` is required for the API to apply school/grade
+    // scoping at all — without it the request falls through to an
+    // unfiltered query (see pages/other-school/referrals.js).
+    const apiUrl = `../../api/referral.php?role=other-school&school=${encodeURIComponent(school)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
+
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to load referrals');
+            }
+            const referrals = result.data || [];
+
+            // Calculate statistics
+            const active = referrals.filter(r => r.stage >= 3 && r.stage < 6).length;
+            const followUps = referrals.filter(r => r.stage === 3 || r.stage === 5).length;
+            const assignedReferrals = referrals.filter(r => r.stage >= 3);
+            const totalStudents = assignedReferrals.length;
+
+            document.getElementById('activeCases').textContent = active;
+            document.getElementById('totalStudents').textContent = totalStudents;
+            document.getElementById('followUps').textContent = followUps;
+
+            // Already sorted newest-first by the API (date_submitted DESC).
+            loadRecentReferrals(referrals.slice(0, 5));
+        })
+        .catch(error => {
+            console.error('Error loading combined dashboard referrals:', error);
+            document.getElementById('activeCases').textContent = '—';
+            document.getElementById('totalStudents').textContent = '—';
+            document.getElementById('followUps').textContent = '—';
+            loadRecentReferrals([]);
+        });
+}
+
+function loadWeekSessions(school) {
+    const { start, end } = getCurrentWeekRange();
+    const months = Array.from(new Set([start.slice(0, 7), end.slice(0, 7)]));
+
+    Promise.all(months.map(month =>
+        fetch(`../../api/schedule-events.php?school=${encodeURIComponent(school)}&month=${encodeURIComponent(month)}`)
+            .then(response => response.json())
+    ))
+        .then(results => {
+            const events = results.flatMap(result => (result.success && result.data) ? result.data : []);
+            const weekCount = events.filter(ev => ev.date >= start && ev.date <= end).length;
+            document.getElementById('weekSessions').textContent = weekCount;
+        })
+        .catch(error => {
+            console.error('Error loading week sessions:', error);
+            document.getElementById('weekSessions').textContent = '—';
+        });
+}
+
+// Monday-through-Sunday range containing today, as YYYY-MM-DD strings.
+function getCurrentWeekRange() {
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sunday .. 6 = Saturday
+    const diffToMonday = (day === 0 ? -6 : 1 - day);
+
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const toISO = d => d.toISOString().slice(0, 10);
+    return { start: toISO(monday), end: toISO(sunday) };
 }
 
 function loadRecentReferrals(referrals) {
@@ -55,18 +112,27 @@ function loadRecentReferrals(referrals) {
         return;
     }
 
-    tbody.innerHTML = referrals.reverse().slice(0, 5).map(referral => `
+    tbody.innerHTML = referrals.map(referral => `
         <tr>
-            <td><strong>${referral.id}</strong></td>
-            <td>${referral.studentName}</td>
-            <td>${referral.referralReason}</td>
-            <td>${referral.submittedByName || 'N/A'}</td>
+            <td><strong>${escapeHtml(referral.referral_code || referral.id)}</strong></td>
+            <td>${escapeHtml(referral.student_name)}</td>
+            <td>${escapeHtml(referral.referral_reason)}</td>
+            <td>${escapeHtml(referral.teacher_name || 'N/A')}</td>
             <td>${createBadge(getStatusLabel(referral.stage))}</td>
             <td>
-                <a href="referrals.php?id=${referral.id}" class="btn btn-sm btn-primary">View</a>
+                <a href="referrals.php?id=${encodeURIComponent(referral.id)}" class="btn btn-sm btn-primary">View</a>
             </td>
         </tr>
     `).join('');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function getStatusLabel(stage) {
@@ -82,8 +148,5 @@ function getStatusLabel(stage) {
 }
 
 // Logout functionality
-document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    logout();
-});
+document.getElementById('logoutBtn')?.addEventListener('click', requestLogout);
 

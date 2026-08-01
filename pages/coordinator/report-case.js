@@ -1,85 +1,17 @@
-// Case Categories matching SDO system
-const caseCategories = [
-    'A. CAT',
-    'Misbehavior / Truancy / Absenteeism / Unwarranted Group',
-    'Smoking',
-    'Drinking',
-    'Drug Abuse',
-    'Carrying Deadly Weapons',
-    'Total A: CAT',
-    'B. FAMILY: ADULTS',
-    'Non-displaced',
-    'Deprivation',
-    'Family Conflict',
-    'Suicide Completed',
-    'Situational / MENTAL HEALTH',
-    'Total B: MENTAL HEALTH',
-    'C. BULLYING',
-    'Physical',
-    'Verbal',
-    'Emotional',
-    'Cyber',
-    'Total C: BULLYING',
-    'D. LGBTQIA ISSUES',
-    'Underachievement',
-    'Abuse/Neglect (Academic Performance)',
-    'Conflict In Adapting to Environment',
-    'Early Marriage',
-    'Learning Disability',
-    'Transfers or Changing Schools',
-    'Total D: FAMILY RELATED',
-    'E. Family-Related',
-    'Family Problems',
-    'Use of Illegal Drugs',
-    'All Sorts of Alcohol/Drinks/Cannabis',
-    'Overall TOTAL'
-];
+// Report Cases — real case-category x grade x gender counts, sourced from
+// api/case-report.php (which aggregates the counselor's actual logged cases
+// in counselor_case_scenarios). Categories/sections match the real
+// case_category/section tables used by the counselor's case workflow.
 
-const REPORT_GRADE_MAX = { 7: 5, 8: 5, 9: 6, 10: 6, 11: 5, 12: 4 };
+const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
 
-// Generate sample case data (male/female per grade) for one school
-function generateCaseData() {
-    const data = {};
-    caseCategories.forEach(category => {
-        data[category] = {};
-        ALL_REPORT_GRADES.forEach(grade => {
-            const total = Math.floor(Math.random() * REPORT_GRADE_MAX[grade]);
-            const male = Math.floor(Math.random() * (total + 1));
-            data[category][grade] = { m: male, f: total - male };
-        });
-    });
-    return data;
-}
-
-const COORDINATOR_SCHOOLS = ["school1", "school2", "school3"];
-
-// All cases data organized by category and grade with gender breakdown.
-// Generated once per browser and cached in localStorage so the demo
-// numbers stay stable across reloads instead of reshuffling every visit.
-let allCasesData = {};
-
-function loadOrGenerateAllCasesData() {
-    const stored = localStorage.getItem('coordinator_base_cases_data');
-    const parsed = stored ? JSON.parse(stored) : null;
-    const isCurrentShape = parsed?.school1?.['A. CAT']?.['7']?.m !== undefined;
-
-    if (parsed && isCurrentShape) {
-        allCasesData = parsed;
-    } else {
-        allCasesData = {};
-        COORDINATOR_SCHOOLS.forEach(school => {
-            allCasesData[school] = generateCaseData();
-        });
-        localStorage.setItem('coordinator_base_cases_data', JSON.stringify(allCasesData));
-    }
-}
-
-let currentSchool = "school1";
-let casesData = {};
+let currentSchool = '';
+let sections = [];
+let counts = {};
+let displayRows = [];
 
 // Grades this account is allowed to see (e.g. a coordinator scoped to
 // Grades 7-10, or all six if unassigned/no restriction).
-const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
 let visibleGrades = ALL_REPORT_GRADES;
 
 function computeVisibleGrades() {
@@ -101,102 +33,157 @@ function applyGradeColumnVisibility() {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    checkAuth();
-    initializeCoordinator();
-    setUserInfo();
+document.addEventListener('DOMContentLoaded', async function() {
+    initPage();
+
+    const user = getCurrentUser();
+    currentSchool = (user && user.school_attended) || '';
+
     visibleGrades = computeVisibleGrades();
     applyGradeColumnVisibility();
-    loadOrGenerateAllCasesData();
-    loadCasesFromStorage();
+
+    await loadReportData();
     buildCasesTable();
     setupEventListeners();
 });
 
-function initializeCoordinator() {
-    const userData = JSON.parse(localStorage.getItem('currentUser'));
-    if (userData && userData.coordinatorSchools) {
-        // Could be multiple schools; for demo, use first
-        const schools = userData.coordinatorSchools.split(',');
-        currentSchool = schools[0].toLowerCase().replace(/\s+/g, '');
+async function loadReportData() {
+    try {
+        const gradeScope = getCurrentGradeScope();
+        const url = `../../api/case-report.php?action=categories&school=${encodeURIComponent(currentSchool)}&grade_scope=${encodeURIComponent(gradeScope)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load case report');
+        }
+
+        sections = data.sections || [];
+        counts = data.counts || {};
+    } catch (error) {
+        console.error('Error loading case report:', error);
+        sections = [];
+        counts = {};
     }
 }
 
-function loadCasesFromStorage() {
-    const stored = localStorage.getItem(`coordinator_cases_${currentSchool}`);
-    if (stored) {
-        const newCases = JSON.parse(stored);
-        // Merge stored cases into the data
-        Object.keys(newCases).forEach(category => {
-            Object.keys(newCases[category]).forEach(grade => {
-                if (!allCasesData[currentSchool][category]) {
-                    allCasesData[currentSchool][category] = { "7": 0, "8": 0, "9": 0, "10": 0, "11": 0, "12": 0 };
-                }
-                allCasesData[currentSchool][category][grade] = (allCasesData[currentSchool][category][grade] || 0) + newCases[category][grade];
+function gradeCell(bucketKey, grade) {
+    const bucket = counts[bucketKey];
+    return (bucket && bucket[String(grade)]) || { m: 0, f: 0 };
+}
+
+// Flattens sections/categories/counts into one render-and-export-ready list:
+// a header row per section, a row per real category, an "Uncategorized" row
+// per section (cases whose category hasn't been chosen yet), a subtotal row
+// per section, and a final grand-total row.
+function buildDisplayRows() {
+    const rows = [];
+    const grandTotal = {};
+    visibleGrades.forEach(g => { grandTotal[g] = { m: 0, f: 0 }; });
+
+    sections.forEach(section => {
+        rows.push({ type: 'header', label: `${section.sectionCode}. ${section.sectionName}` });
+
+        const sectionTotal = {};
+        visibleGrades.forEach(g => { sectionTotal[g] = { m: 0, f: 0 }; });
+
+        const addToTotals = (bucketKey) => {
+            visibleGrades.forEach(g => {
+                const cell = gradeCell(bucketKey, g);
+                sectionTotal[g].m += cell.m;
+                sectionTotal[g].f += cell.f;
+                grandTotal[g].m += cell.m;
+                grandTotal[g].f += cell.f;
             });
+        };
+
+        section.categories.forEach(cat => {
+            rows.push({ type: 'category', label: cat.categoryName, bucketKey: cat.categoryId });
+            addToTotals(cat.categoryId);
         });
+
+        const uncategorizedKey = `section-${section.sectionId}-uncategorized`;
+        rows.push({ type: 'category', label: 'Uncategorized', bucketKey: uncategorizedKey });
+        addToTotals(uncategorizedKey);
+
+        rows.push({ type: 'subtotal', label: `Total ${section.sectionCode}: ${section.sectionName}`, totals: sectionTotal });
+    });
+
+    rows.push({ type: 'subtotal', label: 'Overall Total', totals: grandTotal });
+    return rows;
+}
+
+function rowTotals(row) {
+    if (row.type === 'subtotal') {
+        return row.totals;
     }
-    casesData = JSON.parse(JSON.stringify(allCasesData[currentSchool] || {}));
+    const totals = {};
+    visibleGrades.forEach(g => { totals[g] = gradeCell(row.bucketKey, g); });
+    return totals;
 }
 
 function buildCasesTable() {
     const tbody = document.getElementById('casesTableBody');
     tbody.innerHTML = '';
 
-    caseCategories.forEach(category => {
-        if (!casesData[category]) {
-            casesData[category] = {
-                "7": {m: 0, f: 0}, "8": {m: 0, f: 0}, "9": {m: 0, f: 0},
-                "10": {m: 0, f: 0}, "11": {m: 0, f: 0}, "12": {m: 0, f: 0}
-            };
+    displayRows = buildDisplayRows();
+
+    displayRows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+
+        if (row.type === 'header') {
+            const colCount = 1 + visibleGrades.length * 3;
+            tr.innerHTML = `<td colspan="${colCount}" style="font-weight: 700; background: #e2e8f0;">${row.label}</td>`;
+            tbody.appendChild(tr);
+            return;
         }
 
-        const row = document.createElement('tr');
-        row.style.cursor = 'pointer';
-
-        // Highlight subtotal/overall rows the same way the SDO district
-        // report does, so the grouped category headings stand out.
-        if (category.includes('Total')) {
-            row.style.fontWeight = '700';
-            row.style.backgroundColor = '#f1f5f9';
+        if (row.type === 'subtotal') {
+            tr.style.fontWeight = '700';
+            tr.style.backgroundColor = '#f1f5f9';
         }
 
-        const gradeData = casesData[category];
+        const totals = rowTotals(row);
+        let html = `<td style="font-weight: 500;">${row.label}</td>`;
 
-        let htmlContent = `<td style="font-weight: 500;">${category}</td>`;
-
-        visibleGrades.forEach(i => {
-            const m = gradeData[i]?.m || 0;
-            const f = gradeData[i]?.f || 0;
-            const total = m + f;
-            htmlContent += `<td class="text-center" style="font-size: 0.9em;">${m}</td><td class="text-center" style="font-size: 0.9em;">${f}</td><td class="text-center">${total > 0 ? `<span class="badge badge-in-progress">${total}</span>` : '0'}</td>`;
+        visibleGrades.forEach(g => {
+            const cell = totals[g] || { m: 0, f: 0 };
+            const total = cell.m + cell.f;
+            html += `<td class="text-center" style="font-size: 0.9em;">${cell.m}</td><td class="text-center" style="font-size: 0.9em;">${cell.f}</td><td class="text-center">${total > 0 ? `<span class="badge badge-in-progress">${total}</span>` : '0'}</td>`;
         });
 
-        row.innerHTML = htmlContent;
+        tr.innerHTML = html;
 
-        row.addEventListener('click', () => showCaseDetails(category));
-        tbody.appendChild(row);
+        if (row.type === 'category') {
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', () => showCaseDetails(index));
+        }
+
+        tbody.appendChild(tr);
     });
 }
 
-function showCaseDetails(category) {
+function showCaseDetails(rowIndex) {
+    const row = displayRows[rowIndex];
+    if (!row) return;
+
     const modal = document.getElementById('caseModal');
-    const gradeData = casesData[category];
+    const totals = rowTotals(row);
     let total = 0;
-    visibleGrades.forEach(i => {
-        total += (gradeData[i]?.m || 0) + (gradeData[i]?.f || 0);
+    visibleGrades.forEach(g => {
+        total += (totals[g]?.m || 0) + (totals[g]?.f || 0);
     });
 
-    document.getElementById('caseId').value = `CASE-${currentSchool.toUpperCase()}-${Date.now()}`;
-    document.getElementById('caseCategory').value = category;
+    document.getElementById('caseId').value = `CASE-${(currentSchool || 'SCHOOL').toUpperCase().replace(/\s+/g, '-')}-${row.bucketKey || 'ROW'}`;
+    document.getElementById('caseCategory').value = row.label;
     document.getElementById('caseGrade').value = `Grades ${visibleGrades[0]}-${visibleGrades[visibleGrades.length - 1]}`;
     document.getElementById('caseStatus').value = 'Active';
     document.getElementById('caseDate').value = new Date().toLocaleDateString();
 
     let notes = `Total Cases: ${total}\n\n`;
     visibleGrades.forEach(grade => {
-        const m = gradeData[grade]?.m || 0;
-        const f = gradeData[grade]?.f || 0;
+        const m = totals[grade]?.m || 0;
+        const f = totals[grade]?.f || 0;
         notes += `Grade ${grade}: ${m + f} (M: ${m} / F: ${f})\n`;
     });
     document.getElementById('caseNotes').value = notes;
@@ -245,6 +232,10 @@ function setupEventListeners() {
     });
 }
 
+// This quick-add form is a local note only — it doesn't have a real
+// section/category selection (see the actual case workflow in
+// pages/counselor/counseling.php for that), so it can't safely bump the
+// real per-category counts above without corrupting them with a fake type.
 function submitNewCase() {
     const title = document.getElementById('caseTitle').value;
     const type = document.getElementById('caseType').value;
@@ -256,53 +247,46 @@ function submitNewCase() {
         return;
     }
 
-    // Store the new case
-    const newCase = {
-        id: `CASE-${currentSchool.toUpperCase()}-${Date.now()}`,
-        title: title,
-        type: type,
-        description: description,
-        severity: severity,
+    const newNote = {
+        id: `NOTE-${(currentSchool || 'SCHOOL').toUpperCase().replace(/\s+/g, '-')}-${Date.now()}`,
+        title,
+        type,
+        description,
+        severity,
         date: new Date().toLocaleDateString(),
         status: 'Active'
     };
 
-    let casesList = JSON.parse(localStorage.getItem(`coordinator_cases_list_${currentSchool}`) || '[]');
-    casesList.push(newCase);
-    localStorage.setItem(`coordinator_cases_list_${currentSchool}`, JSON.stringify(casesList));
+    const storageKey = `coordinator_quick_notes_${currentSchool}`;
+    const notes = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    notes.push(newNote);
+    localStorage.setItem(storageKey, JSON.stringify(notes));
 
-    // Update the table data
-    if (!casesData[type]) {
-        casesData[type] = { "7": 0, "8": 0, "9": 0, "10": 0, "11": 0, "12": 0 };
-    }
-    casesData[type]["7"]++;
-
-    buildCasesTable();
     document.getElementById('caseReportForm').reset();
     document.getElementById('newCaseModal').style.display = 'none';
-    
-    showNotification('Case report submitted successfully!');
+
+    showNotification('Note saved. To log a real case with a category, use Case Management.');
 }
 
 function exportReport() {
     const header = ['Category of Cases', ...visibleGrades.map(g => `Grade ${g}`), 'Totals'];
     let csv = header.join(',') + '\n';
 
-    caseCategories.forEach(category => {
-        if (casesData[category]) {
-            const gradeData = casesData[category];
-            const gradeTotals = visibleGrades.map(g => (gradeData[g]?.m || 0) + (gradeData[g]?.f || 0));
-            const total = gradeTotals.reduce((sum, n) => sum + n, 0);
-
-            csv += `"${category}",${gradeTotals.join(',')},${total}\n`;
+    displayRows.forEach(row => {
+        if (row.type === 'header') {
+            return;
         }
+        const totals = rowTotals(row);
+        const gradeTotals = visibleGrades.map(g => (totals[g]?.m || 0) + (totals[g]?.f || 0));
+        const total = gradeTotals.reduce((sum, n) => sum + n, 0);
+        csv += `"${row.label}",${gradeTotals.join(',')},${total}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `coordinator-cases-${currentSchool}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `coordinator-cases-${(currentSchool || 'school').replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -325,10 +309,9 @@ function showNotification(message) {
         animation: slideIn 0.3s ease-out;
     `;
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
         notification.style.animation = 'slideOut 0.3s ease-out';
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
-

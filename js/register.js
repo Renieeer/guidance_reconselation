@@ -1,3 +1,17 @@
+// This file is loaded from both root-level pages (register.php, at depth 0)
+// and pages/<role>/*.php (depth 2), so a relative "../../api/" path can't
+// work for both. Derive the app's base URL from this script's own
+// <script src> instead — correct whether the app is served from a
+// subfolder (http://localhost/guidancemanagment/) or its own vhost root
+// (http://guidancemanagment.test/).
+const API_BASE = (function () {
+    const src = document.currentScript && document.currentScript.src;
+    if (src) {
+        return src.replace(/\/js\/[^/]+\.js(?:[?#].*)?$/, '');
+    }
+    return window.location.origin;
+})();
+
 // Password validation and strength checker
 function validatePassword(password) {
     const minLength = 8;
@@ -31,7 +45,7 @@ async function loadSchoolOptions() {
     }
 
     try {
-        const response = await fetch('http://localhost/guidancemanagment/api/school-config.php?action=list');
+        const response = await fetch(`${API_BASE}/api/school-config.php?action=list`);
         const data = await response.json();
 
         if (!response.ok || !data.success) {
@@ -231,7 +245,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async functi
 
     try {
         // Send registration data to backend
-        const response = await fetch('http://localhost/guidancemanagment/api/register.php', {
+        const response = await fetch(`${API_BASE}/api/register.php`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -62,7 +62,7 @@ function fetchCounselorReferrals() {
     };
     const userSchool = getUserSchool();
     
-    const apiUrl = `/guidancemanagment/api/referral.php?role=counselor&school=${encodeURIComponent(userSchool)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
+    const apiUrl = `../../api/referral.php?role=counselor&school=${encodeURIComponent(userSchool)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     return fetch(apiUrl)
         .then(response => response.json())
@@ -159,7 +159,7 @@ function renderAcknowledgementChecklist() {
 }
 
 function loadAcknowledgement(referralId) {
-    fetch(`/guidancemanagment/api/referral-acknowledgement.php?referral_id=${referralId}`)
+    fetch(`../../api/referral-acknowledgement.php?referral_id=${referralId}`)
         .then(response => response.json())
         .then(result => {
             if (!result.success) throw new Error(result.message || 'Failed to load acknowledgement');
@@ -200,7 +200,7 @@ function submitAcknowledgement(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving...';
 
-    fetch('/guidancemanagment/api/referral-acknowledgement.php', {
+    fetch('../../api/referral-acknowledgement.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -232,7 +232,7 @@ function loadScreeningHistory(referralId) {
     if (!container) return;
     container.innerHTML = '<p class="text-muted">Loading previous screening notes...</p>';
 
-    fetch(`/guidancemanagment/api/referral-screening.php?referral_id=${referralId}`)
+    fetch(`../../api/referral-screening.php?referral_id=${referralId}`)
         .then(response => response.json())
         .then(result => {
             if (!result.success) throw new Error(result.message || 'Failed to load screening notes');
@@ -276,7 +276,7 @@ function submitScreeningNotes(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving...';
 
-    fetch('/guidancemanagment/api/referral-screening.php', {
+    fetch('../../api/referral-screening.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -309,7 +309,7 @@ function loadConsentFiles(referralId) {
     if (!container) return;
     container.innerHTML = '<p class="text-muted">Loading uploaded files...</p>';
 
-    fetch(`/guidancemanagment/api/referral-consent.php?referral_id=${referralId}`)
+    fetch(`../../api/referral-consent.php?referral_id=${referralId}`)
         .then(response => response.json())
         .then(result => {
             if (!result.success) throw new Error(result.message || 'Failed to load consent files');
@@ -353,7 +353,7 @@ function submitConsentUpload(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Uploading...';
 
-    fetch('/guidancemanagment/api/referral-consent.php', {
+    fetch('../../api/referral-consent.php', {
         method: 'POST',
         body: formData
     })
@@ -404,7 +404,7 @@ function advanceStage() {
     const newStatus = newStage === 6 ? 'completed' : 'in-progress';
 
     // Update to database
-    const apiUrl = `/guidancemanagment/api/update-referral.php`;
+    const apiUrl = `../../api/update-referral.php`;
     
     fetch(apiUrl, {
         method: 'POST',
@@ -435,7 +435,7 @@ function advanceStage() {
 
 function closeCase() {
     if (confirm('Are you sure you want to close this case?')) {
-        const apiUrl = `/guidancemanagment/api/update-referral.php`;
+        const apiUrl = `../../api/update-referral.php`;
         
         fetch(apiUrl, {
             method: 'POST',

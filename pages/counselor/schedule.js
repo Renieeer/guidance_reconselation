@@ -7,7 +7,7 @@ let appointmentCalendarEvents = [];
 let selectedScheduleDate = '';
 let scheduleEventsCache = [];
 let editingScheduleEventId = null; // set when createScheduleModal is opened to edit an existing event
-const SCHEDULE_API_URL = '/guidancemanagment/api/schedule-events.php';
+const SCHEDULE_API_URL = '../../api/schedule-events.php';
 
 // Utility Functions
 function capitalizeFirst(str) {
@@ -575,7 +575,7 @@ function loadAppointmentRequests() {
         return;
     }
 
-    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(user.school_attended)}&role=counselor&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
+    const apiUrl = `../../api/appointment-request.php?school=${encodeURIComponent(user.school_attended)}&role=counselor&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
 
     fetch(apiUrl)
         .then(response => {
@@ -665,7 +665,7 @@ function loadAppointmentRequests() {
 
 function viewRequestDetails(requestId) {
     // Find the request in the current data
-    const apiUrl = `/guidancemanagment/api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}&role=counselor&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
+    const apiUrl = `../../api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}&role=counselor&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     fetch(apiUrl)
         .then(response => response.json())
@@ -748,7 +748,7 @@ function approveAppointment(requestId) {
         counselor_notes: 'Appointment approved by counselor'
     };
 
-    fetch('/guidancemanagment/api/appointment-request.php', {
+    fetch('../../api/appointment-request.php', {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
@@ -815,7 +815,7 @@ function submitEditAppointment(e) {
         counselor_notes: document.getElementById('editAppointmentNotes').value || 'Proposed time change by counselor'
     };
 
-    fetch('/guidancemanagment/api/appointment-request.php', {
+    fetch('../../api/appointment-request.php', {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
@@ -859,7 +859,7 @@ function rejectRequest(requestId) {
         counselor_notes: 'Request rejected by counselor'
     };
 
-    fetch('/guidancemanagment/api/appointment-request.php', {
+    fetch('../../api/appointment-request.php', {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'

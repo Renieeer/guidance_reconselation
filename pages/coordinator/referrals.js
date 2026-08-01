@@ -54,7 +54,7 @@ function fetchCoordinatorReferrals() {
     
     // Coordinators can see referrals from their school, scoped to their
     // assigned grade(s) if one is set (e.g. Grades 7-10).
-    const apiUrl = `/guidancemanagment/api/referral.php?role=coordinator&school=${encodeURIComponent(userSchool)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
+    const apiUrl = `../../api/referral.php?role=coordinator&school=${encodeURIComponent(userSchool)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
     
     return fetch(apiUrl)
         .then(response => response.json())
@@ -132,7 +132,7 @@ function saveStageUpdate() {
     const newStage = parseInt(document.getElementById('newStage').value);
     const notes = document.getElementById('stageNotes').value;
 
-    const apiUrl = `/guidancemanagment/api/update-referral.php`;
+    const apiUrl = `../../api/update-referral.php`;
     
     fetch(apiUrl, {
         method: 'POST',
@@ -164,7 +164,7 @@ function saveStageUpdate() {
 
 function openRejectModal() {
     if (confirm('Are you sure you want to reject this referral? This action cannot be undone.')) {
-        const apiUrl = `/guidancemanagment/api/update-referral.php`;
+        const apiUrl = `../../api/update-referral.php`;
         
         fetch(apiUrl, {
             method: 'POST',

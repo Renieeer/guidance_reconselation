@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Report Case - Guidance Management System (Other School)</title>
+    <title>Report Cases - Guidance Management System</title>
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
@@ -17,139 +17,146 @@
                 <div>
                     <div class="page-hero-eyebrow"><i class="bi bi-file-earmark-text"></i> Documentation</div>
                     <h2 class="page-hero-title">Report Cases</h2>
-                    <p class="page-hero-text">Document and review case reports for students from other schools in the system.</p>
+                    <p class="page-hero-text">Document and submit case reports on student referrals and counseling sessions.</p>
                 </div>
             </div>
 
             <!-- Page Content -->
             <div class="page-content">
-              
+                <!-- Action Buttons -->
+                <div class="card mb-5">
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <button class="btn btn-primary" id="exportBtn"><i class="bi bi-download"></i> Export Report</button>
+                        <button class="btn btn-secondary" id="filterBtn" style="background: #e2e8f0; color: #0f172a;"><i class="bi bi-funnel"></i> Filter</button>
+                    </div>
+                </div>
 
-                <!-- Guidance Report Cases -->
-                <div class="content-section">
-                    <div class="report-header">
-                        <h2>Guidance Report Cases</h2>
-                        <div class="report-actions">
-                            <button class="btn btn-primary" id="exportBtn">
-                                <i class="bi bi-download"></i> Export Report
-                            </button>
-                            <button class="btn btn-secondary" id="filterBtn">
-                                <i class="bi bi-funnel"></i> Filter
-                            </button>
+                <!-- Report Cases Table -->
+                <div class="table-container">
+                    <table id="reportCasesTable">
+                        <thead>
+                            <tr>
+                                <th>Category of Cases</th>
+                                <th colspan="3" class="grade-col" data-grade="7" style="text-align: center;">Grade 7</th>
+                                <th colspan="3" class="grade-col" data-grade="8" style="text-align: center;">Grade 8</th>
+                                <th colspan="3" class="grade-col" data-grade="9" style="text-align: center;">Grade 9</th>
+                                <th colspan="3" class="grade-col" data-grade="10" style="text-align: center;">Grade 10</th>
+                                <th colspan="3" class="grade-col" data-grade="11" style="text-align: center;">Grade 11</th>
+                                <th colspan="3" class="grade-col" data-grade="12" style="text-align: center;">Grade 12</th>
+                            </tr>
+                            <tr>
+                                <th></th>
+                                <th class="grade-col" data-grade="7">Male</th><th class="grade-col" data-grade="7">Female</th><th class="grade-col" data-grade="7">Total</th>
+                                <th class="grade-col" data-grade="8">Male</th><th class="grade-col" data-grade="8">Female</th><th class="grade-col" data-grade="8">Total</th>
+                                <th class="grade-col" data-grade="9">Male</th><th class="grade-col" data-grade="9">Female</th><th class="grade-col" data-grade="9">Total</th>
+                                <th class="grade-col" data-grade="10">Male</th><th class="grade-col" data-grade="10">Female</th><th class="grade-col" data-grade="10">Total</th>
+                                <th class="grade-col" data-grade="11">Male</th><th class="grade-col" data-grade="11">Female</th><th class="grade-col" data-grade="11">Total</th>
+                                <th class="grade-col" data-grade="12">Male</th><th class="grade-col" data-grade="12">Female</th><th class="grade-col" data-grade="12">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="casesTableBody">
+                            <!-- Data will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Case Details Modal -->
+                <div id="caseModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Case Details</h2>
+                            <button class="modal-close" id="closeModal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Case ID</label>
+                                <input type="text" id="caseId" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Category</label>
+                                <input type="text" id="caseCategory" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Grade Level</label>
+                                <input type="text" id="caseGrade" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <input type="text" id="caseStatus" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Reported Date</label>
+                                <input type="text" id="caseDate" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Notes</label>
+                                <textarea id="caseNotes" readonly rows="4"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" id="editCaseBtn">Edit Case</button>
+                            <button class="btn btn-primary" id="closeCaseModal">Close</button>
                         </div>
                     </div>
+                </div>
 
-                    <div class="table-wrapper">
-                        <table class="report-table">
-                            <thead>
-                                <tr>
-                                    <th rowspan="2" class="category-col">CATEGORY OF CASES</th>
-                                    <th colspan="3" class="grade-col" data-grade="7">GRADE 7</th>
-                                    <th colspan="3" class="grade-col" data-grade="8">GRADE 8</th>
-                                    <th colspan="3" class="grade-col" data-grade="9">GRADE 9</th>
-                                    <th colspan="3" class="grade-col" data-grade="10">GRADE 10</th>
-                                    <th colspan="3" class="grade-col" data-grade="11">GRADE 11</th>
-                                    <th colspan="3" class="grade-col" data-grade="12">GRADE 12</th>
-                                    <th colspan="3">TOTALS</th>
-                                </tr>
-                                <tr>
-                                    <th class="grade-col" data-grade="7">MALE</th>
-                                    <th class="grade-col" data-grade="7">FEMALE</th>
-                                    <th class="grade-col" data-grade="7">TOTAL</th>
-                                    <th class="grade-col" data-grade="8">MALE</th>
-                                    <th class="grade-col" data-grade="8">FEMALE</th>
-                                    <th class="grade-col" data-grade="8">TOTAL</th>
-                                    <th class="grade-col" data-grade="9">MALE</th>
-                                    <th class="grade-col" data-grade="9">FEMALE</th>
-                                    <th class="grade-col" data-grade="9">TOTAL</th>
-                                    <th class="grade-col" data-grade="10">MALE</th>
-                                    <th class="grade-col" data-grade="10">FEMALE</th>
-                                    <th class="grade-col" data-grade="10">TOTAL</th>
-                                    <th class="grade-col" data-grade="11">MALE</th>
-                                    <th class="grade-col" data-grade="11">FEMALE</th>
-                                    <th class="grade-col" data-grade="11">TOTAL</th>
-                                    <th class="grade-col" data-grade="12">MALE</th>
-                                    <th class="grade-col" data-grade="12">FEMALE</th>
-                                    <th class="grade-col" data-grade="12">TOTAL</th>
-                                    <th>MALE</th>
-                                    <th>FEMALE</th>
-                                    <th>TOTAL</th>
-                                </tr>
-                            </thead>
-                            <tbody id="reportTableBody">
-                                <tr>
-                                    <td class="category-col">Academic Issue</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                </tr>
-                                <tr>
-                                    <td class="category-col">Behavioral Issue</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                </tr>
-                                <tr>
-                                    <td class="category-col">Emotional/Mental Health</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                </tr>
-                                <tr>
-                                    <td class="category-col">Social Issue</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                </tr>
-                                <tr>
-                                    <td class="category-col">Family Issue</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                </tr>
-                                <tr>
-                                    <td class="category-col">Attendance Issue</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                    <td class="data-cell">0</td><td class="data-cell">0</td><td class="data-cell total">0</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- New Case Modal -->
+                <div id="newCaseModal" class="modal">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h2>Create New Case Report</h2>
+                            <button class="modal-close" id="closeNewCaseModal">&times;</button>
+                        </div>
+                        <form id="caseReportForm">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="caseTitle">Case Title *</label>
+                                    <input type="text" id="caseTitle" name="caseTitle" placeholder="e.g., Student Behavioral Incident" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="caseType">Case Type *</label>
+                                    <select id="caseType" name="caseType" required>
+                                        <option value="">Select Type</option>
+                                        <option value="Academic">Academic Case</option>
+                                        <option value="Behavioral">Behavioral Case</option>
+                                        <option value="Mental_Health">Mental Health</option>
+                                        <option value="Family">Family Issues</option>
+                                        <option value="Abuse">Abuse/Neglect</option>
+                                        <option value="Substance">Substance Abuse</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="caseDescription">Case Description *</label>
+                                    <textarea id="caseDescription" name="caseDescription" placeholder="Provide details about the case..." required rows="4"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="severity">Severity Level *</label>
+                                    <select id="severity" name="severity" required>
+                                        <option value="">Select Level</option>
+                                        <option value="Low">Low</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="High">High</option>
+                                        <option value="Critical">Critical</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-success">Submit Report</button>
+                                <button type="button" class="btn btn-secondary" id="cancelNewCase">Cancel</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="../../js/utils.js"></script>
     <script src="../../js/auth.js"></script>
+    <script src="../../js/utils.js"></script>
     <script src="report-case.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', initReportCase);
-    </script>
 </body>
 </html>

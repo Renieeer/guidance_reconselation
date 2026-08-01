@@ -2,8 +2,33 @@
 
 function loadAnalytics() {
     initPage();
-    const referrals = getData('referrals') || [];
 
+    const user = getCurrentUser();
+    const school = (user && user.school_attended) || '';
+    // `role=other-school` is required for the API to apply school/grade
+    // scoping at all — without it the request falls through to an
+    // unfiltered query (see pages/other-school/referrals.js).
+    const apiUrl = `../../api/referral.php?role=other-school&school=${encodeURIComponent(school)}&grade_scope=${encodeURIComponent(getCurrentGradeScope())}`;
+
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to load referrals');
+            }
+            renderAnalytics(result.data || []);
+        })
+        .catch(error => {
+            console.error('Error loading analytics:', error);
+            document.getElementById('totalAnalytics').textContent = '—';
+            document.getElementById('completionRate').textContent = '—';
+            document.getElementById('avgProcessTime').textContent = '—';
+            loadStageDistribution([]);
+            loadReasonDistribution([]);
+        });
+}
+
+function renderAnalytics(referrals) {
     // Calculate analytics
     const total = referrals.length;
     const closed = referrals.filter(r => r.stage === 6).length;
@@ -15,7 +40,7 @@ function loadAnalytics() {
     // Update stats
     document.getElementById('totalAnalytics').textContent = total;
     document.getElementById('completionRate').textContent = completionRate + '%';
-    document.getElementById('avgProcessTime').textContent = avgProcessTime;
+    document.getElementById('avgProcessTime').textContent = avgProcessTime + (typeof avgProcessTime === 'number' ? ' days' : '');
 
     // Load stage distribution
     loadStageDistribution(referrals);
@@ -25,14 +50,14 @@ function loadAnalytics() {
 }
 
 function calculateAverageProcessTime(referrals) {
-    const closedReferrals = referrals.filter(r => r.stage === 6);
-    if (closedReferrals.length === 0) return 0;
+    const closedReferrals = referrals.filter(r => r.stage === 6 && r.date_submitted && r.updated_at);
+    if (closedReferrals.length === 0) return 'N/A';
 
     const totalDays = closedReferrals.reduce((sum, r) => {
-        const submitted = new Date(r.dateSubmitted);
-        const closed = new Date(r.closedDate || new Date());
+        const submitted = new Date(r.date_submitted);
+        const closed = new Date(r.updated_at);
         const days = Math.floor((closed - submitted) / (1000 * 60 * 60 * 24));
-        return sum + days;
+        return sum + Math.max(days, 0);
     }, 0);
 
     return Math.round(totalDays / closedReferrals.length);
@@ -64,19 +89,26 @@ function loadStageDistribution(referrals) {
 }
 
 function loadReasonDistribution(referrals) {
-    const reasons = {};
+    const reasonChart = document.getElementById('reasonChart');
 
+    if (referrals.length === 0) {
+        reasonChart.innerHTML = `<div style="padding: 20px; color: #999;">No referrals yet</div>`;
+        return;
+    }
+
+    const reasons = {};
     referrals.forEach(r => {
-        const reason = r.referralReason || 'Unknown';
+        // Free-text field — grouped by exact text, so near-duplicate
+        // phrasing shows as separate entries rather than being merged.
+        const reason = (r.referral_reason || '').trim() || 'Unspecified';
         reasons[reason] = (reasons[reason] || 0) + 1;
     });
 
-    const reasonChart = document.getElementById('reasonChart');
     reasonChart.innerHTML = `<div style="padding: 20px;">
         ${Object.entries(reasons).map(([reason, count]) => `
             <div style="margin-bottom: 15px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span>${reason}</span>
+                    <span>${escapeHtml(reason)}</span>
                     <strong>${count}</strong>
                 </div>
                 <div style="background-color: #e0e0e0; height: 20px; border-radius: 4px; overflow: hidden;">
@@ -87,9 +119,15 @@ function loadReasonDistribution(referrals) {
     </div>`;
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Logout functionality
-document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    logout();
-});
+document.getElementById('logoutBtn')?.addEventListener('click', requestLogout);
 
