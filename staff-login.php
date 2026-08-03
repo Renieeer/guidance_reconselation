@@ -128,6 +128,7 @@
         </div>
     </div>
 
+    <script src="js/otp-verify.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/staff-pin.js"></script>
     <script>

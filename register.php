@@ -186,6 +186,7 @@
         </div>
     </div>
 
+    <script src="js/otp-verify.js"></script>
     <script src="js/register.js"></script>
     <script>
         const navToggle = document.getElementById('navToggle');

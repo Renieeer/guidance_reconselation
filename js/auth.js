@@ -107,6 +107,18 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
             }
 
             window.location.href = targetRoute;
+        } else if (data.needsVerification) {
+            showError(data.message || 'Please verify your email before logging in.');
+            if (typeof showOtpModal === 'function') {
+                showOtpModal(data.email || email, {
+                    onVerified: () => {
+                        // Re-run this same submit handler now that the
+                        // account is verified, instead of making the user
+                        // re-enter their credentials.
+                        document.getElementById('loginForm').requestSubmit();
+                    }
+                });
+            }
         } else {
             showError(data.message || 'Invalid email or password');
         }

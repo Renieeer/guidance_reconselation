@@ -1,0 +1,5 @@
+# Local SMTP credentials — never commit real secrets
+api/mail-config.php
+
+# Runtime logs
+api/logs/

@@ -263,10 +263,21 @@ document.getElementById('registerForm')?.addEventListener('submit', async functi
         const data = await response.json();
 
         if (data.success) {
-            showSuccess('Account created successfully! Redirecting to login...');
-            setTimeout(() => {
-                window.location.href = 'index.php';
-            }, 2000);
+            if (data.needsVerification) {
+                showSuccess(data.message || 'Account created! Please verify your email.');
+                if (typeof showOtpModal === 'function') {
+                    showOtpModal(data.email || email, {
+                        onVerified: () => {
+                            window.location.href = 'login.php';
+                        }
+                    });
+                }
+            } else {
+                showSuccess('Account created successfully! Redirecting to login...');
+                setTimeout(() => {
+                    window.location.href = 'index.php';
+                }, 2000);
+            }
         } else {
             // Show detailed error message
             let errorMsg = data.message || 'An error occurred during registration';

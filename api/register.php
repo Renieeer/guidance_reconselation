@@ -17,6 +17,8 @@ try {
     // Include database connection
     require_once 'conn.php';
     require_once 'school-config.php';
+    require_once 'email-verification.php';
+    ensure_email_verification_schema($conn);
 
     // Get JSON input
     $input = file_get_contents('php://input');
@@ -110,18 +112,43 @@ try {
     // Hash password
     $hashedPassword = password_hash($plainPassword, PASSWORD_BCRYPT);
 
+    // Only require OTP verification when mail is actually configured —
+    // otherwise every new account would be created pending a code that can
+    // never arrive, locking them out of login entirely. See
+    // email-verification.php for the same "safe no-op until configured"
+    // pattern used by appointment notification emails.
+    $mailEnabled = is_mail_enabled();
+    $initialEmailVerified = $mailEnabled ? 0 : 1;
+
     // Insert new account into users_tables
-    $insertQuery = "INSERT INTO users_tables (First_name, Last_name, Password, Type, email, school_attended, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
+    $insertQuery = "INSERT INTO users_tables (First_name, Last_name, Password, Type, email, school_attended, email_verified, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
     $stmt = $conn->prepare($insertQuery);
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
     }
-    
-    $stmt->bind_param("ssssss", $firstName, $lastName, $hashedPassword, $role, $email, $school);
-    
+
+    $stmt->bind_param("ssssssi", $firstName, $lastName, $hashedPassword, $role, $email, $school, $initialEmailVerified);
+
     if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Account created successfully']);
+        if ($mailEnabled) {
+            $fullName = trim($firstName . ' ' . $lastName);
+            $otpResult = generate_and_send_otp($conn, $email, $fullName);
+            echo json_encode([
+                'success' => true,
+                'needsVerification' => true,
+                'email' => $email,
+                'message' => $otpResult['emailSent']
+                    ? 'Account created. Please check your email for a 6-digit verification code.'
+                    : 'Account created, but the verification email could not be sent. Please contact your school administrator.'
+            ]);
+        } else {
+            echo json_encode([
+                'success' => true,
+                'needsVerification' => false,
+                'message' => 'Account created successfully'
+            ]);
+        }
     } else {
         throw new Exception("Execute failed: " . $stmt->error);
     }

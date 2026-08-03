@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once 'conn.php';
 require_once 'grade-scope.php';
+require_once 'notify-appointment.php';
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
@@ -230,6 +231,10 @@ try {
 
         $stmt->close();
 
+        // Best-effort — a mail failure must never block the appointment
+        // request itself, which has already been saved successfully above.
+        notify_appointment_email($conn, $request_id, $isStaffInitiated ? 'approved' : 'submitted');
+
         send_json(201, [
             'success' => true,
             'message' => $isStaffInitiated ? 'Appointment scheduled successfully' : 'Appointment request submitted successfully',
@@ -262,6 +267,13 @@ try {
             send_json(400, ['success' => false, 'message' => 'Missing required fields']);
         }
 
+        $previousStatusStmt = $conn->prepare("SELECT status FROM appointment_requests WHERE request_id = ?");
+        $previousStatusStmt->bind_param('s', $request_id);
+        $previousStatusStmt->execute();
+        $previousStatusRow = $previousStatusStmt->get_result()->fetch_assoc();
+        $previousStatusStmt->close();
+        $previousStatus = $previousStatusRow['status'] ?? null;
+
         $sql = "UPDATE appointment_requests SET status = ?, counselor_id = ?, counselor_notes = ? WHERE request_id = ?";
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
@@ -275,6 +287,12 @@ try {
         }
 
         $stmt->close();
+
+        // Only notify on an actual status transition, not a notes-only
+        // re-save that happens to resend the same status.
+        if ($previousStatus !== null && $previousStatus !== $status) {
+            notify_appointment_email($conn, $request_id, $status);
+        }
 
         send_json(200, ['success' => true, 'message' => 'Request updated successfully']);
     }

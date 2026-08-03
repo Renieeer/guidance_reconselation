@@ -13,7 +13,7 @@ Legend: ✅ = done   🟡 = almost done / partial   ❌ = not started
 2.1	✅ Input and update personal information 
 2.2	✅ Schedule counselling appointments 
 2.3	❌ Provide feedback, and — form exists but only saves to the browser's local storage, never to the database (same on the counselor/coordinator side, not student-specific). Not started for real.
-2.4	❌ Receive notifications via email regarding their appointments — no email-sending code anywhere in the project. Not started.
+2.4	🟡 Receive notifications via email regarding their appointments — students now get an email (submitted/approved/declined/proposed-change) whenever their appointment status changes, sent via a hand-rolled SMTP client (Gmail). Wired in but sending is off by default until real Gmail SMTP credentials are filled into api/mail-config.php (gitignored, currently placeholders). No reminder emails ahead of the appointment date yet.
 3.	✅ To enable teachers to efficiently input student referral forms and printing of acknowledgement slip through the system. 
 4.	To enable Guidance Counselors to: 
 4.1	✅ Efficiently update and store student guidance records 
@@ -31,4 +31,4 @@ Legend: ✅ = done   🟡 = almost done / partial   ❌ = not started
 7.3	✅ Referral distribution — Analytics reason-breakdown now has a standalone "Export Report" CSV download (every reason, not just the top 5 shown on the chart).
 7.4	✅ Division-wide summary case — SDO's district summary tables (School Reports, District Report Cases) now show real per-district counts aggregated from the database, same "Unassigned" caveat as item 6 until districts are assigned.
 7.5	✅ Child summary case — Student History gives a real full per-student record.
-     
+        

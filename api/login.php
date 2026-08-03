@@ -18,8 +18,10 @@ try {
     require_once 'conn.php';
     require_once 'grade-scope.php';
     require_once 'account-status.php';
+    require_once 'email-verification.php';
     ensure_users_table_grade_column($conn);
     ensure_users_table_active_column($conn);
+    ensure_email_verification_schema($conn);
 
     // Get JSON input
     $input = file_get_contents('php://input');
@@ -52,7 +54,7 @@ try {
     }
 
     // Query user from database (users_tables)
-    $query = "SELECT AccountID, email, Password, Type, First_name, Last_name, school_attended, Grade, is_active FROM users_tables WHERE email = ?";
+    $query = "SELECT AccountID, email, Password, Type, First_name, Last_name, school_attended, Grade, is_active, email_verified FROM users_tables WHERE email = ?";
     $stmt = $conn->prepare($query);
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
@@ -81,6 +83,19 @@ try {
 
     if ((int)($user['is_active'] ?? 1) === 0) {
         echo json_encode(['success' => false, 'message' => 'This account has been deactivated. Please contact your SDO administrator.']);
+        exit;
+    }
+
+    // Defaults to verified (1) when the column is missing/null — matches
+    // ensure_email_verification_schema()'s grandfathering of pre-existing
+    // accounts, so this only ever blocks brand-new unverified signups.
+    if ((int)($user['email_verified'] ?? 1) === 0) {
+        echo json_encode([
+            'success' => false,
+            'needsVerification' => true,
+            'email' => $user['email'],
+            'message' => 'Please verify your email before logging in.'
+        ]);
         exit;
     }
 
