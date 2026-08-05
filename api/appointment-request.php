@@ -59,6 +59,33 @@ function ensure_appointment_request_table(mysqli $conn): void {
             'message' => 'Failed to initialize appointment requests table: ' . $conn->error
         ]);
     }
+
+    ensure_booking_type_column($conn);
+}
+
+// booking_type records whether this was a staff-initiated ("counseling",
+// booked directly by a counselor/coordinator via a case's "Appoint
+// Students" action) or student-initiated ("online", self-booked) request
+// — set once at INSERT and never touched again. Replaces an older,
+// fragile convention (several pages/*/schedule.js files re-derived this
+// from counselor_notes === 'Scheduled directly by counselor', which broke
+// as soon as that column was overwritten by a later status update).
+function ensure_booking_type_column(mysqli $conn): void {
+    static $checked = false;
+    if ($checked) {
+        return;
+    }
+    $checked = true;
+
+    $result = $conn->query("SHOW COLUMNS FROM appointment_requests LIKE 'booking_type'");
+    if ($result && $result->num_rows > 0) {
+        return;
+    }
+
+    $conn->query("ALTER TABLE appointment_requests ADD COLUMN booking_type VARCHAR(20) NOT NULL DEFAULT 'online'");
+    // One-time backfill for rows that predate this column, using the same
+    // heuristic the UI already relied on.
+    $conn->query("UPDATE appointment_requests SET booking_type = 'counseling' WHERE counselor_notes = 'Scheduled directly by counselor'");
 }
 
 try {
@@ -70,7 +97,7 @@ try {
         $school = trim((string)($_GET['school'] ?? ''));
         $role = trim((string)($_GET['role'] ?? ''));
         
-        $sql = "SELECT 
+        $sql = "SELECT
                     request_id AS id,
                     student_id,
                     student_name,
@@ -82,6 +109,7 @@ try {
                     status,
                     counselor_id,
                     counselor_notes,
+                    booking_type,
                     created_at,
                     updated_at
                 FROM appointment_requests WHERE 1=1";
@@ -198,11 +226,12 @@ try {
         $initialStatus = $isStaffInitiated ? 'approved' : 'pending';
         $initialCounselorId = $isStaffInitiated ? $counselor_id : 0;
         $initialCounselorNotes = $isStaffInitiated ? 'Scheduled directly by counselor' : '';
+        $initialBookingType = $isStaffInitiated ? 'counseling' : 'online';
 
         $sql = "
             INSERT INTO appointment_requests (
-                request_id, student_id, student_name, preferred_date, preferred_time, reason, notes, school_attended, status, counselor_id, counselor_notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                request_id, student_id, student_name, preferred_date, preferred_time, reason, notes, school_attended, status, counselor_id, counselor_notes, booking_type
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ";
 
         $stmt = $conn->prepare($sql);
@@ -211,7 +240,7 @@ try {
         }
 
         $stmt->bind_param(
-            'sisssssssis',
+            'sisssssssiss',
             $request_id,
             $student_id,
             $student_name,
@@ -222,7 +251,8 @@ try {
             $school,
             $initialStatus,
             $initialCounselorId,
-            $initialCounselorNotes
+            $initialCounselorNotes,
+            $initialBookingType
         );
 
         if (!$stmt->execute()) {

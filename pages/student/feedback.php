@@ -19,17 +19,37 @@
                     <h2 class="page-hero-title">Feedback</h2>
                     <p class="page-hero-text">Share your thoughts about your counseling experience and the guidance services you received.</p>
                 </div>
+                <button type="button" class="btn btn-primary" id="openFeedbackFormBtn">
+                    <i class="bi bi-plus-circle"></i> Send Feedback
+                </button>
             </div>
 
             <!-- Page Content -->
             <div class="page-content">
                 <!-- Send Feedback Form -->
-                <div class="card mb-5">
-                    <h2 class="card-title">Send Feedback</h2>
+                <div class="card mb-5" id="feedbackFormWrapper" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 class="card-title">Send Feedback</h2>
+                        <button type="button" class="btn btn-ghost btn-sm" id="cancelFeedbackFormBtn" title="Close">
+                            <i class="bi bi-x-lg"></i> Cancel
+                        </button>
+                    </div>
                     <form id="feedbackForm">
                         <div class="form-group">
-                            <label for="feedbackSubject">Subject *</label>
-                            <input type="text" id="feedbackSubject" name="feedbackSubject" placeholder="e.g., Feedback about counseling session" required>
+                            <label for="feedbackSubjectType">What is this feedback about? *</label>
+                            <select id="feedbackSubjectType" name="feedbackSubjectType" required>
+                                <option value="">Select a category</option>
+                                <option value="counseling_case">Counseling Session</option>
+                                <option value="appointment">Appointment</option>
+                                <option value="event">Calendar Event</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="feedbackSubjectId">Which one? *</label>
+                            <select id="feedbackSubjectId" name="feedbackSubjectId" required disabled>
+                                <option value="">Select a category first</option>
+                            </select>
                         </div>
 
                         <div class="form-group">
@@ -53,62 +73,41 @@
                             <button type="reset" class="btn btn-secondary">Clear</button>
                         </div>
                     </form>
+                    <div id="feedbackEmptyState" style="display: none; text-align: center; padding: 30px; color: #999;">
+                        You don't have any counseling sessions, appointments, or calendar events yet. Once you have one, you'll be able to send feedback about it here.
+                    </div>
                 </div>
 
-                <!-- Feedback History -->
-                <div class="table-container">
-                    <h2 class="mb-4">Your Feedback</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Subject</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="feedbackTableBody">
-                            <tr>
-                                <td colspan="5" style="text-align: center; padding: 30px; color: #999;">No feedback sent yet</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Edit Feedback Modal -->
-                <div id="editFeedbackModal" class="modal">
-                    <div class="modal-content" style="max-width: 600px;">
-                        <div class="modal-header">
-                            <h2>Edit Feedback</h2>
-                            <button class="modal-close" id="closeEditModal">&times;</button>
+                <!-- Your Feedback -->
+                <h2 class="mb-4">Your Feedback</h2>
+                <div class="feedback-messenger" id="feedbackMessenger">
+                    <!-- Conversation list -->
+                    <div class="feedback-conversation-list">
+                        <div id="conversationListItems">
+                            <div class="feedback-conversation-list-empty">Loading…</div>
                         </div>
-                        <form id="editFeedbackForm">
-                            <div class="modal-body">
-                                <input type="hidden" id="editFeedbackId">
-                                <div class="form-group">
-                                    <label for="editSubject">Subject</label>
-                                    <input type="text" id="editSubject" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="editMessage">Message</label>
-                                    <textarea id="editMessage" required rows="5"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="editType">Type</label>
-                                    <select id="editType" required>
-                                        <option value="Positive">Positive</option>
-                                        <option value="Suggestion">Suggestion</option>
-                                        <option value="Concern">Concern</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                    </div>
+
+                    <!-- Active thread -->
+                    <div class="feedback-conversation-panel">
+                        <div class="feedback-conversation-empty" id="conversationEmpty">
+                            <i class="bi bi-chat-dots"></i>
+                            <div>Select a conversation to view messages</div>
+                        </div>
+                        <div class="feedback-conversation-active" id="conversationActive">
+                            <div class="feedback-conversation-header">
+                                <button type="button" class="feedback-back-to-list" id="backToList"><i class="bi bi-arrow-left"></i></button>
+                                <div class="feedback-conversation-header-info">
+                                    <h2 id="threadSubjectLabel"></h2>
+                                    <div id="threadMeta" class="feedback-thread-meta"></div>
                                 </div>
                             </div>
-                            <div class="modal-footer">
-                                <button type="submit" class="btn btn-success">Save Changes</button>
-                                <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
-                            </div>
-                        </form>
+                            <div class="feedback-thread-body" id="threadMessages"></div>
+                            <form id="threadReplyForm" class="feedback-thread-composer">
+                                <textarea id="threadReplyInput" rows="1" placeholder="Write a reply..." required></textarea>
+                                <button type="submit" class="btn btn-success"><i class="bi bi-send"></i></button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>

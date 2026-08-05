@@ -1,3 +1,9 @@
+<!-- Mobile nav toggle -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation">
+    <span></span><span></span><span></span>
+</button>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <!-- Sidebar -->
 <div class="sidebar">
     <div class="sidebar-header">
@@ -13,7 +19,7 @@
         <li><a href="counseling.php"><i class="bi bi-plus-circle"></i>Counseling</a></li>
          <li><a href="documents.php"><i class="bi bi-bar-chart"></i> Documentation</a></li>
         <li><a href="schedule.php"><i class="bi bi-calendar3"></i> Schedule</a></li>
-        <li><a href="feedback.php"><i class="bi bi-chat-dots"></i> Feedback</a></li>
+        <li><a href="student-feedback.php"><i class="bi bi-chat-square-text"></i> Student Feedback</a></li>
         <li><a href="#" id="logoutBtn"><i class="bi bi-box-arrow-left"></i> Logout</a></li>
     </ul>
 </div>

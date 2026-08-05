@@ -114,6 +114,16 @@ function shInit() {
         }
     });
 
+    // The compact header chips mirror the folder nav below — clicking
+    // either one switches the same active folder and keeps both in sync.
+    document.getElementById('shStatChips').addEventListener('click', (e) => {
+        const chip = e.target.closest('.sh-stat-chip[data-folder]');
+        if (!chip) return;
+        shActiveFolder = chip.getAttribute('data-folder');
+        shApplyActiveFolder();
+        document.getElementById('shFolderGrid').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
     const params = new URLSearchParams(window.location.search);
     const presetStudentId = params.get('student_id');
     if (presetStudentId) {
@@ -219,6 +229,7 @@ function shLoadStudent(studentId) {
             shActiveFolder = folderOrder.find(t => (counts[t] || 0) > 0) || 'referrals';
             shBuildNormalizedRecords(result.data || {});
             shRenderStudentHeader(result.student, counts);
+            shRenderPersonalInfo(result.student);
             shPopulateStatusFilter();
             document.getElementById('shFolderGrid').style.display = 'grid';
             document.getElementById('shFilterCard').style.display = 'block';
@@ -254,14 +265,61 @@ function shRenderStudentHeader(student, counts) {
     document.getElementById('shStudentSub').textContent = subParts.join(' · ');
 
     const chipDefs = [
+        { key: 'personal', label: 'Personal Info', icon: 'fa-id-card' },
         { key: 'referrals', label: 'Referrals', icon: 'fa-file-alt' },
         { key: 'counseling', label: 'Counseling', icon: 'fa-comments' },
         { key: 'follow_ups', label: 'Follow-Ups', icon: 'fa-calendar-check' },
         { key: 'appointments', label: 'Appointments', icon: 'fa-calendar-day' }
     ];
     document.getElementById('shStatChips').innerHTML = chipDefs.map(c => `
-        <div class="sh-stat-chip"><i class="fas ${c.icon}"></i> ${c.label} <span class="sh-stat-count">${counts[c.key] || 0}</span></div>
+        <div class="sh-stat-chip" data-folder="${c.key}" role="button" tabindex="0">
+            <i class="fas ${c.icon}"></i> ${c.label}${c.key === 'personal' ? '' : ` <span class="sh-stat-count">${counts[c.key] || 0}</span>`}
+        </div>
     `).join('');
+}
+
+function shRenderPersonalInfo(student) {
+    const body = document.getElementById('shBody-personal');
+    const normalizedGrade = normalizeGradeNumber(student.grade);
+    const gradeLabel = normalizedGrade ? `Grade ${normalizedGrade}` : (student.grade ? String(student.grade) : 'N/A');
+    const fullName = [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(' ') || student.name || 'N/A';
+
+    const rows = (pairs) => pairs.map(([label, value]) => `
+        <div class="sh-detail-row">
+            <div class="sh-detail-label">${esc(label)}</div>
+            <div class="sh-detail-value">${value ? esc(value) : 'N/A'}</div>
+        </div>
+    `).join('');
+
+    body.innerHTML = `
+        <div class="sh-subheading">Basic Information</div>
+        ${rows([
+            ['Full Name', fullName],
+            ['Nickname', student.nickname],
+            ['LRN', student.lrn],
+            ['Sex', student.sex],
+            ['Age', student.age],
+            ['Date of Birth', shFormatDate(student.date_of_birth)],
+            ['Place of Birth', student.place_of_birth],
+            ['Religion (from birth)', student.religion_from_birth],
+            ['Current Religion', student.current_religion]
+        ])}
+
+        <div class="sh-subheading">Contact &amp; Address</div>
+        ${rows([
+            ['Email', student.email],
+            ['Cellphone', student.contact],
+            ['Current Address', student.current_address],
+            ['Permanent Address', student.permanent_address]
+        ])}
+
+        <div class="sh-subheading">Academic Info</div>
+        ${rows([
+            ['Student ID', student.student_id],
+            ['Grade', gradeLabel],
+            ['Section', student.section]
+        ])}
+    `;
 }
 
 /* Flattens the four record arrays into one normalized list — each entry
@@ -323,6 +381,7 @@ function shPopulateStatusFilter() {
 
 function shApplyActiveFolder() {
     const titles = {
+        personal: 'Personal Information',
         referrals: 'Referrals',
         counseling: 'Counseling Sessions',
         follow_ups: 'Counseling Appointment Span',
@@ -330,6 +389,9 @@ function shApplyActiveFolder() {
     };
     document.querySelectorAll('.sh-folder-tab[data-folder]').forEach(tab => {
         tab.classList.toggle('active', tab.getAttribute('data-folder') === shActiveFolder);
+    });
+    document.querySelectorAll('.sh-stat-chip[data-folder]').forEach(chip => {
+        chip.classList.toggle('active', chip.getAttribute('data-folder') === shActiveFolder);
     });
     document.querySelectorAll('.sh-folder-body').forEach(body => {
         body.classList.toggle('active', body.id === `shBody-${shActiveFolder}`);
@@ -385,12 +447,12 @@ function shRenderFolders() {
     // being looked for. Otherwise leave the active tab alone so changing
     // other filters (search text, dates) doesn't jump the panel around.
     const visibleTypes = ['referrals', 'counseling', 'follow_ups', 'appointments'].filter(t => !filters.type || filters.type === t);
-    document.querySelectorAll('.sh-folder-tab[data-folder]').forEach(tab => {
+    document.querySelectorAll('.sh-folder-tab[data-folder]:not([data-folder="personal"])').forEach(tab => {
         tab.classList.toggle('sh-folder-hidden', !visibleTypes.includes(tab.getAttribute('data-folder')));
     });
     if (filters.type) {
         shActiveFolder = filters.type;
-    } else if (!visibleTypes.includes(shActiveFolder)) {
+    } else if (shActiveFolder !== 'personal' && !visibleTypes.includes(shActiveFolder)) {
         shActiveFolder = visibleTypes[0];
     }
 

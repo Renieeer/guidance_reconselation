@@ -560,3 +560,179 @@ function getStatusLabel(stage) {
 
 document.addEventListener('DOMContentLoaded', loadReferralStatus);
 
+
+// ── Walk-in referral creation — lets the counselor log a referral
+// directly for a student who comes to the guidance office in person,
+// instead of only ever viewing referrals a teacher already submitted.
+// Reuses api/referral.php's existing POST handler (no role check there),
+// just with the logged-in staff member's own identity as the referrer.
+function initWalkInReferralForm() {
+    document.getElementById('openReferralFormBtn').addEventListener('click', openReferralForm);
+    document.getElementById('cancelReferralFormBtn').addEventListener('click', hideReferralForm);
+    document.getElementById('newReferralForm').addEventListener('submit', submitWalkInReferral);
+    setupWalkInStudentSearch();
+}
+
+function openReferralForm() {
+    const wrapper = document.getElementById('referralFormWrapper');
+    wrapper.style.display = 'block';
+    wrapper.classList.add('case-form-enter');
+    document.getElementById('openReferralFormBtn').style.display = 'none';
+    wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function hideReferralForm() {
+    const wrapper = document.getElementById('referralFormWrapper');
+    wrapper.style.display = 'none';
+    wrapper.classList.remove('case-form-enter');
+    document.getElementById('openReferralFormBtn').style.display = '';
+}
+
+function getWalkInUserSchool() {
+    try {
+        const raw = sessionStorage.getItem('userInfo') || sessionStorage.getItem('user') || localStorage.getItem('currentUser') || localStorage.getItem('teacherSchool');
+        if (!raw) return '';
+        let parsed = null;
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = raw; }
+        if (parsed && typeof parsed === 'object') return parsed.school_attended || parsed.school || '';
+        return '';
+    } catch (e) {
+        return '';
+    }
+}
+
+// Same autocomplete UX as the teacher's referral form
+// (pages/teacher/referral-form.js), restricted to the staff member's own
+// school, adapted to this form's element ids.
+function setupWalkInStudentSearch() {
+    const input = document.getElementById('newRefStudentName');
+    const status = document.getElementById('newRefSearchStatus');
+    const listEl = document.getElementById('newRefSuggestionList');
+    let searchTimeout;
+
+    input.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        document.getElementById('newRefStudentId').value = '';
+        const term = this.value.trim();
+        status.textContent = '';
+        listEl.innerHTML = '';
+        if (term.length < 2) return;
+
+        searchTimeout = setTimeout(() => {
+            const school = getWalkInUserSchool();
+            if (!school) {
+                status.textContent = 'No school on file — cannot look up students.';
+                status.style.color = '#d9534f';
+                return;
+            }
+            status.textContent = 'Searching school records...';
+            status.style.color = '#666';
+            fetch(`../../api/get-students.php?school=${encodeURIComponent(school)}&search=${encodeURIComponent(term)}&limit=8`)
+                .then(r => r.json())
+                .then(result => {
+                    listEl.innerHTML = '';
+                    if (!result.success || !result.data || result.data.length === 0) {
+                        status.textContent = 'No matching student found — you can still type the name manually.';
+                        status.style.color = '#d9534f';
+                        return;
+                    }
+                    result.data.forEach(student => {
+                        const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+                        const row = document.createElement('div');
+                        row.style.cssText = 'padding:8px 10px;cursor:pointer;border-bottom:1px solid #f2f2f2;';
+                        row.innerHTML = `<div style="font-weight:600">${escapeHtml(fullName)}</div><div style="font-size:12px;color:#666">${escapeHtml(student.grade_name || '')}</div>`;
+                        row.addEventListener('mousedown', (ev) => {
+                            ev.preventDefault();
+                            input.value = fullName;
+                            document.getElementById('newRefStudentId').value = student.id;
+                            const gradeEl = document.getElementById('newRefGrade');
+                            const gradeLabel = student.grade_name || '';
+                            if (gradeLabel && Array.from(gradeEl.options).some(o => o.value === gradeLabel)) {
+                                gradeEl.value = gradeLabel;
+                            }
+                            if (student.age) document.getElementById('newRefAge').value = student.age;
+                            const sexValue = student.sex || student.Sex;
+                            if (sexValue) {
+                                const genderMap = { M: 'Male', F: 'Female', Male: 'Male', Female: 'Female' };
+                                document.getElementById('newRefGender').value = genderMap[sexValue] || sexValue;
+                            }
+                            status.textContent = `Selected: ${fullName}`;
+                            status.style.color = 'green';
+                            listEl.innerHTML = '';
+                        });
+                        listEl.appendChild(row);
+                    });
+                    status.textContent = `Found ${result.data.length} match${result.data.length > 1 ? 'es' : ''}`;
+                    status.style.color = 'green';
+                })
+                .catch(() => {
+                    status.textContent = 'Error checking student records.';
+                    status.style.color = '#d66';
+                });
+        }, 300);
+    });
+
+    input.addEventListener('blur', () => setTimeout(() => { listEl.innerHTML = ''; }, 200));
+}
+
+function submitWalkInReferral(e) {
+    e.preventDefault();
+    const user = getCurrentUser();
+    const school = getWalkInUserSchool();
+
+    const studentName = document.getElementById('newRefStudentName').value.trim();
+    const grade = document.getElementById('newRefGrade').value;
+    const reason = document.getElementById('newRefReason').value.trim();
+
+    if (!studentName || !grade || !reason) {
+        showAlert('Please fill in the student name, grade, and reason for referral.', 'error');
+        return;
+    }
+
+    const referral = {
+        student_name: studentName,
+        student_id: document.getElementById('newRefStudentId').value || null,
+        grade: grade,
+        section: document.getElementById('newRefSection').value.trim(),
+        age: document.getElementById('newRefAge').value,
+        gender: document.getElementById('newRefGender').value,
+        referral_reason: reason,
+        description: document.getElementById('newRefDescription').value.trim(),
+        intervention_attempts: document.getElementById('newRefIntervention').value.trim(),
+        observed_behaviors: document.getElementById('newRefBehaviors').value.trim(),
+        parent_guardian: document.getElementById('newRefParentName').value.trim(),
+        parent_contact: document.getElementById('newRefParentContact').value.trim(),
+        parent_email: document.getElementById('newRefParentEmail').value.trim(),
+        family_background: document.getElementById('newRefFamilyBg').value.trim(),
+        urgency: document.getElementById('newRefUrgency').value || 'normal',
+        teacher_id: user.id || null,
+        teacher_name: user.name || user.email,
+        teacher_contact: user.contact || '',
+        school_attended: school,
+        student_school: school,
+        stage: 1,
+        status: 'pending'
+    };
+
+    fetch('../../api/referral.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(referral)
+    })
+        .then(r => r.json())
+        .then(result => {
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to submit referral');
+            }
+            showAlert('Referral created successfully.');
+            document.getElementById('newReferralForm').reset();
+            document.getElementById('newRefStudentId').value = '';
+            hideReferralForm();
+            fetchCounselorReferrals().then(loadListView);
+        })
+        .catch(error => {
+            showAlert(error.message || 'Failed to submit referral', 'error');
+        });
+}
+
+document.addEventListener('DOMContentLoaded', initWalkInReferralForm);

@@ -3,10 +3,19 @@
 // Database connection settings
 header('Content-Type: application/json');
 
-$servername = 'localhost';
-$username = 'root';
-$password = '';
-$database = 'guidance_tbl';
+// Auto-switches between local Laragon and the live InfinityFree host based
+// on the requesting hostname, so the same codebase works in both places.
+if (strpos($_SERVER['HTTP_HOST'] ?? '', 'infinityfreeapp.com') !== false) {
+    $servername = 'sql311.infinityfree.com';
+    $username = 'if0_42584741';
+    $password = 'CKVo5YWtBT4Z5O';
+    $database = 'if0_42584741_guidance_db';
+} else {
+    $servername = 'localhost';
+    $username = 'root';
+    $password = '';
+    $database = 'guidance_tbl';
+}
 
 try {
     // Create MySQLi connection

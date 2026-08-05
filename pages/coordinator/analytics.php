@@ -11,7 +11,7 @@
 <body>
     <div class="main-wrapper">
         <!-- Sidebar -->
-        <?php include '../../includes/sidebar-other-school.php'; ?><!-- Main Content -->
+        <?php include '../../includes/sidebar-coordinator.php'; ?><!-- Main Content -->
         <div class="main-content">
             <!-- Page Hero -->
             <div class="page-hero">

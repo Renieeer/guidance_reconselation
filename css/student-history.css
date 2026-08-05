@@ -171,6 +171,19 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--text-color);
+    cursor: pointer;
+    user-select: none;
+    transition: var(--transition-fast);
+}
+
+.sh-stat-chip:hover {
+    border-color: var(--secondary-color);
+}
+
+.sh-stat-chip.active {
+    border-color: var(--secondary-color);
+    background: rgba(18, 58, 107, 0.1);
+    color: var(--secondary-color);
 }
 
 .sh-stat-chip .sh-stat-count {

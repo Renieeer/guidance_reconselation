@@ -92,6 +92,14 @@
                 <!-- Folders: narrow nav on the left, wide content panel on the right -->
                 <div id="shFolderGrid" class="sh-folder-layout" style="display:none;">
                     <div class="sh-folder-nav" id="shFolderNav">
+                        <div class="sh-folder-tab" data-folder="personal">
+                            <div class="sh-folder-icon"><i class="fas fa-id-card"></i></div>
+                            <div>
+                                <div class="sh-folder-title">Personal Information</div>
+                                <div class="sh-folder-subtitle">Profile &amp; contact details</div>
+                            </div>
+                        </div>
+
                         <div class="sh-folder-tab" data-folder="referrals">
                             <div class="sh-folder-icon"><i class="fas fa-file-alt"></i></div>
                             <div>
@@ -133,6 +141,7 @@
                         <div class="sh-folder-content-header">
                             <div class="sh-folder-content-title" id="shActiveFolderTitle">Referrals</div>
                         </div>
+                        <div class="sh-folder-body" id="shBody-personal"></div>
                         <div class="sh-folder-body" id="shBody-referrals"></div>
                         <div class="sh-folder-body" id="shBody-counseling"></div>
                         <div class="sh-folder-body" id="shBody-follow_ups"></div>

@@ -763,7 +763,8 @@
         // Logout
         function logout() {
             sessionStorage.clear();
-            window.location.href = '../../index.html';
+            localStorage.removeItem('currentUser');
+            window.location.href = '../../index.php';
         }
     </script>
 </body>

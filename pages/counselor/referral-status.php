@@ -19,6 +19,9 @@
                     <h2 class="page-hero-title">Referral Status</h2>
                     <p class="page-hero-text">Track the status of all student referrals assigned to you and monitor case progress.</p>
                 </div>
+                <button type="button" class="btn btn-primary" id="openReferralFormBtn">
+                    <i class="bi bi-plus-circle"></i> Create Referral
+                </button>
             </div>
 
             <!-- Page Content -->
@@ -181,6 +184,118 @@
                 </div>
 
                 <div id="listView">
+                    <!-- Create Referral (walk-in) -->
+                    <div class="card mb-5" id="referralFormWrapper" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="card-title">Create Referral (Walk-in)</h2>
+                            <button type="button" class="btn btn-ghost btn-sm" id="cancelReferralFormBtn" title="Close">
+                                <i class="bi bi-x-lg"></i> Cancel
+                            </button>
+                        </div>
+                        <p class="text-muted" style="margin-top:-6px;">For a student who comes to the guidance office directly, without a teacher-submitted referral.</p>
+
+                        <form id="newReferralForm">
+                            <div class="form-group" style="position: relative;">
+                                <label for="newRefStudentName">Student Name *</label>
+                                <input type="text" id="newRefStudentName" required autocomplete="off">
+                                <input type="hidden" id="newRefStudentId">
+                                <div id="newRefSearchStatus" style="margin-top:6px;font-size:12px;color:#666;min-height:18px;"></div>
+                                <div style="position:relative;">
+                                    <div id="newRefSuggestionList" style="position:absolute;left:0;right:0;z-index:50;background:#fff;border:1px solid #ddd;border-radius:4px;max-height:200px;overflow:auto;box-shadow:0 6px 16px rgba(0,0,0,0.08);"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;">
+                                <div class="form-group">
+                                    <label for="newRefGrade">Grade *</label>
+                                    <select id="newRefGrade" required>
+                                        <option value="">Select Grade</option>
+                                        <option value="Grade 7">Grade 7</option>
+                                        <option value="Grade 8">Grade 8</option>
+                                        <option value="Grade 9">Grade 9</option>
+                                        <option value="Grade 10">Grade 10</option>
+                                        <option value="Grade 11">Grade 11</option>
+                                        <option value="Grade 12">Grade 12</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newRefGender">Gender</label>
+                                    <select id="newRefGender">
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newRefAge">Age</label>
+                                    <input type="number" id="newRefAge" min="1" max="30">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newRefSection">Section</label>
+                                <input type="text" id="newRefSection" placeholder="e.g. Sampaguita">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newRefReason">Reason for Referral *</label>
+                                <textarea id="newRefReason" required rows="3"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newRefDescription">Description</label>
+                                <textarea id="newRefDescription" rows="3"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newRefIntervention">Initial Actions Taken</label>
+                                <textarea id="newRefIntervention" rows="2"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newRefBehaviors">Observed Behaviors</label>
+                                <textarea id="newRefBehaviors" rows="2"></textarea>
+                            </div>
+
+                            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+                                <div class="form-group">
+                                    <label for="newRefParentName">Parent/Guardian Name</label>
+                                    <input type="text" id="newRefParentName">
+                                </div>
+                                <div class="form-group">
+                                    <label for="newRefParentContact">Parent/Guardian Contact</label>
+                                    <input type="tel" id="newRefParentContact">
+                                </div>
+                            </div>
+
+                            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+                                <div class="form-group">
+                                    <label for="newRefParentEmail">Parent/Guardian Email</label>
+                                    <input type="email" id="newRefParentEmail">
+                                </div>
+                                <div class="form-group">
+                                    <label for="newRefUrgency">Urgency</label>
+                                    <select id="newRefUrgency">
+                                        <option value="normal" selected>Normal</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newRefFamilyBg">Family Background</label>
+                                <textarea id="newRefFamilyBg" rows="2"></textarea>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">Submit Referral</button>
+                                <button type="reset" class="btn btn-secondary">Clear</button>
+                            </div>
+                        </form>
+                    </div>
+
                     <!-- Filter -->
                     <div class="card" style="margin-bottom: 20px;">
                         <div style="display: grid; grid-template-columns: auto auto auto auto 1fr; gap: 15px; align-items: end;">

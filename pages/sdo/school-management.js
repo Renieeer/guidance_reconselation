@@ -499,20 +499,10 @@ function buildFolderCard(item) {
 }
 
 // The school detail modal's body: the three role slots, plus (in edit mode
-// only) the district editor and a revoke-access footer.
+// only) a revoke-access footer. District always mirrors the school's own
+// name (set once at creation, see api/school-config.php) and is not
+// independently editable.
 function buildSchoolDetailContent(item) {
-    const districtBlock = editMode ? `
-                <div class="school-role-slot">
-                    <div class="school-role-slot-header">
-                        <span class="school-role-label">District</span>
-                    </div>
-                    <p class="school-role-empty-text">Used to group this school in district-level reports. Free text — enter whatever your division calls it (e.g. "District 1").</p>
-                    <div class="school-role-controls">
-                        <input type="text" class="district-inline-input" data-school-code="${escapeHtml(item.schoolCode)}" value="${escapeHtml(item.district || '')}" placeholder="Unassigned">
-                        <button type="button" class="btn btn-secondary btn-sm" data-save-district data-school-code="${escapeHtml(item.schoolCode)}">Save</button>
-                    </div>
-                </div>` : '';
-
     const revokeBtn = editMode
         ? `<button type="button" class="school-folder-revoke" data-revoke-school="${escapeHtml(item.schoolCode)}">Revoke school access</button>`
         : '';
@@ -521,7 +511,6 @@ function buildSchoolDetailContent(item) {
         ${buildRoleSlot('COORDINATOR', item.coordinator, 'coordinator', item.schoolName)}
         ${buildRoleSlot('COUNSELOR', item.counselor, 'counselor', item.schoolName)}
         ${buildRoleSlot('COMBINED', item.combined, 'combined', item.schoolName)}
-        ${districtBlock}
         <div class="school-folder-footer">
             <span class="school-folder-id">ID ${escapeHtml(String(item.schoolCode || '').toUpperCase())}</span>
             ${revokeBtn}
@@ -536,10 +525,6 @@ function wireSchoolDetailEvents(container) {
 
     container.querySelectorAll('[data-save-grade]').forEach(btn => {
         btn.addEventListener('click', () => saveInlineGrade(btn));
-    });
-
-    container.querySelectorAll('[data-save-district]').forEach(btn => {
-        btn.addEventListener('click', () => saveInlineDistrict(btn));
     });
 
     container.querySelectorAll('[data-toggle-active]').forEach(btn => {
@@ -633,36 +618,6 @@ async function saveInlineGrade(btn) {
         refreshOpenSchoolDetail();
     } catch (error) {
         showSchoolAssignmentAlert(error.message || 'Failed to update grade assignment.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-    }
-}
-
-async function saveInlineDistrict(btn) {
-    const schoolCode = btn.getAttribute('data-school-code');
-    const input = document.querySelector(`.district-inline-input[data-school-code="${schoolCode}"]`);
-    if (!schoolCode || !input) return;
-
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-
-    try {
-        const response = await fetch(SCHOOL_STAFF_ENDPOINT, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'updateDistrict', schoolCode, district: input.value.trim() })
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Failed to update district assignment.');
-        }
-        showSchoolAssignmentAlert('District assignment updated.', 'success');
-        await loadSchoolAssignments();
-        refreshOpenSchoolDetail();
-    } catch (error) {
-        showSchoolAssignmentAlert(error.message || 'Failed to update district assignment.', 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = originalText;

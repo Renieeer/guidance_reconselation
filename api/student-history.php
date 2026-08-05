@@ -40,7 +40,9 @@ if ($studentId === '') {
 }
 
 $studentStmt = $conn->prepare('
-    SELECT StudentId, AccountID, FirstName, MiddleName, LastName, Sex, Age, Grade, Section, EmailAccount, CellphoneNumber
+    SELECT StudentId, AccountID, LRN, FirstName, MiddleName, LastName, Nickname, Sex, Age, Grade, Section,
+           EmailAccount, CellphoneNumber, DateOfBirth, PlaceOfBirth, ReligionFromBirth, CurrentReligion,
+           CurrentAddress, PermanentAddress
     FROM student_table
     WHERE StudentId = ?
 ');
@@ -289,9 +291,18 @@ send_json(200, [
         'student_id' => $student['StudentId'] ?? $studentId,
         'name' => $studentName,
         'first_name' => $student['FirstName'] ?? '',
+        'middle_name' => $student['MiddleName'] ?? '',
         'last_name' => $student['LastName'] ?? '',
+        'nickname' => $student['Nickname'] ?? '',
+        'lrn' => $student['LRN'] ?? '',
         'sex' => $student['Sex'] ?? '',
         'age' => $student['Age'] ?? '',
+        'date_of_birth' => $student['DateOfBirth'] ?? '',
+        'place_of_birth' => $student['PlaceOfBirth'] ?? '',
+        'religion_from_birth' => $student['ReligionFromBirth'] ?? '',
+        'current_religion' => $student['CurrentReligion'] ?? '',
+        'current_address' => $student['CurrentAddress'] ?? '',
+        'permanent_address' => $student['PermanentAddress'] ?? '',
         'grade' => $student['Grade'] ?? '',
         'section' => $student['Section'] ?? '',
         'email' => $student['EmailAccount'] ?? '',

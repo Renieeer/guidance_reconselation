@@ -1,3 +1,9 @@
+<!-- Mobile nav toggle -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation">
+    <span></span><span></span><span></span>
+</button>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <!-- Sidebar -->
 <div class="sidebar">
     <div class="sidebar-header">

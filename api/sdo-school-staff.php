@@ -58,31 +58,6 @@ try {
             exit;
         }
 
-        if ($action === 'updateDistrict') {
-            $schoolCode = trim((string)($data['schoolCode'] ?? ''));
-            $district = trim((string)($data['district'] ?? ''));
-
-            if ($schoolCode === '') {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'message' => 'schoolCode is required']);
-                exit;
-            }
-
-            $stmt = $conn->prepare('UPDATE schools SET district = NULLIF(?, "") WHERE school_code = ?');
-            if (!$stmt) {
-                throw new RuntimeException('Failed to prepare district update statement');
-            }
-            $stmt->bind_param('ss', $district, $schoolCode);
-            if (!$stmt->execute()) {
-                $stmt->close();
-                throw new RuntimeException('Failed to update district assignment');
-            }
-            $stmt->close();
-
-            echo json_encode(['success' => true, 'message' => 'District assignment updated.']);
-            exit;
-        }
-
         if ($action === 'revokeSchool') {
             $schoolCode = trim((string)($data['schoolCode'] ?? ''));
 
