@@ -581,6 +581,9 @@
             formData.append('document_type', documentType);
             formData.append('file', fileInput.files[0]);
             formData.append('description', description);
+            formData.append('user_type', sessionStorage.getItem('userType') || '');
+            formData.append('school_attended', sessionStorage.getItem('schoolAttended') || '');
+            formData.append('user_id', sessionStorage.getItem('userId') || '');
 
             uploadBtn.disabled = true;
             progressDiv.style.display = 'block';

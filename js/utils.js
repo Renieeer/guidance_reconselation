@@ -11,6 +11,22 @@ function getData(key) {
     return data ? JSON.parse(data) : null;
 }
 
+// Fixed top-right toast, used by pages that call showNotification(message,
+// type) directly (e.g. the Documents pages) rather than showAlert(), which
+// needs a .page-content container in the DOM to insert into. Reuses the
+// same .alert/.alert-{type} CSS so both look identical.
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} show`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
 // Show alert message
 function showAlert(message, type = 'success') {
     const alert = document.createElement('div');

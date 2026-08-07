@@ -4,7 +4,7 @@ Legend: ✅ = done   🟡 = almost done / partial   ❌ = not started
 1.1	✅ Individual Inventory forms 
 1.2	✅ Referral forms 
 1.3	✅ Follow-up forms 
-1.4	❌ Uploaded related documents of students — pages exist but there's no backend at all (list/upload/delete/download APIs are all missing, DB table has no filename/size/date columns). Not started.
+1.4	✅ Uploaded related documents of students — counselor and coordinator can upload (JPG/PNG/GIF/WebP, 10MB max, server-side MIME-sniffed not just trusted from the client), list, preview, and delete a student's scanned documents (inventory/referral/follow-up/case), scoped to their own school. New `documents` DB table + `api/list-documents.php`, `api/upload-document.php`, `api/download-document.php`, `api/delete-document.php`, files stored under `uploads/documents/` (same non-executable `.htaccess` as `uploads/consent-forms/`). Counselor's page previously had no upload button at all — added to match coordinator's.
 1.5	✅ Case documents to reduce record loss 
 1.6	✅ Duplication, and 
 1.7	✅ Misplacement of files caused by manual filing 
@@ -13,7 +13,7 @@ Legend: ✅ = done   🟡 = almost done / partial   ❌ = not started
 2.1	✅ Input and update personal information 
 2.2	✅ Schedule counselling appointments 
 2.3	✅ Provide feedback, and — real, database-backed feedback tied to a specific counseling session, appointment, or calendar event the student was actually involved in (not a generic comment box). Counselor/coordinator/other-school see it on a dedicated "Student Feedback" page and reply in a live, Messenger-style conversation thread — status flips automatically between "Needs Reply" and "Replied" as messages go back and forth.
-2.4	🟡 Receive notifications via email regarding their appointments — students now get an email (submitted/approved/declined/proposed-change) whenever their appointment status changes, sent via a hand-rolled SMTP client (Gmail). Wired in but sending is off by default until real Gmail SMTP credentials are filled into api/mail-config.php (gitignored, currently placeholders). No reminder emails ahead of the appointment date yet.
+2.4	✅ Receive notifications via email regarding their appointments — students get an email (submitted/approved/declined/proposed-change) whenever their appointment status changes, plus a reminder email the day before an approved appointment. Sent via EmailJS (api/EmailJsMailer.php), configured and enabled in api/mail-config.php (gitignored — real credentials live only on each deployed copy, not in git). The reminder isn't triggered by anything in the app itself — api/send-appointment-reminders.php needs an external scheduler hitting it once a day (e.g. a free cron-job.org ping), since InfinityFree's free tier has no real cron. Not yet set up on the live site.
 3.	✅ To enable teachers to efficiently input student referral forms and printing of acknowledgement slip through the system. 
 4.	To enable Guidance Counselors to: 
 4.1	✅ Efficiently update and store student guidance records — counselors and other-school staff can now also log a referral directly ("Create Referral" walk-in flow) for a student who comes to the office in person, not just review teacher-submitted ones.

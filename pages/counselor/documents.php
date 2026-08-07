@@ -153,6 +153,124 @@
             color: #94a3b8;
         }
 
+        .upload-modal-body {
+            text-align: left;
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .form-group select,
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            border: 2px dashed #3b82f6;
+            border-radius: 8px;
+            background: #f0f9ff;
+            cursor: pointer;
+            transition: var(--transition);
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .file-input-label:hover {
+            background: #e0f2fe;
+            border-color: #2563eb;
+        }
+
+        .file-input-label i {
+            margin-right: 10px;
+            font-size: 24px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .upload-btn:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .upload-progress {
+            margin-top: 16px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -244,6 +362,9 @@
                     <h2 class="page-hero-title">Document Library</h2>
                     <p class="page-hero-text">Access guidance documents, forms, and resources for counseling activities.</p>
                 </div>
+                <button type="button" class="btn btn-primary" id="openUploadBtn">
+                    <i class="fas fa-upload"></i> Upload File
+                </button>
             </div>
 
             <!-- Page Content -->
@@ -286,6 +407,66 @@
         </div>
     </div>
 
+    <!-- Upload Document Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4><i class="fas fa-cloud-upload-alt"></i> Upload Document for Student</h4>
+                <button class="modal-close" onclick="hideUploadForm()">&times;</button>
+            </div>
+            <div class="modal-body upload-modal-body">
+                <form id="uploadForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="uploadStudentId">Student ID <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="uploadStudentId" name="student_id" placeholder="e.g., 22" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="documentType">Document Type <span style="color: #ef4444;">*</span></label>
+                            <select id="documentType" name="document_type" required>
+                                <option value="">Select Document Type</option>
+                                <option value="inventory">Individual Inventory Form</option>
+                                <option value="referral">Referral Form</option>
+                                <option value="follow-up">Follow-up Form</option>
+                                <option value="case">Case Document</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fileInput">Select Image File <span style="color: #ef4444;">*</span></label>
+                        <div class="file-input-wrapper">
+                            <label for="fileInput" class="file-input-label">
+                                <i class="fas fa-image"></i>
+                                <span>Click to select or drag and drop images (JPG, PNG)</span>
+                            </label>
+                            <input type="file" id="fileInput" name="file" accept="image/*" required>
+                        </div>
+                        <small style="color: #64748b; margin-top: 8px; display: block;">
+                            Max file size: 10MB | Supported: JPG, PNG, GIF, WebP
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description (Optional)</label>
+                        <textarea id="description" name="description" placeholder="Add any notes or description..."></textarea>
+                    </div>
+
+                    <button type="submit" class="upload-btn">
+                        <i class="fas fa-upload"></i> Upload Document
+                    </button>
+
+                    <div class="upload-progress">
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Image Preview Modal -->
     <div id="previewModal" class="modal">
         <div class="modal-content">
@@ -304,7 +485,103 @@
         document.addEventListener('DOMContentLoaded', () => {
             setupUserInfo();
             document.getElementById('logoutBtn').addEventListener('click', logout);
+            setupUploadModal();
         });
+
+        function setupUploadModal() {
+            document.getElementById('openUploadBtn').addEventListener('click', openUploadForm);
+            document.getElementById('uploadModal').addEventListener('click', (e) => {
+                if (e.target.id === 'uploadModal') hideUploadForm();
+            });
+            document.getElementById('uploadForm').addEventListener('submit', handleUpload);
+
+            const fileInput = document.getElementById('fileInput');
+            const fileInputLabel = document.querySelector('.file-input-label');
+
+            fileInputLabel.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileInputLabel.style.background = '#e0f2fe';
+                fileInputLabel.style.borderColor = '#2563eb';
+            });
+
+            fileInputLabel.addEventListener('dragleave', () => {
+                fileInputLabel.style.background = '#f0f9ff';
+                fileInputLabel.style.borderColor = '#3b82f6';
+            });
+
+            fileInputLabel.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileInputLabel.style.background = '#f0f9ff';
+                fileInputLabel.style.borderColor = '#3b82f6';
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                }
+            });
+        }
+
+        function openUploadForm() {
+            document.getElementById('uploadModal').classList.add('show');
+        }
+
+        function hideUploadForm() {
+            document.getElementById('uploadModal').classList.remove('show');
+        }
+
+        async function handleUpload(e) {
+            e.preventDefault();
+
+            const form = document.getElementById('uploadForm');
+            const studentId = document.getElementById('uploadStudentId').value.trim();
+            const documentType = document.getElementById('documentType').value;
+            const fileInput = document.getElementById('fileInput');
+            const description = document.getElementById('description').value;
+            const uploadBtn = form.querySelector('.upload-btn');
+            const progressDiv = form.querySelector('.upload-progress');
+
+            if (!studentId || !documentType || !fileInput.files.length) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('student_id', studentId);
+            formData.append('document_type', documentType);
+            formData.append('file', fileInput.files[0]);
+            formData.append('description', description);
+            formData.append('user_type', sessionStorage.getItem('userType') || '');
+            formData.append('school_attended', sessionStorage.getItem('schoolAttended') || '');
+            formData.append('user_id', sessionStorage.getItem('userId') || '');
+
+            uploadBtn.disabled = true;
+            progressDiv.style.display = 'block';
+
+            try {
+                const response = await fetch('../../api/upload-document.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification('Document uploaded successfully!', 'success');
+                    form.reset();
+                    fileInput.value = '';
+                    hideUploadForm();
+                    document.getElementById('studentSearch').value = studentId;
+                    searchDocuments();
+                } else {
+                    showNotification(data.message || 'Upload failed', 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                progressDiv.style.display = 'none';
+            }
+        }
 
         function setupUserInfo() {
             const user = JSON.parse(localStorage.getItem('currentUser') || '{}') || JSON.parse(sessionStorage.getItem('user') || '{}');
