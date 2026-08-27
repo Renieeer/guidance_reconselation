@@ -17,7 +17,7 @@ function send_json(int $statusCode, array $payload): void {
     exit;
 }
 
-// Stage 2 (Initial Screening) interview notes — one row per screening
+// Stage 2 (Initial Risk Assessment) interview notes — one row per screening
 // session a counselor logs against a referral (interview, observations,
 // risk level assessment, per the guidance office's intake flow).
 function ensure_referral_screening_table(mysqli $conn): void {

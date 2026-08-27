@@ -77,7 +77,10 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
                 school_attended: data.user.school || 'Unknown',
                 // Comma-separated grade numbers this counselor/coordinator is
                 // scoped to (e.g. "7", "11,12"). Empty means no restriction.
-                grade_scope: data.user.grade || ''
+                grade_scope: data.user.grade || '',
+                // Root-relative path (e.g. "uploads/profile-images/x.jpg") or
+                // null. See renderSidebarAvatar() in js/utils.js.
+                profile_image: data.user.profileImage || null
             };
 
             // Teacher/Counselor/Coordinator accounts sign in on staff-login.php,

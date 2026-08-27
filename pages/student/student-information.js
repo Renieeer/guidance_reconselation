@@ -972,6 +972,8 @@ async function fetchAddressOptions(level, params = {}) {
 
     // ─── USER INFO (topbar) ────────────────────────────────────────
     function setupUserInfo() {
+        renderSidebarAvatar();
+
         const currentUser = getCurrentUserProfile();
         const resolvedStudentId = resolveStudentId();
 

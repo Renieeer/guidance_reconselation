@@ -52,7 +52,7 @@ function loadReferralDetail(referral) {
 
     // Populate details - use snake_case keys from database
     document.getElementById('refId').textContent = referral.referral_code || referral.id;
-    document.getElementById('refStudentName').textContent = referral.student_name;
+    document.getElementById('refStudentName').innerHTML = `${escapeHtml(referral.student_name)} ${referralRoleBadge(referral.referral_role)}`;
     document.getElementById('refGrade').textContent = referral.grade || 'N/A';
     document.getElementById('refDateSubmitted').textContent = formatDate(referral.date_submitted);
     document.getElementById('refUrgency').textContent = referral.urgency || 'normal';
@@ -97,7 +97,7 @@ function loadReferralsList() {
     tbody.innerHTML = referrals.reverse().map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name}</td>
+            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${referral.referral_reason}</td>

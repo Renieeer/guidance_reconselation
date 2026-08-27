@@ -359,6 +359,15 @@
     border-bottom: 1px solid #e7edf4;
 }
 
+.sh-timeline-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-light);
+    margin-bottom: 2px;
+}
+
 .sh-folder-content-title {
     font-weight: 700;
     font-size: 17px;
@@ -373,6 +382,256 @@
 
 .sh-folder-body.active {
     display: block;
+}
+
+/* ---------- Merged activity timeline (all record types together) ---------- */
+.sh-timeline-group {
+    position: relative;
+    margin-top: 22px;
+}
+
+.sh-timeline-group:first-child {
+    margin-top: 0;
+}
+
+.sh-timeline-group::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 26px;
+    bottom: 20px;
+    width: 2px;
+    background: #e7edf4;
+    z-index: 0;
+}
+
+.sh-timeline-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-light);
+    margin-bottom: 10px;
+}
+
+.sh-timeline-item {
+    position: relative;
+    z-index: 1;
+}
+
+.sh-timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+}
+
+.sh-timeline-text {
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--text-color);
+}
+
+.sh-timeline-text strong {
+    color: var(--primary-color);
+}
+
+.sh-timeline-meta {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* ---------- Case thread: a counseling case + its follow-ups shown as one
+   Day 1/2/3... sub-timeline, instead of separate flat entries ---------- */
+.sh-case-thread {
+    background: white;
+    border: 1px solid #e8eff7;
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 10px;
+}
+
+.sh-case-thread:first-child {
+    margin-top: 0;
+}
+
+.sh-case-thread-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e7edf4;
+    margin-bottom: 14px;
+}
+
+.sh-case-thread-title {
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--primary-color);
+}
+
+.sh-case-thread-sub {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+.sh-case-thread-status {
+    flex-shrink: 0;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+}
+
+.sh-case-thread-days {
+    position: relative;
+}
+
+.sh-case-thread-days::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: #e7edf4;
+    z-index: 0;
+}
+
+.sh-case-day {
+    position: relative;
+    z-index: 1;
+    margin-top: 16px;
+}
+
+.sh-case-day:first-child {
+    margin-top: 0;
+}
+
+.sh-case-day-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sh-case-day-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: var(--warn);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.sh-case-day-bar {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--light-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-color);
+    min-width: 0;
+}
+
+.sh-case-day-pill {
+    background: var(--warn-bg);
+    color: var(--warn);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.sh-case-note-row,
+.sh-case-done-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    padding-left: 38px;
+}
+
+.sh-case-done-row {
+    margin-top: 16px;
+    padding-top: 14px;
+    padding-left: 0;
+    border-top: 1px dashed #e7edf4;
+}
+
+.sh-case-note-icon,
+.sh-case-done-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.sh-case-done-icon {
+    width: 26px;
+    height: 26px;
+}
+
+.sh-case-note-icon {
+    background: var(--info-bg);
+    color: var(--info);
+}
+
+.sh-case-done-icon {
+    background: var(--ok-bg);
+    color: var(--ok);
+}
+
+.sh-case-note-body {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+}
+
+.sh-case-note-head {
+    color: var(--text-light);
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.sh-case-note-head strong {
+    color: var(--primary-color);
+}
+
+.sh-case-note-text {
+    color: var(--text-color);
+    background: var(--light-color);
+    border-radius: 8px;
+    padding: 8px 10px;
+    white-space: pre-line;
+}
+
+.sh-case-done-summary {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 3px;
 }
 
 .sh-folder-empty {

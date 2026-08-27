@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', initSchedulePage);
 async function initSchedulePage() {
     checkAuth('student');
     loadUserInfo();
+    renderSidebarAvatar();
     setupCalendarControls();
     await refreshScheduleEventsSafely();
     await loadStudentAppointmentRequests();
@@ -106,8 +107,14 @@ function loadUserInfo() {
         if (document.getElementById('userRole')) {
             document.getElementById('userRole').textContent = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('-', ' ') : 'Student';
         }
-        const initials = String(user.name || 'Student').split(' ').map(n => n[0]).join('');
-        document.getElementById('userAvatar').textContent = initials.substring(0, 2);
+        const avatarEl = document.getElementById('userAvatar');
+        const photoUrl = userAvatarUrl(user);
+        if (photoUrl) {
+            avatarEl.innerHTML = `<img src="${photoUrl}" alt="">`;
+        } else {
+            const initials = String(user.name || 'Student').split(' ').map(n => n[0]).join('');
+            avatarEl.textContent = initials.substring(0, 2);
+        }
     }
 }
 

@@ -472,6 +472,7 @@
         </div>
     </div>
 
+    <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
     <script>
         // Initialize on page load
@@ -482,6 +483,8 @@
 
         // Setup user info
         function setupUserInfo() {
+            renderSidebarAvatar();
+
             const user = JSON.parse(localStorage.getItem('currentUser') || '{}') || JSON.parse(sessionStorage.getItem('user') || '{}');
             const userName = user.name || sessionStorage.getItem('userName');
             const userRole = user.role || sessionStorage.getItem('userRole');

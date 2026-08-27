@@ -24,6 +24,9 @@
 
             <!-- Page Content -->
             <div class="page-content">
+                <!-- People already logged for this referral, collapsed to file icons -->
+                <div id="peopleChips" class="referral-people-chips-bar"></div>
+
                 <div class="referral-container">
                     <div class="guidelines-section">
                         <h3 class="guidelines-title"><i class="bi bi-clipboard-check"></i> Guidelines in Referring Students to GCO</h3>
@@ -112,36 +115,19 @@
                     <form id="referralForm" class="referral-form">
                     <div class="form-title">COUNSELING REFERRAL FORM</div>
 
-                    <div class="form-row-three">
-                        <div class="form-field">
-                            <label>Name of Student:</label>
-                            <input type="text" id="studentName" name="studentName" required>
-                            <input type="hidden" id="studentId" name="studentId">
-                            <input type="hidden" id="studentSchool" name="studentSchool">
-                        </div>
+                    <input type="hidden" id="studentSchool" name="studentSchool">
 
-                        <div class="form-field">
-                            <label>Grade & Level:</label>
-                            <select id="grade" name="grade" required>
-                                <option value="">Select Grade</option>
-                                <option value="Grade 7">Grade 7</option>
-                                <option value="Grade 8">Grade 8</option>
-                                <option value="Grade 9">Grade 9</option>
-                                <option value="Grade 10">Grade 10</option>
-                                <option value="Grade 11">Grade 11</option>
-                                <option value="Grade 12">Grade 12</option>
-                            </select>
+                    <div class="referral-people-section">
+                        <div class="referral-people-heading">
+                            <div>
+                                <label>People Involved: <span id="peopleCount" class="referral-people-count"></span></label>
+                                <p class="referral-people-hint">Add everyone involved in this incident — each person gets their own referral record. Tag each one as Offender or Victim if applicable.</p>
+                            </div>
+                            <button type="button" id="addPersonBtn" class="btn btn-primary btn-sm referral-add-person-btn">
+                                <i class="bi bi-person-plus"></i> Add Another Person
+                            </button>
                         </div>
-
-                        <div class="form-field">
-                            <label>Gender:</label>
-                            <select id="gender" name="gender" required>
-                                <option value="">Select Gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
+                        <div id="peopleList"></div>
                     </div>
 
                     <!-- Date of Referral (Auto-populated from database) -->
@@ -155,26 +141,6 @@
                     <div class="form-field">
                         <label>Initial Actions Taken:</label>
                         <textarea id="interventionAttempts" name="interventionAttempts"></textarea>
-                    </div>
-
-                    <div class="form-field form-field-row">
-                        <label>Did the student agree to be referred to GCO:</label>
-                        <div class="form-radio-inline">
-                            <label class="radio-inline"><input type="radio" name="agreement" value="YES" required> YES</label>
-                            <label class="radio-inline"><input type="radio" name="agreement" value="NO"> NO</label>
-                        </div>
-                    </div>
-
-                    <div class="form-row-two">
-                        <div class="form-field">
-                            <label>Parent/Guardian's Name:</label>
-                            <input type="text" id="parentGuardian" name="parentGuardian">
-                        </div>
-
-                        <div class="form-field">
-                            <label>Parent/Guardian's Contact Number:</label>
-                            <input type="tel" id="parentContact" name="parentContact">
-                        </div>
                     </div>
 
                     <div class="form-row-three">
@@ -200,6 +166,25 @@
                     </div>
                 </form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Person Modal: clicking a collapsed file-icon opens their full
+         info here, floating above everything, instead of jumping back into
+         the form (which used to push the rest of the page around). -->
+    <div id="personEditModal" class="modal person-edit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="personEditModalTitle">Edit Person</h2>
+                <span class="modal-close" id="personEditModalClose">&times;</span>
+            </div>
+            <div class="modal-body" id="personEditModalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost person-edit-remove-btn" id="personEditModalRemove">
+                    <i class="bi bi-trash3"></i> Remove This Person
+                </button>
+                <button type="button" class="btn btn-primary" id="personEditModalDone">Done</button>
             </div>
         </div>
     </div>

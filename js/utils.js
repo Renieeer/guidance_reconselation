@@ -80,6 +80,17 @@ function createBadge(status) {
     return `<span class="badge ${badgeClasses[status] || 'badge-pending'}">${status}</span>`;
 }
 
+// Renders a small Offender/Victim tag for a referral's referral_role (see
+// api/referral.php / pages/teacher/referral-form.js's multi-person
+// submission) — empty string for a referral with no role set, so an
+// ordinary single-person referral shows nothing extra.
+function referralRoleBadge(role) {
+    const normalized = String(role || '').toLowerCase();
+    if (normalized !== 'offender' && normalized !== 'victim') return '';
+    const label = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    return `<span class="badge badge-${normalized}">${label}</span>`;
+}
+
 // Create action buttons
 function createActionButtons(id, canEdit = true, canDelete = true) {
     let html = '';
@@ -88,15 +99,15 @@ function createActionButtons(id, canEdit = true, canDelete = true) {
     return html;
 }
 
-// Referral stages — mirrors the guidance office's official 6-step intake
-// flow (Admission of Case for Referral -> ... -> External Referral).
+// Referral stages — mirrors the guidance office's official 6-step case
+// management flow (Interview/Background -> ... -> Student Follow-up).
 const referralStages = [
-    { id: 1, name: 'Admission of Case', description: 'Case admitted for referral (walk-in, or referred by the adviser, subject teacher, or student).' },
-    { id: 2, name: 'Initial Screening', description: 'Initial screening by the counselor — interview, observation, and risk level assessment.' },
-    { id: 3, name: 'Parent Consent', description: 'Parent consent obtained for assessment and interventions.' },
-    { id: 4, name: 'Assessment Proper', description: 'Assessment proper using tools such as GAD-7, PHQ, Columbia Suicide Severity Rating Scale, HEEADSSS, etc.' },
-    { id: 5, name: 'Parent Conference', description: 'Parent conference/discussion — presentation of results and the initial intervention plan.' },
-    { id: 6, name: 'External Referral', description: 'External referral, if necessary.' }
+    { id: 1, name: 'Interview/Background', description: 'Initial interview with the student to gather background information (walk-in, or referred by the adviser, subject teacher, or student).' },
+    { id: 2, name: 'Initial Risk Assessment', description: 'Initial risk assessment by the counselor using tools such as GAD-7, PHQ, Columbia Suicide Severity Rating Scale, HEEADSSS, etc.' },
+    { id: 3, name: 'Parent Call-up/Consent', description: 'Parent called and consent obtained for further assessment and interventions.' },
+    { id: 4, name: 'Counseling', description: 'Counseling sessions with the student — discussion of findings and next steps.' },
+    { id: 5, name: 'Intervention', description: 'Intervention plan carried out — support measures and coping strategies put in place.' },
+    { id: 6, name: 'Student Follow-up', description: 'Follow-up with the student to monitor progress and well-being after intervention.' }
 ];
 
 // Get stage info
@@ -187,15 +198,55 @@ function setUserInfo() {
         const nameEl = document.getElementById('userName');
         const roleEl = document.getElementById('userRole');
         const avatarEl = document.getElementById('userAvatar');
-        
+
         if (nameEl) nameEl.textContent = user.name;
         if (roleEl && user.role) {
             roleEl.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('-', ' ');
         }
         if (avatarEl && typeof user.name === 'string') {
-            const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
-            avatarEl.textContent = initials || 'U';
+            const photoUrl = userAvatarUrl(user);
+            if (photoUrl) {
+                avatarEl.innerHTML = `<img src="${photoUrl}" alt="">`;
+            } else {
+                avatarEl.textContent = userInitials(user);
+            }
         }
+    }
+
+    renderSidebarAvatar();
+}
+
+// Initials fallback shown wherever a user has no profile photo yet.
+function userInitials(user) {
+    const name = (user && user.name) ? String(user.name) : '';
+    const initials = name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase();
+    return initials || 'U';
+}
+
+// `user.profile_image` (from js/auth.js on login, or refreshed by
+// pages/<role>/profile.php after an upload) is stored root-relative, e.g.
+// "uploads/profile-images/x.jpg" — every page that renders this lives two
+// levels down at pages/<role>/*.php, so "../../" always resolves correctly.
+function userAvatarUrl(user) {
+    if (!user || !user.profile_image) return null;
+    return `../../${user.profile_image}`;
+}
+
+// Fills the sidebar header's avatar circle (#sidebarAvatar) with the user's
+// photo if they've uploaded one, otherwise their initials. Runs on every
+// page via initPage() -> setUserInfo() so the "whose account is this"
+// indicator stays in sync everywhere, not just on the profile page itself.
+function renderSidebarAvatar() {
+    const el = document.getElementById('sidebarAvatar');
+    if (!el) return;
+
+    const user = getCurrentUser();
+    const photoUrl = userAvatarUrl(user);
+
+    if (photoUrl) {
+        el.innerHTML = `<img src="${photoUrl}" alt="">`;
+    } else {
+        el.textContent = userInitials(user);
     }
 }
 

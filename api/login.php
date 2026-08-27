@@ -19,9 +19,11 @@ try {
     require_once 'grade-scope.php';
     require_once 'account-status.php';
     require_once 'email-verification.php';
+    require_once 'profile-schema.php';
     ensure_users_table_grade_column($conn);
     ensure_users_table_active_column($conn);
     ensure_email_verification_schema($conn);
+    ensure_users_table_profile_image_column($conn);
 
     // Get JSON input
     $input = file_get_contents('php://input');
@@ -54,7 +56,7 @@ try {
     }
 
     // Query user from database (users_tables)
-    $query = "SELECT AccountID, email, Password, Type, First_name, Last_name, school_attended, Grade, is_active, email_verified FROM users_tables WHERE email = ?";
+    $query = "SELECT AccountID, email, Password, Type, First_name, Last_name, school_attended, Grade, is_active, email_verified, profile_image FROM users_tables WHERE email = ?";
     $stmt = $conn->prepare($query);
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
@@ -110,7 +112,10 @@ try {
         'school' => $user['school_attended'],
         // Comma-separated grade numbers a counselor/coordinator is scoped to
         // (e.g. "7", "11,12"). Empty/NULL means no restriction. See api/grade-scope.php.
-        'grade' => $user['Grade']
+        'grade' => $user['Grade'],
+        // Root-relative path (no "../../") — see the matching comment on
+        // fetch_profile() in api/profile.php for why.
+        'profileImage' => $user['profile_image'] ? ('uploads/profile-images/' . $user['profile_image']) : null
     ];
 
     // Store in session

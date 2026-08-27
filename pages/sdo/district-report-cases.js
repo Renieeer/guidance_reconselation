@@ -283,19 +283,13 @@ function exportReport() {
 // Initialize page
 document.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
+    setUserInfo();
 
     await loadDistrictList();
     renderDistrictButtons();
     await loadReportData();
     renderCasesTable();
     setupEventListeners();
-
-    // Update user info
-    const user = getCurrentUser();
-    if (user) {
-        document.getElementById('userName').textContent = user.role.toUpperCase();
-        document.getElementById('userAvatar').textContent = user.name.substring(0, 2).toUpperCase();
-    }
 });
 
 // Show alert

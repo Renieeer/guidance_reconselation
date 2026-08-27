@@ -32,9 +32,14 @@ function buildOtpModal() {
             <div class="modal-body">
                 <p id="otpModalIntro" style="margin-top:0;"></p>
                 <div class="form-group">
-                    <label for="otpCodeInput">6-digit code</label>
-                    <div class="input-wrapper">
-                        <input type="text" id="otpCodeInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="one-time-code">
+                    <label>6-digit code</label>
+                    <div class="otp-digit-group" id="otpDigitGroup">
+                        <input type="text" class="otp-digit-input" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="one-time-code" data-otp-index="0">
+                        <input type="text" class="otp-digit-input" inputmode="numeric" pattern="[0-9]" maxlength="1" data-otp-index="1">
+                        <input type="text" class="otp-digit-input" inputmode="numeric" pattern="[0-9]" maxlength="1" data-otp-index="2">
+                        <input type="text" class="otp-digit-input" inputmode="numeric" pattern="[0-9]" maxlength="1" data-otp-index="3">
+                        <input type="text" class="otp-digit-input" inputmode="numeric" pattern="[0-9]" maxlength="1" data-otp-index="4">
+                        <input type="text" class="otp-digit-input" inputmode="numeric" pattern="[0-9]" maxlength="1" data-otp-index="5">
                     </div>
                 </div>
                 <div id="otpModalError" class="error-alert"></div>
@@ -55,7 +60,60 @@ function buildOtpModal() {
         }
     });
 
+    setupOtpDigitBoxes();
+
     return otpOverlay;
+}
+
+// Wires the 6 single-digit boxes to behave like one field: typing a digit
+// advances to the next box, backspace on an empty box goes back to the
+// previous one, and pasting a 6-digit code (e.g. from a phone keyboard's
+// "from SMS/clipboard" suggestion) spreads it across all six at once.
+function setupOtpDigitBoxes() {
+    const boxes = Array.from(document.querySelectorAll('.otp-digit-input'));
+
+    boxes.forEach((box, index) => {
+        box.addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 1);
+            if (this.value && index < boxes.length - 1) {
+                boxes[index + 1].focus();
+            }
+        });
+
+        box.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace' && !this.value && index > 0) {
+                boxes[index - 1].focus();
+            }
+        });
+
+        box.addEventListener('paste', function (e) {
+            const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+            if (!pasted) {
+                return;
+            }
+            e.preventDefault();
+            const digits = pasted.slice(0, boxes.length).split('');
+            digits.forEach((digit, i) => {
+                if (boxes[i]) {
+                    boxes[i].value = digit;
+                }
+            });
+            const nextEmpty = boxes[digits.length] || boxes[boxes.length - 1];
+            nextEmpty.focus();
+        });
+    });
+}
+
+function getOtpDigitsValue() {
+    return Array.from(document.querySelectorAll('.otp-digit-input')).map(box => box.value).join('');
+}
+
+function clearOtpDigits() {
+    const boxes = document.querySelectorAll('.otp-digit-input');
+    boxes.forEach(box => { box.value = ''; });
+    if (boxes[0]) {
+        boxes[0].focus();
+    }
 }
 
 function clearOtpMessages() {
@@ -110,7 +168,7 @@ function showOtpModal(email, options) {
     options = options || {};
     const modal = buildOtpModal();
     clearOtpMessages();
-    document.getElementById('otpCodeInput').value = '';
+    clearOtpDigits();
     document.getElementById('otpModalIntro').textContent =
         `We've sent a 6-digit verification code to ${email}. Enter it below to verify your account.`;
     modal.classList.add('show');
@@ -119,7 +177,6 @@ function showOtpModal(email, options) {
     // a previous showOtpModal() call (a different email) don't stack up.
     const verifyBtn = document.getElementById('otpVerifyBtn');
     const resendLink = document.getElementById('otpResendLink');
-    const codeInput = document.getElementById('otpCodeInput');
 
     const newVerifyBtn = verifyBtn.cloneNode(true);
     verifyBtn.parentNode.replaceChild(newVerifyBtn, verifyBtn);
@@ -129,7 +186,7 @@ function showOtpModal(email, options) {
 
     newVerifyBtn.addEventListener('click', async function () {
         clearOtpMessages();
-        const code = codeInput.value.trim();
+        const code = getOtpDigitsValue();
         if (!/^\d{6}$/.test(code)) {
             showOtpError('Enter the 6-digit code from your email.');
             return;

@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="landing-page">
 
     <!-- NAVBAR -->
     <nav id="navbar">
@@ -36,7 +36,7 @@
         <div class="hero-inner">
             <div class="hero-badge">
                 <i class="bi bi-circle-fill" style="font-size:7px;"></i>
-                Academic Guidance &nbsp;·&nbsp; School Management System
+                <span>Academic Guidance &nbsp;·&nbsp; School Management System</span>
             </div>
             <h1 class="hero-title">
                 Shaping <em>futures</em><br>through guidance

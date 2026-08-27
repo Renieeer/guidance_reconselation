@@ -53,6 +53,47 @@ function ensure_email_verification_schema(mysqli $conn): void
             INDEX idx_email (email)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     ");
+
+    // Holds a self-registration's data between "form submitted" and "OTP
+    // confirmed" so the users_tables row only gets created once the email
+    // is proven reachable — see save_pending_registration() / verify_email_otp().
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS pending_registrations (
+            email VARCHAR(255) NOT NULL,
+            first_name VARCHAR(45) NOT NULL,
+            last_name VARCHAR(45) NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            role VARCHAR(45) NOT NULL,
+            school VARCHAR(100) NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+    ");
+}
+
+/**
+ * Stashes a not-yet-verified self-registration instead of creating the
+ * account right away. Re-submitting the same email before verifying
+ * overwrites the previous attempt rather than piling up abandoned rows.
+ */
+function save_pending_registration(mysqli $conn, string $email, string $firstName, string $lastName, string $passwordHash, string $role, string $school): void
+{
+    ensure_email_verification_schema($conn);
+
+    $stmt = $conn->prepare("
+        INSERT INTO pending_registrations (email, first_name, last_name, password_hash, role, school, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+            first_name = VALUES(first_name),
+            last_name = VALUES(last_name),
+            password_hash = VALUES(password_hash),
+            role = VALUES(role),
+            school = VALUES(school),
+            created_at = NOW()
+    ");
+    $stmt->bind_param('ssssss', $email, $firstName, $lastName, $passwordHash, $role, $school);
+    $stmt->execute();
+    $stmt->close();
 }
 
 function otp_email_content(string $name, string $code): array
@@ -170,17 +211,66 @@ function verify_email_otp(mysqli $conn, string $email, string $code): array
         return ['success' => false, 'message' => 'Incorrect code. Please try again.'];
     }
 
-    $updateStmt = $conn->prepare("UPDATE users_tables SET email_verified = 1 WHERE email = ?");
-    $updateStmt->bind_param('s', $email);
-    $updateStmt->execute();
-    $updateStmt->close();
+    // Code is correct. A pending self-registration means the account hasn't
+    // been created yet — this is the moment it is, so an unverified email
+    // never has a persisted account behind it. No pending row means this is
+    // a legacy account still going through the old create-then-verify path,
+    // so just flip the flag on the row that already exists.
+    $pendingStmt = $conn->prepare("SELECT first_name, last_name, password_hash, role, school FROM pending_registrations WHERE email = ?");
+    $pendingStmt->bind_param('s', $email);
+    $pendingStmt->execute();
+    $pending = $pendingStmt->get_result()->fetch_assoc();
+    $pendingStmt->close();
+
+    if ($pending) {
+        $verified = 1;
+        $insertStmt = $conn->prepare("
+            INSERT INTO users_tables (First_name, Last_name, Password, Type, email, school_attended, email_verified, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        ");
+        $insertStmt->bind_param(
+            'ssssssi',
+            $pending['first_name'],
+            $pending['last_name'],
+            $pending['password_hash'],
+            $pending['role'],
+            $email,
+            $pending['school'],
+            $verified
+        );
+        // PHP 8.1's mysqli defaults to throwing on errors rather than
+        // returning false, so a duplicate email (someone else finished
+        // registering it first) surfaces as an exception, not a falsy
+        // execute() result.
+        try {
+            $insertStmt->execute();
+            $created = true;
+        } catch (mysqli_sql_exception $e) {
+            $created = false;
+        }
+        $insertStmt->close();
+
+        $deletePendingStmt = $conn->prepare("DELETE FROM pending_registrations WHERE email = ?");
+        $deletePendingStmt->bind_param('s', $email);
+        $deletePendingStmt->execute();
+        $deletePendingStmt->close();
+
+        if (!$created) {
+            return ['success' => false, 'message' => 'This email was already registered. Please log in instead.'];
+        }
+    } else {
+        $updateStmt = $conn->prepare("UPDATE users_tables SET email_verified = 1 WHERE email = ?");
+        $updateStmt->bind_param('s', $email);
+        $updateStmt->execute();
+        $updateStmt->close();
+    }
 
     $deleteStmt = $conn->prepare("DELETE FROM email_otps WHERE email = ?");
     $deleteStmt->bind_param('s', $email);
     $deleteStmt->execute();
     $deleteStmt->close();
 
-    otp_log("Verified email for {$email}");
+    otp_log("Verified email for {$email}" . ($pending ? ' (account created)' : ''));
 
     return ['success' => true, 'message' => 'Email verified successfully.'];
 }

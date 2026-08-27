@@ -119,7 +119,16 @@ function ensureReferralSchema(mysqli $conn): void {
         'stage' => 'ALTER TABLE referral ADD COLUMN stage INT NOT NULL DEFAULT 1 AFTER student_school',
         'status' => 'ALTER TABLE referral ADD COLUMN status VARCHAR(45) NOT NULL DEFAULT "pending" AFTER stage',
         'date_submitted' => 'ALTER TABLE referral ADD COLUMN date_submitted DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER status',
-        'updated_at' => 'ALTER TABLE referral ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER date_submitted'
+        'updated_at' => 'ALTER TABLE referral ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER date_submitted',
+        // Multiple people (e.g. an offender and a victim in the same incident)
+        // can be submitted together from pages/teacher/referral-form.php —
+        // each still gets its own referral row, referral_role tags that
+        // person's part in it, and referral_group carries the same generated
+        // code across every row from one multi-person submission so they can
+        // be found together later. Both NULL for an ordinary single-person
+        // referral, so existing rows/callers are unaffected.
+        'referral_role' => 'ALTER TABLE referral ADD COLUMN referral_role VARCHAR(20) NULL AFTER gender',
+        'referral_group' => 'ALTER TABLE referral ADD COLUMN referral_group VARCHAR(64) NULL AFTER referral_code'
     ];
 
     foreach ($requiredColumns as $columnName => $alterSql) {
@@ -171,6 +180,204 @@ function fetchReferralRows(mysqli $conn, string $sql, string $types = '', array 
     return $rows;
 }
 
+/**
+ * Validates and inserts a single referral row from one person's payload,
+ * sharing $sharedDefaults (reason, teacher info, school, etc.) for whichever
+ * of those fields the person's own payload doesn't override. Used both for
+ * an ordinary single-person submission and for each person in a multi-person
+ * batch (see the POST handler) — every person still gets their own full row.
+ * Calls send_json() directly (exiting) on validation/DB failure, same as
+ * every other early-exit in this file; returns the row's response data on
+ * success.
+ *
+ * @return array{id:int,referral_code:string,data:array}
+ */
+function insertReferralRecord(mysqli $conn, array $payload, array $sharedDefaults, ?string $referralGroup): array {
+    $studentId = trim((string)($payload['student_id'] ?? $payload['studentId'] ?? ''));
+    $studentName = trim((string)($payload['student_name'] ?? $payload['studentName'] ?? ''));
+    $grade = trim((string)($payload['grade'] ?? ''));
+    $section = trim((string)($payload['section'] ?? $sharedDefaults['section'] ?? ''));
+    $age = trim((string)($payload['age'] ?? ''));
+    $gender = trim((string)($payload['gender'] ?? ''));
+    $referralRole = trim((string)($payload['referral_role'] ?? $payload['referralRole'] ?? ''));
+    $referralReason = trim((string)($payload['referral_reason'] ?? $payload['referralReason'] ?? $sharedDefaults['referral_reason'] ?? ''));
+    $description = trim((string)($payload['description'] ?? $sharedDefaults['description'] ?? ''));
+    $interventionAttempts = trim((string)($payload['intervention_attempts'] ?? $payload['interventionAttempts'] ?? $sharedDefaults['intervention_attempts'] ?? ''));
+    $observedBehaviors = trim((string)($payload['observed_behaviors'] ?? $payload['observedBehaviors'] ?? $sharedDefaults['observed_behaviors'] ?? ''));
+    $parentGuardian = trim((string)($payload['parent_guardian'] ?? $payload['parentGuardian'] ?? ''));
+    $parentContact = trim((string)($payload['parent_contact'] ?? $payload['parentContact'] ?? ''));
+    $parentEmail = trim((string)($payload['parent_email'] ?? $payload['parentEmail'] ?? ''));
+    $familyBackground = trim((string)($payload['family_background'] ?? $payload['familyBackground'] ?? $sharedDefaults['family_background'] ?? ''));
+    $urgency = trim((string)($payload['urgency'] ?? $sharedDefaults['urgency'] ?? 'normal'));
+    $teacherId = trim((string)($payload['teacher_id'] ?? $payload['teacherId'] ?? $sharedDefaults['teacher_id'] ?? ''));
+    $teacherName = trim((string)($payload['teacher_name'] ?? $payload['teacherName'] ?? $sharedDefaults['teacher_name'] ?? ''));
+    $teacherContact = trim((string)($payload['teacher_contact'] ?? $payload['teacherContact'] ?? $sharedDefaults['teacher_contact'] ?? ''));
+    $schoolAttended = trim((string)($payload['school_attended'] ?? $payload['schoolAttended'] ?? $sharedDefaults['school_attended'] ?? ''));
+    $studentSchool = trim((string)($payload['student_school'] ?? $payload['studentSchool'] ?? $sharedDefaults['student_school'] ?? $schoolAttended));
+    $stage = (int)($payload['stage'] ?? $sharedDefaults['stage'] ?? 1);
+    $status = trim((string)($payload['status'] ?? $sharedDefaults['status'] ?? 'pending'));
+
+    if ($studentId === '') {
+        $studentId = null;
+    }
+
+    if ($referralRole === '') {
+        $referralRole = null;
+    }
+
+    if ($studentName === '' || $grade === '' || $referralReason === '' || $teacherName === '') {
+        send_json(400, ['success' => false, 'message' => 'Missing required fields']);
+    }
+
+    if ($schoolAttended === '') {
+        $schoolAttended = $studentSchool;
+    }
+
+    if ($schoolAttended === '' && $teacherId !== '') {
+        $schoolLookup = $conn->prepare('SELECT school_attended FROM users_tables WHERE AccountID = ? LIMIT 1');
+        if ($schoolLookup) {
+            $teacherIdInt = (int)$teacherId;
+            $schoolLookup->bind_param('i', $teacherIdInt);
+            if ($schoolLookup->execute()) {
+                $result = $schoolLookup->get_result();
+                if ($row = $result->fetch_assoc()) {
+                    $schoolAttended = trim((string)($row['school_attended'] ?? ''));
+                }
+            }
+            $schoolLookup->close();
+        }
+    }
+
+    if ($schoolAttended === '') {
+        send_json(400, ['success' => false, 'message' => 'School is required to save a referral']);
+    }
+
+    $referralCode = 'REF-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
+    $referralId = nextReferralId($conn);
+    $dateSubmitted = date('Y-m-d H:i:s');
+
+    $sql = "
+        INSERT INTO referral (
+            ReferralID,
+            StudentID,
+            Grade,
+            Schedule,
+            Reason,
+            TeacherID,
+            case_table,
+            referral_code,
+            referral_group,
+            student_name,
+            student_id,
+            section,
+            age,
+            gender,
+            referral_role,
+            description,
+            intervention_attempts,
+            observed_behaviors,
+            parent_guardian,
+            parent_contact,
+            parent_email,
+            family_background,
+            urgency,
+            teacher_name,
+            teacher_contact,
+            school_attended,
+            student_school,
+            stage,
+            status,
+            date_submitted,
+            updated_at
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )
+    ";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
+    }
+
+    $caseTable = null;
+    $params = [
+        $referralId,
+        $studentId,
+        $grade,
+        $dateSubmitted,
+        $referralReason,
+        $teacherId,
+        $caseTable,
+        $referralCode,
+        $referralGroup,
+        $studentName,
+        $studentId,
+        $section,
+        $age,
+        $gender,
+        $referralRole,
+        $description,
+        $interventionAttempts,
+        $observedBehaviors,
+        $parentGuardian,
+        $parentContact,
+        $parentEmail,
+        $familyBackground,
+        $urgency,
+        $teacherName,
+        $teacherContact,
+        $schoolAttended,
+        $studentSchool,
+        $stage,
+        $status,
+        $dateSubmitted,
+        $dateSubmitted
+    ];
+    $types = str_repeat('s', count($params));
+
+    bindDynamicParams($stmt, $types, $params);
+
+    if (!$stmt->execute()) {
+        send_json(500, ['success' => false, 'message' => 'Failed to save referral: ' . $stmt->error]);
+    }
+
+    $stmt->close();
+
+    return [
+        'id' => $referralId,
+        'referral_code' => $referralCode,
+        'data' => [
+            'id' => $referralId,
+            'referral_code' => $referralCode,
+            'referral_group' => $referralGroup,
+            'student_name' => $studentName,
+            'student_id' => $studentId,
+            'grade' => $grade,
+            'section' => $section,
+            'age' => $age,
+            'gender' => $gender,
+            'referral_role' => $referralRole,
+            'referral_reason' => $referralReason,
+            'description' => $description,
+            'intervention_attempts' => $interventionAttempts,
+            'observed_behaviors' => $observedBehaviors,
+            'parent_guardian' => $parentGuardian,
+            'parent_contact' => $parentContact,
+            'parent_email' => $parentEmail,
+            'family_background' => $familyBackground,
+            'urgency' => $urgency,
+            'teacher_id' => $teacherId,
+            'teacher_name' => $teacherName,
+            'teacher_contact' => $teacherContact,
+            'school_attended' => $schoolAttended,
+            'student_school' => $studentSchool,
+            'stage' => $stage,
+            'status' => $status,
+            'date_submitted' => $dateSubmitted
+        ]
+    ];
+}
+
 try {
     ensureReferralSchema($conn);
 
@@ -189,12 +396,14 @@ try {
             SELECT
                 ReferralID AS id,
                 referral_code,
+                referral_group,
                 student_name,
                 StudentID AS student_id,
                 Grade AS grade,
                 section,
                 age,
                 gender,
+                referral_role,
                 Reason AS referral_reason,
                 description,
                 intervention_attempts,
@@ -276,179 +485,50 @@ try {
             send_json(400, ['success' => false, 'message' => 'Invalid JSON payload']);
         }
 
-        $studentId = trim((string)($payload['student_id'] ?? $payload['studentId'] ?? ''));
-        $studentName = trim((string)($payload['student_name'] ?? $payload['studentName'] ?? ''));
-        $grade = trim((string)($payload['grade'] ?? ''));
-        $section = trim((string)($payload['section'] ?? ''));
-        $age = trim((string)($payload['age'] ?? ''));
-        $gender = trim((string)($payload['gender'] ?? ''));
-        $referralReason = trim((string)($payload['referral_reason'] ?? $payload['referralReason'] ?? ''));
-        $description = trim((string)($payload['description'] ?? ''));
-        $interventionAttempts = trim((string)($payload['intervention_attempts'] ?? $payload['interventionAttempts'] ?? ''));
-        $observedBehaviors = trim((string)($payload['observed_behaviors'] ?? $payload['observedBehaviors'] ?? ''));
-        $parentGuardian = trim((string)($payload['parent_guardian'] ?? $payload['parentGuardian'] ?? ''));
-        $parentContact = trim((string)($payload['parent_contact'] ?? $payload['parentContact'] ?? ''));
-        $parentEmail = trim((string)($payload['parent_email'] ?? $payload['parentEmail'] ?? ''));
-        $familyBackground = trim((string)($payload['family_background'] ?? $payload['familyBackground'] ?? ''));
-        $urgency = trim((string)($payload['urgency'] ?? 'normal'));
-        $teacherId = trim((string)($payload['teacher_id'] ?? $payload['teacherId'] ?? ''));
-        $teacherName = trim((string)($payload['teacher_name'] ?? $payload['teacherName'] ?? ''));
-        $teacherContact = trim((string)($payload['teacher_contact'] ?? $payload['teacherContact'] ?? ''));
-        $schoolAttended = trim((string)($payload['school_attended'] ?? $payload['schoolAttended'] ?? ''));
-        $studentSchool = trim((string)($payload['student_school'] ?? $payload['studentSchool'] ?? $schoolAttended));
-        $stage = (int)($payload['stage'] ?? 1);
-        $status = trim((string)($payload['status'] ?? 'pending'));
+        // A multi-person submission (e.g. an offender and a victim in the
+        // same incident, from pages/teacher/referral-form.php) is a JSON
+        // array of per-person objects; an ordinary referral is a single
+        // JSON object. array_is_list() + checking the first element is
+        // itself an array distinguishes the two.
+        $isBatch = array_is_list($payload) && isset($payload[0]) && is_array($payload[0]);
+        $items = $isBatch ? $payload : [$payload];
 
-        if ($studentId === '') {
-            $studentId = null;
+        if (empty($items)) {
+            send_json(400, ['success' => false, 'message' => 'No referral data provided']);
         }
 
-        if ($studentName === '' || $grade === '' || $referralReason === '' || $teacherName === '') {
-            send_json(400, ['success' => false, 'message' => 'Missing required fields']);
-        }
+        // Shared incident-level fields carry forward from the first person
+        // to any that omit them (every current caller already repeats them
+        // on every item, but this keeps a leaner payload possible later).
+        $sharedDefaults = $items[0];
 
-        if ($schoolAttended === '') {
-            $schoolAttended = $studentSchool;
-        }
+        // Ties every row from one multi-person submission together so
+        // they can be found as a group later; left null for a single
+        // referral so existing rows/behavior are unaffected.
+        $referralGroup = count($items) > 1
+            ? 'GRP-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)))
+            : null;
 
-        if ($schoolAttended === '' && $teacherId !== '') {
-            $schoolLookup = $conn->prepare('SELECT school_attended FROM users_tables WHERE AccountID = ? LIMIT 1');
-            if ($schoolLookup) {
-                $teacherIdInt = (int)$teacherId;
-                $schoolLookup->bind_param('i', $teacherIdInt);
-                if ($schoolLookup->execute()) {
-                    $result = $schoolLookup->get_result();
-                    if ($row = $result->fetch_assoc()) {
-                        $schoolAttended = trim((string)($row['school_attended'] ?? ''));
-                    }
-                }
-                $schoolLookup->close();
+        $created = [];
+        foreach ($items as $itemPayload) {
+            if (!is_array($itemPayload)) {
+                send_json(400, ['success' => false, 'message' => 'Invalid referral entry in payload']);
             }
+            $created[] = insertReferralRecord($conn, $itemPayload, $sharedDefaults, $referralGroup);
         }
 
-        if ($schoolAttended === '') {
-            send_json(400, ['success' => false, 'message' => 'School is required to save a referral']);
-        }
-
-        $referralCode = 'REF-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
-        $referralId = nextReferralId($conn);
-        $dateSubmitted = date('Y-m-d H:i:s');
-
-        $sql = "
-            INSERT INTO referral (
-                ReferralID,
-                StudentID,
-                Grade,
-                Schedule,
-                Reason,
-                TeacherID,
-                case_table,
-                referral_code,
-                student_name,
-                student_id,
-                section,
-                age,
-                gender,
-                description,
-                intervention_attempts,
-                observed_behaviors,
-                parent_guardian,
-                parent_contact,
-                parent_email,
-                family_background,
-                urgency,
-                teacher_name,
-                teacher_contact,
-                school_attended,
-                student_school,
-                stage,
-                status,
-                date_submitted,
-                updated_at
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            )
-        ";
-
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
-        }
-
-        $caseTable = null;
-        $params = [
-            $referralId,
-            $studentId,
-            $grade,
-            $dateSubmitted,
-            $referralReason,
-            $teacherId,
-            $caseTable,
-            $referralCode,
-            $studentName,
-            $studentId,
-            $section,
-            $age,
-            $gender,
-            $description,
-            $interventionAttempts,
-            $observedBehaviors,
-            $parentGuardian,
-            $parentContact,
-            $parentEmail,
-            $familyBackground,
-            $urgency,
-            $teacherName,
-            $teacherContact,
-            $schoolAttended,
-            $studentSchool,
-            $stage,
-            $status,
-            $dateSubmitted,
-            $dateSubmitted
-        ];
-        $types = str_repeat('s', count($params));
-
-        bindDynamicParams($stmt, $types, $params);
-
-        if (!$stmt->execute()) {
-            send_json(500, ['success' => false, 'message' => 'Failed to save referral: ' . $stmt->error]);
-        }
-
-        $stmt->close();
-
+        $first = $created[0];
         send_json(201, [
             'success' => true,
-            'message' => 'Referral submitted successfully',
-            'referral_id' => $referralId,
-            'referral_code' => $referralCode,
-            'data' => [
-                'id' => $referralId,
-                'referral_code' => $referralCode,
-                'student_name' => $studentName,
-                'student_id' => $studentId,
-                'grade' => $grade,
-                'section' => $section,
-                'age' => $age,
-                'gender' => $gender,
-                'referral_reason' => $referralReason,
-                'description' => $description,
-                'intervention_attempts' => $interventionAttempts,
-                'observed_behaviors' => $observedBehaviors,
-                'parent_guardian' => $parentGuardian,
-                'parent_contact' => $parentContact,
-                'parent_email' => $parentEmail,
-                'family_background' => $familyBackground,
-                'urgency' => $urgency,
-                'teacher_id' => $teacherId,
-                'teacher_name' => $teacherName,
-                'teacher_contact' => $teacherContact,
-                'school_attended' => $schoolAttended,
-                'student_school' => $studentSchool,
-                'stage' => $stage,
-                'status' => $status,
-                'date_submitted' => $dateSubmitted
-            ]
+            'message' => count($created) > 1
+                ? count($created) . ' referrals submitted successfully'
+                : 'Referral submitted successfully',
+            'referral_id' => $first['id'],
+            'referral_code' => $first['referral_code'],
+            'referral_group' => $referralGroup,
+            'data' => count($created) > 1
+                ? array_map(fn($c) => $c['data'], $created)
+                : $first['data']
         ]);
     }
 

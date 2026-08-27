@@ -42,6 +42,16 @@
                             <input type="text" id="shSearchText" placeholder="Search reason, notes, case title...">
                         </div>
                         <div class="sh-filter-field">
+                            <label>Record Type</label>
+                            <select id="shTypeFilter">
+                                <option value="">All Records</option>
+                                <option value="referrals">Referrals</option>
+                                <option value="counseling">Counseling Sessions</option>
+                                <option value="follow_ups">Counseling Follow-Ups</option>
+                                <option value="appointments">Online Appointments</option>
+                            </select>
+                        </div>
+                        <div class="sh-filter-field">
                             <label>Status</label>
                             <select id="shStatusFilter">
                                 <option value="">All Statuses</option>
@@ -104,12 +114,9 @@
 
                     <div class="sh-folder-content">
                         <div class="sh-folder-content-header">
-                            <div class="sh-folder-content-title" id="shActiveFolderTitle">Referrals</div>
+                            <div class="sh-folder-content-title" id="shActiveFolderTitle">Recent History</div>
                         </div>
-                        <div class="sh-folder-body" id="shBody-referrals"></div>
-                        <div class="sh-folder-body" id="shBody-counseling"></div>
-                        <div class="sh-folder-body" id="shBody-follow_ups"></div>
-                        <div class="sh-folder-body" id="shBody-appointments"></div>
+                        <div class="sh-folder-body active" id="shBody-timeline"></div>
                     </div>
                 </div>
 

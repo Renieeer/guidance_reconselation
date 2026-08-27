@@ -1,12 +1,14 @@
 // Teacher Referral Form Script
 
-let autoPopulateTimeout;
+let personCardCounter = 0;
+let activeEditCard = null;
 
 function initReferralForm() {
     initPage();
     setTodayDate('referralDate');
     populateTeacherSchool();
-    setupStudentSearch();  // Autocomplete suggestions as you type
+    setupPeopleList();
+    setupPersonEditModal();
     loadExistingReferralData();
     document.getElementById('referralForm').addEventListener('submit', submitReferralForm);
 }
@@ -16,18 +18,18 @@ function loadExistingReferralData() {
     const urlParams = new URLSearchParams(window.location.search);
     const referralId = urlParams.get('referral_id') || urlParams.get('id');
     const studentId = urlParams.get('student_id');
-    
+
     if (!referralId && !studentId) {
         return; // No existing referral to load
     }
-    
+
     let apiUrl = '../../api/referral.php?role=teacher';
     if (referralId) {
         apiUrl += `&id=${encodeURIComponent(referralId)}`;
     } else if (studentId) {
         apiUrl += `&student_id=${encodeURIComponent(studentId)}&limit=1`;
     }
-    
+
     fetch(apiUrl)
         .then(r => r.json())
         .then(result => {
@@ -41,30 +43,17 @@ function loadExistingReferralData() {
         .catch(error => console.error('Error loading existing referral:', error));
 }
 
-// Populate form fields with existing referral data
+// Populate the shared incident fields plus the first person card — used
+// only by the single-referral edit/prefill flow above (loadExistingReferralData).
 function populateReferralForm(referral) {
-    const fieldMap = {
-        student_name: 'studentName',
-        student_id: 'studentId',
-        student_school: 'studentSchool',
-        grade: 'grade',
-        section: 'section',
-        age: 'age',
-        gender: 'gender',
+    const sharedFieldMap = {
         date_submitted: 'referralDate',
         referral_reason: 'referralReason',
-        description: 'description',
         intervention_attempts: 'interventionAttempts',
-        observed_behaviors: 'observedBehaviors',
-        parent_guardian: 'parentGuardian',
-        parent_contact: 'parentContact',
-        parent_email: 'parentEmail',
-        family_background: 'familyBackground',
-        urgency: 'urgency',
         teacher_contact: 'teacherContact'
     };
-    
-    Object.entries(fieldMap).forEach(([apiField, formFieldId]) => {
+
+    Object.entries(sharedFieldMap).forEach(([apiField, formFieldId]) => {
         if (referral[apiField]) {
             const element = document.getElementById(formFieldId);
             if (element) {
@@ -77,42 +66,314 @@ function populateReferralForm(referral) {
             }
         }
     });
+
+    const firstCard = allPersonCards()[0];
+    if (!firstCard) return;
+
+    const personFieldMap = {
+        student_name: '.person-name',
+        student_id: '.person-student-id',
+        grade: '.person-grade',
+        gender: '.person-gender',
+        referral_role: '.person-role',
+        parent_guardian: '.person-parent-name',
+        parent_contact: '.person-parent-contact'
+    };
+
+    Object.entries(personFieldMap).forEach(([apiField, selector]) => {
+        if (referral[apiField]) {
+            const element = firstCard.querySelector(selector);
+            if (element) element.value = referral[apiField];
+        }
+    });
 }
 
-// Setup student name search with dropdown auto-suggestions (same UX as the
-// counselor's Case Scenario student search) — restricted to the teacher's own school.
-function setupStudentSearch() {
-    const studentNameInput = document.getElementById('studentName');
+// ========== PEOPLE LIST (multi-person referral: e.g. an offender and a
+// victim from the same incident) ==========
 
-    if (!studentNameInput) {
-        console.error('ERROR: studentName input not found');
+function setupPeopleList() {
+    const list = document.getElementById('peopleList');
+    list.appendChild(createPersonCard());
+    renumberPersonCards();
+
+    document.getElementById('addPersonBtn').addEventListener('click', () => {
+        // Collapse every card already filled in — each moves up into the
+        // file-icon strip next to this button — so the form below doesn't
+        // keep growing taller as more people are added. Only the new card
+        // (which needs editing) stays expanded.
+        allPersonCards().forEach(card => {
+            setCardCollapsed(card, true);
+        });
+        list.appendChild(createPersonCard());
+        renumberPersonCards();
+    });
+}
+
+// Person cards live in one of two containers depending on their state:
+// #peopleList (expanded, full form, inside <form id="referralForm">) or
+// #peopleChips (collapsed file icon — lives in .page-content, *outside*
+// the <form> entirely, next to "Add Another Person"). Deliberately NOT
+// scoped to #referralForm — a collapsed card's fields would silently be
+// excluded from every count/collection here (and from submission) the
+// moment it's outside the form's subtree, since collectPeopleFromForm()
+// reads each card's values through this same list.
+function allPersonCards() {
+    return Array.from(document.querySelectorAll('.referral-person-card'));
+}
+
+function createPersonCard() {
+    personCardCounter += 1;
+
+    const card = document.createElement('div');
+    card.className = 'referral-person-card';
+    card.dataset.personId = personCardCounter;
+
+    card.innerHTML = `
+        <button type="button" class="referral-person-chip" title="Click to edit">
+            <i class="bi bi-file-earmark-person"></i>
+            <span class="referral-person-chip-name">Person</span>
+        </button>
+        <button type="button" class="referral-person-remove" title="Remove this person"><i class="bi bi-x-lg"></i></button>
+        <div class="referral-person-full">
+            <div class="referral-person-header">
+                <div class="referral-person-title-group">
+                    <span class="referral-person-title">Person</span>
+                </div>
+                <button type="button" class="referral-person-fold" aria-expanded="true" title="Collapse into a file">
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <select class="person-role">
+                    <option value="">Role (optional)</option>
+                    <option value="offender">Offender</option>
+                    <option value="victim">Victim</option>
+                </select>
+            </div>
+            <div class="referral-person-body">
+                <div class="form-row-three">
+                    <div class="form-field">
+                        <label>Name of Student:</label>
+                        <input type="text" class="person-name" required>
+                        <input type="hidden" class="person-student-id">
+                        <div class="person-search-status"></div>
+                        <div class="person-suggestion-box">
+                            <div class="person-suggestion-list"></div>
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label>Grade & Level:</label>
+                        <select class="person-grade" required>
+                            <option value="">Select Grade</option>
+                            <option value="Grade 7">Grade 7</option>
+                            <option value="Grade 8">Grade 8</option>
+                            <option value="Grade 9">Grade 9</option>
+                            <option value="Grade 10">Grade 10</option>
+                            <option value="Grade 11">Grade 11</option>
+                            <option value="Grade 12">Grade 12</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Gender:</label>
+                        <select class="person-gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row-two">
+                    <div class="form-field">
+                        <label>Parent/Guardian's Name:</label>
+                        <input type="text" class="person-parent-name">
+                    </div>
+                    <div class="form-field">
+                        <label>Parent/Guardian's Contact Number:</label>
+                        <input type="tel" class="person-parent-contact">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    wirePersonNameSearch(card);
+    card.querySelector('.referral-person-remove').addEventListener('click', () => {
+        if (activeEditCard === card) closePersonEditModal(false);
+        card.remove();
+        renumberPersonCards();
+    });
+    card.querySelector('.referral-person-fold').addEventListener('click', () => {
+        setCardCollapsed(card, true);
+    });
+    card.querySelector('.referral-person-chip').addEventListener('click', () => {
+        setCardCollapsed(card, false);
+    });
+
+    return card;
+}
+
+// Collapses a person card down to a small file icon labeled with the
+// person's name, and moves it up into the #peopleChips strip next to "Add
+// Another Person" — outside the form area entirely, instead of taking a
+// full-width row in the list below. Expanding a card (clicking its chip, or
+// a validation failure jumping back to it) no longer re-inserts it into the
+// form — see openPersonEditModal() — that used to push the rest of the page
+// down every time someone reopened a person to fix a typo.
+function setCardCollapsed(card, collapsed) {
+    if (!collapsed) {
+        openPersonEditModal(card);
         return;
     }
 
-    // Status line under the input
-    let status = document.getElementById('studentSearchStatus');
-    if (!status) {
-        status = document.createElement('div');
-        status.id = 'studentSearchStatus';
-        status.style.cssText = 'margin-top:6px;font-size:12px;color:#666;min-height:18px;';
-        studentNameInput.parentNode.insertBefore(status, studentNameInput.nextSibling);
+    if (activeEditCard === card) closePersonEditModal(false);
+
+    card.classList.add('is-collapsed');
+    card.querySelector('.referral-person-fold').setAttribute('aria-expanded', 'false');
+    document.getElementById('peopleChips').appendChild(card);
+
+    const name = card.querySelector('.person-name').value.trim();
+    const role = card.querySelector('.person-role').value;
+    const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : '';
+
+    const chip = card.querySelector('.referral-person-chip');
+    chip.classList.remove('role-offender', 'role-victim');
+    if (role) chip.classList.add(`role-${role}`);
+    // Chip text is truncated with an ellipsis at this width — the full
+    // name (+ role) is still reachable on hover/long-press via the title.
+    chip.title = name ? `${name}${roleLabel ? ' · ' + roleLabel : ''} — click to edit` : 'Click to edit';
+
+    card.querySelector('.referral-person-chip-name').textContent = name || 'Not filled in yet';
+}
+
+// Opens a person's full info in a floating modal (rather than moving their
+// card back into the in-page form, which used to shove the reason/actions
+// fields further down every time). The card's real DOM node — with all its
+// event listeners and autocomplete state already wired by
+// wirePersonNameSearch() — is relocated into the modal body and back again
+// on close, so nothing needs to be re-bound or synced.
+function openPersonEditModal(card) {
+    activeEditCard = card;
+    card.classList.remove('is-collapsed');
+    card.querySelector('.referral-person-fold').setAttribute('aria-expanded', 'true');
+    document.getElementById('personEditModalBody').appendChild(card);
+
+    const name = card.querySelector('.person-name').value.trim();
+    document.getElementById('personEditModalTitle').textContent = name ? `Edit ${name}` : 'Person Details';
+    // "Remove this person" lives in the modal footer now (a labeled button,
+    // not the card's own corner ×, which is hidden while inside this modal
+    // — see .person-edit-modal .referral-person-remove in the CSS) — still
+    // has to respect the same "must keep at least one person" rule.
+    document.getElementById('personEditModalRemove').style.display = allPersonCards().length > 1 ? '' : 'none';
+    document.getElementById('personEditModal').classList.add('show');
+    card.querySelector('.person-name').focus();
+}
+
+// collapseCard=false is used by callers (remove button, the fold button via
+// setCardCollapsed) that are already handling where the card goes next —
+// they just need the modal chrome to disappear, not a second move.
+function closePersonEditModal(collapseCard = true) {
+    const card = activeEditCard;
+    document.getElementById('personEditModal').classList.remove('show');
+    activeEditCard = null;
+    if (card && collapseCard) {
+        setCardCollapsed(card, true);
+    }
+}
+
+function setupPersonEditModal() {
+    document.getElementById('personEditModalClose').addEventListener('click', () => closePersonEditModal(true));
+    document.getElementById('personEditModalDone').addEventListener('click', () => closePersonEditModal(true));
+    document.getElementById('personEditModalRemove').addEventListener('click', () => {
+        const card = activeEditCard;
+        if (!card) return;
+        activeEditCard = null;
+        document.getElementById('personEditModal').classList.remove('show');
+        card.remove();
+        renumberPersonCards();
+    });
+    document.getElementById('personEditModal').addEventListener('click', (e) => {
+        if (e.target.id === 'personEditModal') closePersonEditModal(true);
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('personEditModal').classList.contains('show')) {
+            closePersonEditModal(true);
+        }
+    });
+}
+
+// Only the Remove button's visibility depends on how many people there are
+// (a referral always needs at least one) — the "Person" label itself no
+// longer carries a number. Also keeps the live headcount next to "Add
+// Another Person" in sync, so it's clear how many people are on this
+// referral without having to look for the (possibly off-screen) chips.
+function renumberPersonCards() {
+    const cards = allPersonCards();
+    cards.forEach((card) => {
+        card.querySelector('.referral-person-remove').style.display = cards.length > 1 ? '' : 'none';
+    });
+
+    const countEl = document.getElementById('peopleCount');
+    if (countEl) {
+        countEl.textContent = cards.length > 1 ? `${cards.length} people` : '';
+    }
+}
+
+// Validates and collects every person card into the shape the API expects.
+// Returns null (after showing an error) if any required field is missing.
+function collectPeopleFromForm() {
+    const cards = allPersonCards();
+    if (cards.length === 0) {
+        showErrorMessage('Please add at least one person before submitting.');
+        return null;
     }
 
-    // Suggestion dropdown
-    let box = document.getElementById('studentSuggestionBox');
-    if (!box) {
-        box = document.createElement('div');
-        box.id = 'studentSuggestionBox';
-        box.style.cssText = 'position:relative';
-        const inner = document.createElement('div');
-        inner.id = 'studentSuggestionList';
-        inner.style.cssText = 'position:absolute;left:0;right:0;z-index:50;background:#fff;border:1px solid #ddd;border-radius:4px;max-height:200px;overflow:auto;box-shadow:0 6px 16px rgba(0,0,0,0.08);';
-        box.appendChild(inner);
-        studentNameInput.parentNode.insertBefore(box, status);
-    }
+    const people = [];
+    for (const card of cards) {
+        const nameInput = card.querySelector('.person-name');
+        const gradeInput = card.querySelector('.person-grade');
+        const name = nameInput.value.trim();
+        const grade = gradeInput.value;
 
+        if (!name) {
+            setCardCollapsed(card, false);
+            showErrorMessage('Please enter a name for every person listed.');
+            nameInput.focus();
+            return null;
+        }
+        if (!grade) {
+            setCardCollapsed(card, false);
+            showErrorMessage('Please select a grade for every person listed.');
+            gradeInput.focus();
+            return null;
+        }
+
+        people.push({
+            student_name: name,
+            student_id: card.querySelector('.person-student-id').value || null,
+            grade: grade,
+            gender: card.querySelector('.person-gender').value,
+            referral_role: card.querySelector('.person-role').value || null,
+            parent_guardian: card.querySelector('.person-parent-name').value.trim(),
+            parent_contact: card.querySelector('.person-parent-contact').value.trim()
+        });
+    }
+    return people;
+}
+
+// Setup student name search with dropdown auto-suggestions (same UX as the
+// counselor's Case Scenario student search) — restricted to the teacher's
+// own school. Wired directly to this specific card's own input/status/list
+// elements (rather than global ids), so any number of person cards can each
+// have independent, working autocomplete.
+function wirePersonNameSearch(card) {
+    const input = card.querySelector('.person-name');
+    const status = card.querySelector('.person-search-status');
+    const listEl = card.querySelector('.person-suggestion-list');
     let searchTimeout;
     let highlightedIndex = -1;
+
+    function hideSuggestions() {
+        listEl.innerHTML = '';
+    }
 
     // Applies a specific suggestion (by row + its stored student data) —
     // the one place both mouse selection and keyboard selection go through,
@@ -121,37 +382,34 @@ function setupStudentSearch() {
     function applySuggestion(row) {
         if (!row || !row._studentData) return;
         const student = row._studentData;
-        const fullName = student.fullName;
-        studentNameInput.value = fullName;
-        populateStudentFromSearch(student);
-        status.textContent = `Selected: ${fullName}`;
+        input.value = student.fullName;
+        populateStudentFromSearch(card, student);
+        status.textContent = `Selected: ${student.fullName}`;
         status.style.color = 'green';
-        hideStudentSuggestions();
+        hideSuggestions();
     }
 
-    studentNameInput.addEventListener('input', function() {
+    input.addEventListener('input', function() {
         clearTimeout(searchTimeout);
         const searchTerm = this.value.trim();
         highlightedIndex = -1;
         status.textContent = '';
 
         // Manual edits invalidate a previously selected student record
-        const studentIdField = document.getElementById('studentId');
-        if (studentIdField) studentIdField.value = '';
+        card.querySelector('.person-student-id').value = '';
 
         if (searchTerm.length < 2) {
-            hideStudentSuggestions();
+            hideSuggestions();
             return;
         }
 
         searchTimeout = setTimeout(() => {
-            searchStudentsForSuggestion(searchTerm, studentNameInput, status);
+            searchStudentsForCard(card, searchTerm, input, status, listEl);
         }, 300);
     });
 
-    studentNameInput.addEventListener('keydown', function(e) {
-        const list = document.getElementById('studentSuggestionList');
-        const items = list ? Array.from(list.querySelectorAll('.suggestion-item')) : [];
+    input.addEventListener('keydown', function(e) {
+        const items = Array.from(listEl.querySelectorAll('.suggestion-item'));
 
         if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -176,28 +434,23 @@ function setupStudentSearch() {
                 applySuggestion(items[highlightedIndex]);
             }
         } else if (e.key === 'Escape') {
-            hideStudentSuggestions();
+            hideSuggestions();
         }
     });
 
-    studentNameInput.addEventListener('blur', () => {
-        setTimeout(() => hideStudentSuggestions(), 200);
+    input.addEventListener('blur', () => {
+        setTimeout(hideSuggestions, 200);
     });
 }
 
 function updateSuggestionHighlight(items, idx) {
     items.forEach((item, i) => {
-        item.style.background = i === idx ? '#f1f5ff' : '';
+        item.classList.toggle('is-highlighted', i === idx);
     });
 }
 
-function hideStudentSuggestions() {
-    const list = document.getElementById('studentSuggestionList');
-    if (list) list.innerHTML = '';
-}
-
 // Search for students, restricted to the teacher's own school
-function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
+function searchStudentsForCard(card, searchTerm, inputField, statusEl, listEl) {
     const user = getCurrentUser();
 
     let teacherSchool = user?.school_attended;
@@ -208,7 +461,7 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
     if (!teacherSchool || teacherSchool === 'Default School') {
         statusEl.textContent = 'No school on file — cannot look up students.';
         statusEl.style.color = '#d9534f';
-        hideStudentSuggestions();
+        listEl.innerHTML = '';
         return;
     }
 
@@ -223,11 +476,10 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
             if (!result.success) {
                 statusEl.textContent = 'Unable to check student records.';
                 statusEl.style.color = '#d66';
-                hideStudentSuggestions();
+                listEl.innerHTML = '';
                 return;
             }
 
-            const listEl = document.getElementById('studentSuggestionList');
             listEl.innerHTML = '';
 
             if (result.data && result.data.length > 0) {
@@ -236,8 +488,7 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
                     const gradeLabel = student.grade_name || '';
                     const row = document.createElement('div');
                     row.className = 'suggestion-item';
-                    row.style.cssText = 'padding:8px 10px;cursor:pointer;border-bottom:1px solid #f2f2f2;';
-                    row.innerHTML = `<div style="font-weight:600">${escapeHtml(fullName)}</div><div style="font-size:12px;color:#666">${escapeHtml(gradeLabel)}</div>`;
+                    row.innerHTML = `<div class="suggestion-item-name">${escapeHtml(fullName)}</div><div class="suggestion-item-grade">${escapeHtml(gradeLabel)}</div>`;
                     // Each row carries its own exact match data so keyboard
                     // selection (Enter/Tab on the highlighted row) and mouse
                     // selection always resolve to the same student — never
@@ -246,10 +497,10 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
                     row.addEventListener('mousedown', (ev) => {
                         ev.preventDefault();
                         inputField.value = fullName;
-                        populateStudentFromSearch(row._studentData);
+                        populateStudentFromSearch(card, row._studentData);
                         statusEl.textContent = `Selected: ${fullName}`;
                         statusEl.style.color = 'green';
-                        hideStudentSuggestions();
+                        listEl.innerHTML = '';
                     });
                     listEl.appendChild(row);
                 });
@@ -259,7 +510,7 @@ function searchStudentsForSuggestion(searchTerm, inputField, statusEl) {
             } else {
                 statusEl.textContent = 'No matching student found in school records.';
                 statusEl.style.color = '#d9534f';
-                hideStudentSuggestions();
+                listEl.innerHTML = '';
             }
         })
         .catch(error => {
@@ -275,18 +526,16 @@ function escapeHtml(value) {
     return div.innerHTML;
 }
 
-// Populate form with selected student data
-function populateStudentFromSearch(student) {
-
+// Populate one person card with the selected student's data
+function populateStudentFromSearch(card, student) {
     const fullName = student.fullName || `${student.first_name || ''} ${student.last_name || ''}`.trim();
 
     // Set name and ACCOUNT ID (not LRN)
-    document.getElementById('studentName').value = fullName;
+    card.querySelector('.person-name').value = fullName;
 
-    const studentIdField = document.getElementById('studentId');
+    const studentIdField = card.querySelector('.person-student-id');
     if (studentIdField) {
-        studentIdField.value = student.id;  // This is accounts.id
-        studentIdField.readOnly = true;  // Prevent manual editing
+        studentIdField.value = student.id; // This is accounts.id
     }
 
     // Grade
@@ -299,7 +548,7 @@ function populateStudentFromSearch(student) {
         '6': 'Grade 12'
     };
 
-    const gradeEl = document.getElementById('grade');
+    const gradeEl = card.querySelector('.person-grade');
     if (gradeEl) {
         const gradeLabel = student.grade_name || gradeMap[String(student.grade_id)] || '';
         if (gradeLabel && Array.from(gradeEl.options).some(o => o.value === gradeLabel)) {
@@ -307,14 +556,8 @@ function populateStudentFromSearch(student) {
         }
     }
 
-    // Age (optional field on form)
-    const ageEl = document.getElementById('age');
-    if (ageEl && student.age) {
-        ageEl.value = student.age;
-    }
-
     // Gender
-    const genderEl = document.getElementById('gender');
+    const genderEl = card.querySelector('.person-gender');
     const sexValue = student.sex || student.Sex;
     if (genderEl && sexValue) {
         const genderMap = { 'M': 'Male', 'F': 'Female', 'Male': 'Male', 'Female': 'Female' };
@@ -325,19 +568,19 @@ function populateStudentFromSearch(student) {
 // Populate teacher's school information
 function populateTeacherSchool() {
     const user = getCurrentUser();
-    
+
     // Get teacher's school from user object (from login)
     const teacherSchool = user?.school_attended;
-    
+
     if (!teacherSchool) {
         console.warn('⚠️ WARNING: user.school_attended is not set in user object');
     }
-    
+
     // Store in localStorage for later use
     if (teacherSchool) {
         localStorage.setItem('teacherSchool', teacherSchool);
     }
-    
+
     // Populate the school field in the form
     const schoolField = document.getElementById('studentSchool');
     if (schoolField) {
@@ -365,61 +608,47 @@ function populateTeacherSchool() {
 function submitReferralForm(e) {
     e.preventDefault();
 
-    const user = getCurrentUser();
-    const teacherSchool = user.school_attended || localStorage.getItem('teacherSchool') || 'Default School';
-    const formData = new FormData(document.getElementById('referralForm'));
-    
-    // Get the student name and optional student ID from form
-    const studentName = formData.get('studentName');
-    const studentId = formData.get('studentId');
-    
-    // Validate student name is filled (manual entry allowed)
-    if (!studentName || studentName.trim() === '') {
-        console.error('❌ ERROR: Student name is empty!');
-        showErrorMessage('Please enter the student name before submitting.');
+    const referralReasonField = document.getElementById('referralReason');
+    const referralReason = referralReasonField.value.trim();
+    if (!referralReason) {
+        showErrorMessage('Please enter the reason for referral.');
+        referralReasonField.focus();
         return;
     }
-    
-    submitWithStudentId(studentId || null, studentName, teacherSchool, formData, user);
-}
 
-function submitWithStudentId(studentId, studentName, teacherSchool, formData, user) {
-    
-    // Create referral object with school information
-    const referral = {
-        student_name: studentName,
-        student_id: studentId,
-        grade: formData.get('grade'),
-        section: formData.get('section'),
-        age: formData.get('age'),
-        gender: formData.get('gender'),
-        referral_reason: formData.get('referralReason'),
-        description: formData.get('description'),
-        intervention_attempts: formData.get('interventionAttempts'),
-        observed_behaviors: formData.get('observedBehaviors'),
-        parent_guardian: formData.get('parentGuardian'),
-        parent_contact: formData.get('parentContact'),
-        parent_email: formData.get('parentEmail'),
-        family_background: formData.get('familyBackground'),
-        urgency: formData.get('urgency'),
+    const people = collectPeopleFromForm();
+    if (!people) return;
+
+    const user = getCurrentUser();
+    const teacherSchool = user.school_attended || localStorage.getItem('teacherSchool') || 'Default School';
+    const studentSchool = document.getElementById('studentSchool').value || teacherSchool;
+
+    // Fields shared by the whole incident, merged onto every person's own
+    // record below — each person still becomes its own full referral row.
+    const shared = {
+        referral_reason: referralReason,
+        intervention_attempts: document.getElementById('interventionAttempts').value.trim(),
         teacher_id: user.id || null,
         teacher_name: user.name || user.email,
-        teacher_contact: formData.get('teacherContact'),
+        teacher_contact: document.getElementById('teacherContact').value.trim(),
         school_attended: teacherSchool,
-        student_school: formData.get('studentSchool') || teacherSchool,
-        stage: 1, // Stage 1: Admission of Case
+        student_school: studentSchool,
+        stage: 1, // Stage 1: Interview/Background
         status: 'pending'
     };
 
-    // Save to database
-    const apiUrl = '../../api/referral.php';
-    
-    fetch(apiUrl, {
+    const payload = people.map(person => Object.assign({}, shared, person));
+    // A single person still posts as a plain object — same shape the API
+    // (and the counselor's separate walk-in referral form) has always sent;
+    // only 2+ people switches to the array/batch form.
+    const body = payload.length === 1 ? payload[0] : payload;
+
+    fetch('../../api/referral.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(referral)
+        body: JSON.stringify(body)
     })
     .then(response => {
         if (!response.ok) {
@@ -429,9 +658,10 @@ function submitWithStudentId(studentId, studentName, teacherSchool, formData, us
     })
     .then(result => {
         if (result.success) {
-            
-            // Show success message
-            showSuccessMessage('Referral submitted successfully! Student has been notified.');
+            const count = payload.length;
+            showSuccessMessage(count > 1
+                ? `${count} referrals submitted successfully! Students have been notified.`
+                : 'Referral submitted successfully! Student has been notified.');
             setTimeout(() => {
                 // Redirect to the teacher referral status page to see the submitted referral
                 window.location.href = 'referral-status.php';
@@ -447,7 +677,7 @@ function submitWithStudentId(studentId, studentName, teacherSchool, formData, us
 }
 
 function createReferralNotification(referral) {
-   
+
 }
 
 function showSuccessMessage(message) {
@@ -467,7 +697,7 @@ function showSuccessMessage(message) {
     `;
     success.textContent = message;
     document.body.appendChild(success);
-    
+
     setTimeout(() => success.remove(), 3000);
 }
 
@@ -488,11 +718,10 @@ function showErrorMessage(message) {
     `;
     error.textContent = message;
     document.body.appendChild(error);
-    
+
     setTimeout(() => error.remove(), 3000);
 }
 
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', initReferralForm);
-

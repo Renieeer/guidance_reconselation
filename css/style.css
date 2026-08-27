@@ -287,6 +287,32 @@ body.auth-page {
     box-shadow: 0 0 12px rgba(29, 90, 168, 0.15);
 }
 
+/* OTP verification modal — one box per digit instead of a single field */
+.otp-digit-group {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.otp-digit-input {
+    width: 44px;
+    height: 52px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 600;
+    border: 1.5px solid var(--border-color);
+    border-radius: 8px;
+    background: white;
+    color: var(--text-color);
+    transition: var(--transition);
+}
+
+.otp-digit-input:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 12px rgba(29, 90, 168, 0.15);
+}
+
 .error-alert {
     position: fixed;
     top: 20px;
@@ -3349,6 +3375,50 @@ body.auth-page {
     font-weight: 500;
 }
 
+/* Avatar shown above the role name in every sidebar header — links to
+   pages/<role>/profile.php so users can tell whose account they're in and
+   jump straight to editing it. Filled in by renderSidebarAvatar() in
+   js/utils.js: the user's uploaded photo, or their initials as a fallback. */
+.sidebar-avatar-link {
+    display: inline-block;
+    text-decoration: none;
+    margin-bottom: 12px;
+}
+
+.sidebar-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    margin: 0 auto;
+    background: var(--clay-accent-fill);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.3px;
+    box-shadow: var(--clay-dark-out-sm);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar-avatar-link:hover .sidebar-avatar {
+    transform: translateY(-2px);
+    box-shadow: var(--clay-dark-out-sm), 0 10px 18px rgba(0, 0, 0, 0.35);
+}
+
+.sidebar-avatar-link:active .sidebar-avatar {
+    transform: translateY(0);
+    box-shadow: var(--clay-dark-in);
+}
+
+.sidebar-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .sidebar-menu {
     list-style: none;
     margin-top: 0;
@@ -4020,6 +4090,19 @@ tr:hover {
 .badge-empty {
     background: var(--light-gray);
     color: var(--text-light);
+}
+
+/* Tags a referral row/detail with the person's part in a multi-person
+   incident (see referral.referral_role) — an offender and a victim from
+   the same report both show up distinctly wherever a referral is listed. */
+.badge-offender {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.badge-victim {
+    background: var(--info-bg);
+    color: var(--info);
 }
 
 /* ========== REFERRAL STATUS STAGES ========== */
@@ -5227,38 +5310,215 @@ tr:hover {
     font-size: 14px;
 }
 
-/* Profile Section */
+/* ========== PROFILE PAGE (claymorphism) ==========
+   Reuses the clay design tokens defined further down (--clay-*, under the
+   "LANDING PAGE STYLES" section) — same soft embossed/debossed shadow
+   language as the marketing hero/role cards, brought into the dashboard for
+   this one page. Scoped under body.profile-page so it doesn't affect the
+   flat card style the rest of the dashboard still uses. */
+body.profile-page .page-content {
+    display: flex;
+    justify-content: center;
+}
+
+.profile-card {
+    width: 100%;
+    max-width: 560px;
+    background: var(--clay-light-bg);
+    border-radius: var(--clay-r-xl);
+    box-shadow: var(--clay-out);
+    padding: 8px 44px 48px;
+}
+
 .profile-header {
     text-align: center;
-    padding: 48px 0;
+    padding: 40px 0 28px;
+}
+
+.profile-avatar-wrap {
+    position: relative;
+    width: 120px;
+    margin: 0 auto;
 }
 
 .profile-avatar-lg {
     width: 120px;
     height: 120px;
-    font-size: 48px;
-    margin: 0 auto 24px;
-    background: linear-gradient(135deg, #1d5aa8 0%, #1a4c88 50%, #1d5aa8 100%);
-    color: white;
+    font-size: 44px;
+    background: var(--clay-white);
+    color: #1a4c88;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 20px 40px rgba(29, 90, 168, 0.3);
+    font-weight: 800;
+    box-shadow: var(--clay-out);
+    overflow: hidden;
+}
+
+.profile-avatar-lg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-avatar-edit-btn {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: var(--clay-accent-fill);
+    color: #fff;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--clay-out-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-avatar-edit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--clay-out-sm), 0 10px 20px rgba(18, 58, 107, 0.35);
+}
+
+.profile-avatar-edit-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--clay-in);
+}
+
+.profile-remove-photo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 16px auto 0;
+    padding: 7px 18px;
+    border: none;
+    border-radius: var(--clay-r-pill);
+    background: transparent;
+    color: #b3261e;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-remove-photo-btn:hover {
+    background: rgba(179, 38, 30, 0.08);
+    box-shadow: var(--clay-in);
 }
 
 .profile-name {
-    font-size: 24px;
+    margin-top: 20px;
+    font-size: 22px;
     font-weight: 800;
-    color: var(--primary-color);
-    margin-bottom: 8px;
+    color: #0f2a4f;
+    margin-bottom: 6px;
     letter-spacing: -0.3px;
 }
 
 .profile-role {
-    font-size: 14px;
-    color: var(--text-light);
+    font-size: 13px;
+    color: #5a6b80;
     font-weight: 500;
+}
+
+.profile-card .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #0f2a4f;
+    font-size: 13px;
+}
+
+.profile-card .form-group input {
+    width: 100%;
+    padding: 13px 18px;
+    border: none;
+    border-radius: var(--clay-r-md);
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-in);
+    font-size: 14px;
+    font-family: inherit;
+    color: #0f2a4f;
+    transition: box-shadow 0.2s ease;
+}
+
+.profile-card .form-group input::placeholder {
+    color: #8494a7;
+}
+
+.profile-card .form-group input:focus {
+    outline: none;
+    box-shadow: var(--clay-in), 0 0 0 3px rgba(29, 90, 168, 0.18);
+}
+
+.profile-card .form-group input:disabled {
+    color: #8494a7;
+    cursor: not-allowed;
+}
+
+.profile-card .form-group small {
+    display: block;
+    margin-top: 6px;
+    color: #8494a7;
+    font-size: 12px;
+}
+
+.profile-card .form-divider {
+    margin-top: 12px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(15, 42, 79, 0.08);
+}
+
+.profile-card .form-divider h4 {
+    color: #0f2a4f;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.profile-card .form-divider-hint {
+    color: #8494a7;
+    font-size: 12px;
+    margin-bottom: 18px;
+}
+
+.profile-card .form-actions {
+    margin-top: 28px;
+}
+
+.profile-card .btn-success {
+    width: 100%;
+    border: none;
+    border-radius: var(--clay-r-pill);
+    padding: 14px 28px;
+    font-weight: 700;
+    background: var(--clay-accent-fill);
+    color: #fff;
+    box-shadow: var(--clay-out-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-card .btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--clay-out-sm), 0 14px 26px rgba(18, 58, 107, 0.3);
+}
+
+.profile-card .btn-success:active {
+    transform: translateY(0);
+    box-shadow: var(--clay-in);
+}
+
+@media (max-width: 640px) {
+    .profile-card {
+        padding: 8px 24px 36px;
+    }
 }
 
 /* Info Box */
@@ -5286,46 +5546,73 @@ tr:hover {
 }
     
 
-/* ========== LANDING PAGE STYLES ========== */
+/* ========== LANDING PAGE STYLES (CLAYMORPHISM) ========== */
 
 /* Landing page root variables */
 html {
     scroll-behavior: smooth;
-}
-
-/* Landing page body specific */
-body.landing-page {
-    font-family: 'DM Sans', sans-serif;
-    background: linear-gradient(135deg, #0b1f3a 0%, #0f2a4f 50%, #0b1f3a 100%);
-    color: #ffffff;
     overflow-x: hidden;
 }
 
-/* Navigation for landing page */
+/* Clay design tokens — global scope because the floating nav (#navbar)
+   uses these vars on every page (auth-page login/register screens included),
+   not just the landing page. Scoping them to body.landing-page left the
+   nav's background/radius/shadow silently resolving to nothing everywhere else. */
+:root {
+    --clay-canvas: #e7ecf6;
+    --clay-white: #ffffff;
+    --clay-light-bg: #f4f7fc;
+    --clay-navy-fill: linear-gradient(155deg, #12305c 0%, #0b1f3a 62%, #081729 100%);
+    --clay-navy-fill-2: linear-gradient(155deg, #16386c 0%, #0f2a4f 100%);
+    --clay-accent-fill: linear-gradient(135deg, #2a6bc0 0%, #1a4c88 45%, #123a6b 100%);
+
+    --clay-out: 9px 9px 20px rgba(10, 22, 45, 0.14), -9px -9px 18px rgba(255, 255, 255, 0.85);
+    --clay-out-sm: 6px 6px 13px rgba(10, 22, 45, 0.12), -6px -6px 11px rgba(255, 255, 255, 0.8);
+    --clay-in: inset 4px 4px 9px rgba(10, 22, 45, 0.12), inset -4px -4px 9px rgba(255, 255, 255, 0.7);
+
+    --clay-dark-out: 12px 16px 32px rgba(2, 8, 20, 0.5), -8px -10px 24px rgba(63, 111, 178, 0.14);
+    --clay-dark-out-sm: 7px 9px 18px rgba(2, 8, 20, 0.45), -6px -7px 15px rgba(63, 111, 178, 0.12);
+    --clay-dark-in: inset 3px 3px 7px rgba(0, 0, 0, 0.4), inset -3px -3px 7px rgba(80, 130, 200, 0.12);
+
+    --clay-r-xl: 44px;
+    --clay-r-lg: 32px;
+    --clay-r-md: 24px;
+    --clay-r-sm: 16px;
+    --clay-r-pill: 100px;
+}
+
+/* Landing page body specific styling (not shared with auth pages) */
+body.landing-page {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--clay-canvas);
+    color: #0f2a4f;
+    overflow-x: hidden;
+}
+
+/* Navigation — floating clay pill bar */
 nav {
     position: fixed;
-    top: 0; left: 0; right: 0;
+    top: 18px;
+    left: 18px;
+    right: 18px;
     z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 60px;
-    background: rgba(11, 31, 58, 0.95);
-    backdrop-filter: blur(20px);
-    border-bottom: 2px solid rgba(29, 90, 168, 0.3);
-    transition: padding 0.3s ease;
+    padding: 16px 32px;
+    background: var(--clay-white);
+    border-radius: var(--clay-r-pill);
+    box-shadow: var(--clay-out);
+    transition: padding 0.3s ease, box-shadow 0.3s ease;
 }
 
 .nav-brand {
     font-family: 'Playfair Display', serif;
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 700;
-    background: linear-gradient(135deg, #1d5aa8 0%, #1a4c88 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #0f2a4f;
     text-decoration: none;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -5333,24 +5620,25 @@ nav {
 
 .nav-dot {
     display: inline-block;
-    width: 8px;
-    height: 8px;
-    background: linear-gradient(135deg, #1d5aa8 0%, #1a4c88 100%);
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
+    background: linear-gradient(135deg, #1d5aa8 0%, #123a6b 100%);
+    box-shadow: 2px 2px 5px rgba(18, 58, 107, 0.45), -1px -1px 3px rgba(255, 255, 255, 0.7);
 }
 
 .nav-links {
     display: flex;
     align-items: center;
-    gap: 36px;
+    gap: 32px;
     list-style: none;
 }
 
 .nav-links a {
-    color: #d8e0ea;
+    color: #35547e;
     text-decoration: none;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     transition: color 0.2s;
@@ -5363,49 +5651,60 @@ nav {
 /* Scoped to the top nav bar: student-information.css also defines a
    .btn-nav (its step Prev/Next/Submit buttons) and must not inherit this. */
 .nav-links .btn-nav {
-    padding: 10px 24px;
-    background: linear-gradient(135deg, #123a6b 0%, #1d5aa8 100%);
+    padding: 11px 26px;
+    background: var(--clay-accent-fill);
     color: #ffffff;
-    border-radius: 6px;
+    border-radius: var(--clay-r-pill);
     font-weight: 600;
+    box-shadow: var(--clay-out-sm);
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .nav-links .btn-nav:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(18, 58, 107, 0.4);
+    box-shadow: var(--clay-out-sm), 0 10px 20px rgba(18, 58, 107, 0.35);
+}
+
+.nav-links .btn-nav:active {
+    transform: translateY(0);
+    box-shadow: var(--clay-in);
 }
 
 .nav-toggle {
     display: none;
-    background: none;
-    border: 1px solid rgba(29, 90, 168, 0.3);
-    color: #1d5aa8;
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
+    background: var(--clay-white);
+    border: none;
+    color: #1a4c88;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
     cursor: pointer;
     font-size: 18px;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    box-shadow: var(--clay-out-sm);
+    transition: box-shadow 0.2s, transform 0.2s;
 }
 
 .nav-toggle:hover {
-    background: rgba(29, 90, 168, 0.1);
+    transform: translateY(-1px);
 }
 
+/* Hero — dark clay panel, floating below the nav pill */
 .hero {
-    min-height: 100vh;
+    min-height: 88vh;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
     overflow: hidden;
-    padding: 120px 60px 100px;
-    background: linear-gradient(135deg, #0b1f3a 0%, #0f2a4f 25%, #123a6b 50%, #1d5aa8 75%, #0b1f3a 100%);
+    margin: 96px 18px 0;
+    padding: 90px 60px 90px;
+    border-radius: var(--clay-r-xl);
+    background: var(--clay-navy-fill);
     background-size: 200% 200%;
     animation: gradientShift 15s ease infinite;
+    box-shadow: var(--clay-dark-out);
 }
 
 @keyframes gradientShift {
@@ -5417,10 +5716,24 @@ nav {
     content: '';
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(circle at 20% 50%, rgba(18, 58, 107, 0.15) 0%, transparent 50%),
-                      radial-gradient(circle at 80% 80%, rgba(26, 76, 136, 0.15) 0%, transparent 50%);
+    background-image: radial-gradient(circle at 18% 46%, rgba(29, 90, 168, 0.22) 0%, transparent 50%),
+                      radial-gradient(circle at 82% 78%, rgba(26, 76, 136, 0.2) 0%, transparent 50%);
     pointer-events: none;
-    z-index: 1;
+    z-index: 0;
+}
+
+.hero::after {
+    content: '';
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    right: -100px;
+    top: -110px;
+    background: radial-gradient(circle at 32% 32%, rgba(58, 111, 184, 0.4), transparent 68%);
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    filter: blur(4px);
+    z-index: 0;
+    pointer-events: none;
 }
 
 .hero-watermark {
@@ -5430,7 +5743,7 @@ nav {
     font-family: 'Playfair Display', serif;
     font-size: clamp(100px, 18vw, 240px);
     font-weight: 900;
-    color: rgba(255,255,255,0.025);
+    color: rgba(255, 255, 255, 0.025);
     line-height: 1;
     pointer-events: none;
     user-select: none;
@@ -5439,6 +5752,8 @@ nav {
 
 .hero-inner {
     max-width: 860px;
+    min-width: 0;
+    width: 100%;
     margin: 0 auto;
     text-align: center;
     position: relative;
@@ -5447,15 +5762,20 @@ nav {
 
 .hero-badge {
     display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
     align-items: center;
     gap: 8px;
-    border: 1px solid rgba(255,255,255,0.18);
-    padding: 6px 18px;
-    border-radius: 100px;
+    border: none;
+    padding: 9px 22px;
+    border-radius: var(--clay-r-pill);
     font-size: 11px;
     letter-spacing: 2px;
     text-transform: uppercase;
     color: #d8e0ea;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: var(--clay-dark-in);
     margin-bottom: 36px;
     animation: fadeUp 0.8s ease both;
 }
@@ -5476,7 +5796,7 @@ nav {
 
 .hero-title em {
     font-style: italic;
-    background: linear-gradient(135deg, #1d5aa8 0%, #1a4c88 100%);
+    background: linear-gradient(135deg, #4c8ad4 0%, #1a4c88 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -5494,21 +5814,23 @@ nav {
 
 .hero-cta {
     display: flex;
-    gap: 14px;
+    gap: 16px;
     justify-content: center;
     flex-wrap: wrap;
     animation: fadeUp 0.8s 0.3s ease both;
 }
 
 .btn-white {
-    padding: 16px 42px;
-    background: linear-gradient(135deg, #ffffff 0%, #f2f6fb 100%);
+    padding: 18px 42px;
+    background: var(--clay-white);
     color: #0f2a4f;
     text-decoration: none;
     font-weight: 600;
     font-size: 14px;
     letter-spacing: 0.3px;
-    border-radius: 8px;
+    border-radius: var(--clay-r-pill);
+    border: none;
+    box-shadow: var(--clay-out-sm), 0 16px 32px rgba(4, 12, 28, 0.35);
     transition: transform 0.2s, box-shadow 0.2s;
     display: inline-flex;
     align-items: center;
@@ -5516,80 +5838,97 @@ nav {
 }
 
 .btn-white:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 48px rgba(18, 58, 107, 0.3);
+    transform: translateY(-4px);
+    box-shadow: var(--clay-out-sm), 0 22px 42px rgba(4, 12, 28, 0.45);
     color: #0f2a4f;
     text-decoration: none;
+}
+
+.btn-white:active {
+    transform: translateY(0);
+    box-shadow: var(--clay-in);
 }
 
 /* .btn-ghost's generic (small, muted) look lives further down; this hero
    CTA needs the bigger on-dark-navy treatment instead, so it's scoped. */
 .hero-cta .btn-ghost {
-    padding: 16px 42px;
-    background: transparent;
+    padding: 18px 42px;
+    background: rgba(255, 255, 255, 0.05);
     color: #ffffff;
     text-decoration: none;
     font-weight: 500;
     font-size: 14px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
-    transition: all 0.3s ease;
+    border: none;
+    border-radius: var(--clay-r-pill);
+    box-shadow: var(--clay-dark-in);
+    transition: box-shadow 0.3s ease, background 0.3s ease, transform 0.2s;
     display: inline-flex;
     align-items: center;
     gap: 8px;
 }
 
 .hero-cta .btn-ghost:hover {
-    border-color: #1d5aa8;
-    background: rgba(29, 90, 168, 0.1);
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
     text-decoration: none;
+    transform: translateY(-2px);
 }
 
 .scroll-hint {
     position: absolute;
-    bottom: 36px;
+    bottom: 90px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    color: #5a6b80;
+    color: #7f93ad;
     font-size: 10px;
     letter-spacing: 2.5px;
     text-transform: uppercase;
     animation: fadeUp 1s 0.6s ease both;
+    z-index: 1;
 }
 
 .scroll-line {
     width: 1px;
     height: 36px;
-    background: linear-gradient(to bottom, transparent, #5a6b80);
+    background: linear-gradient(to bottom, transparent, #7f93ad);
     animation: pulse 2.2s ease infinite;
 }
 
+/* Stats — clay tiles floating over the hero/features seam */
 .stats-bar {
-    background: linear-gradient(90deg, #f2f6fb 0%, #f2f6fb 50%, #f2f6fb 100%);
-    color: #0b1f3a;
-    padding: 32px 60px;
+    max-width: 1120px;
+    margin: -28px auto 0;
+    padding: 0 36px;
+    position: relative;
+    z-index: 5;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    background: transparent;
 }
 
 .stat-item {
     text-align: center;
-    padding: 8px 20px;
-    border-right: 1px solid rgba(18, 58, 107, 0.2);
+    padding: 26px 16px;
+    border-right: none;
+    background: var(--clay-white);
+    border-radius: var(--clay-r-md);
+    box-shadow: var(--clay-out-sm);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.stat-item:last-child {
-    border-right: none;
+.stat-item:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--clay-out);
 }
 
 .stat-num {
     font-family: 'Playfair Display', serif;
-    font-size: 40px;
+    font-size: 38px;
     font-weight: 900;
     line-height: 1;
     margin-bottom: 6px;
@@ -5603,13 +5942,19 @@ nav {
     font-size: 10px;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #0f2a4f;
-    font-weight: 600;
+    color: #5a6b80;
+    font-weight: 700;
 }
 
+/* Features — dark clay panel */
 .section-features {
-    padding: 100px 60px;
-    background: linear-gradient(135deg, #0b1f3a 0%, #0b1f3a 50%, #0b1f3a 100%);
+    margin: 24px 18px 0;
+    padding: 96px 60px 100px;
+    border-radius: var(--clay-r-xl);
+    background: var(--clay-navy-fill-2);
+    box-shadow: var(--clay-dark-out);
+    position: relative;
+    overflow: hidden;
 }
 
 .s-header {
@@ -5624,7 +5969,7 @@ nav {
     font-size: 11px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #1d5aa8 0%, #1a4c88 100%);
+    background: linear-gradient(135deg, #4c8ad4 0%, #1a4c88 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -5645,7 +5990,7 @@ nav {
 
 .s-desc {
     max-width: 300px;
-    color: #8494a7;
+    color: #96a7bd;
     font-size: 14px;
     line-height: 1.7;
     font-weight: 300;
@@ -5655,69 +6000,53 @@ nav {
 .features-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    gap: 24px;
     background: transparent;
 }
 
 .f-item {
-    background: linear-gradient(135deg, rgba(18, 58, 107, 0.1) 0%, rgba(26, 76, 136, 0.1) 100%);
-    border: 1px solid rgba(18, 58, 107, 0.2);
-    padding: 40px 36px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.015) 100%);
+    border: none;
+    padding: 38px 32px;
     position: relative;
     overflow: hidden;
-    transition: all 0.3s;
-    border-radius: 12px;
-}
-
-.f-item::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #123a6b, #1d5aa8);
-    transition: width 0.4s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: var(--clay-r-md);
+    box-shadow: var(--clay-dark-out-sm);
 }
 
 .f-item:hover {
-    background: linear-gradient(135deg, rgba(18, 58, 107, 0.2) 0%, rgba(29, 90, 168, 0.2) 100%);
-    border-color: #1d5aa8;
-    transform: translateY(-4px);
-}
-
-.f-item:hover::after {
-    width: 100%;
+    transform: translateY(-6px);
+    box-shadow: var(--clay-dark-out-sm), 0 20px 36px rgba(0, 0, 0, 0.4);
 }
 
 .f-num {
     font-size: 11px;
     letter-spacing: 2px;
-    color: #1d5aa8;
-    margin-bottom: 24px;
+    color: #4c8ad4;
+    margin-bottom: 22px;
     font-family: 'Playfair Display', serif;
     font-weight: 700;
 }
 
 .f-icon {
-    width: 48px;
-    height: 48px;
-    border: 2px solid #1d5aa8;
-    border-radius: 8px;
+    width: 54px;
+    height: 54px;
+    border: none;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
-    background: linear-gradient(135deg, rgba(29, 90, 168, 0.1), rgba(26, 76, 136, 0.1));
-    color: #1d5aa8;
-    margin-bottom: 20px;
-    transition: all 0.3s;
+    font-size: 21px;
+    background: linear-gradient(135deg, #2a6bc0 0%, #123a6b 100%);
+    color: #ffffff;
+    margin-bottom: 22px;
+    box-shadow: var(--clay-dark-out-sm);
+    transition: transform 0.3s ease;
 }
 
 .f-item:hover .f-icon {
-    border-color: #123a6b;
-    color: #123a6b;
-    background: linear-gradient(135deg, rgba(18, 58, 107, 0.2), rgba(29, 90, 168, 0.2));
+    transform: translateY(-2px) scale(1.06);
 }
 
 .f-name {
@@ -5729,14 +6058,18 @@ nav {
 
 .f-desc {
     font-size: 13px;
-    color: #8494a7;
+    color: #96a7bd;
     line-height: 1.65;
     font-weight: 300;
 }
 
+/* Roles — light clay panel */
 .section-roles {
-    padding: 100px 60px;
-    background: linear-gradient(135deg, #f5f7fa 0%, #f2f6fb 50%, #e8eff7 100%);
+    margin: 24px 18px 0;
+    padding: 96px 60px 100px;
+    border-radius: var(--clay-r-xl);
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-out);
     color: #0b1f3a;
 }
 
@@ -5754,6 +6087,10 @@ nav {
     background-clip: text;
 }
 
+.section-roles .s-desc {
+    color: #5a6b80;
+}
+
 .roles-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -5762,19 +6099,18 @@ nav {
 }
 
 .r-card {
-    border: 2px solid rgba(18, 58, 107, 0.2);
-    padding: 36px 28px;
-    border-radius: 12px;
+    border: none;
+    padding: 36px 26px;
+    border-radius: var(--clay-r-md);
     position: relative;
     overflow: hidden;
-    transition: all 0.3s;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(242, 246, 251, 0.7));
-    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: var(--clay-white);
+    box-shadow: var(--clay-out-sm);
 }
 
 .r-card:hover {
-    border-color: #123a6b;
-    box-shadow: 0 10px 32px rgba(18, 58, 107, 0.2);
+    box-shadow: var(--clay-out);
     transform: translateY(-6px);
 }
 
@@ -5789,21 +6125,22 @@ nav {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    opacity: 0.15;
+    opacity: 0.12;
     line-height: 1;
 }
 
 .r-icon {
-    width: 44px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
     background: linear-gradient(135deg, #123a6b 0%, #1d5aa8 100%);
-    border-radius: 8px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
     color: #ffffff;
     margin-bottom: 20px;
+    box-shadow: var(--clay-out-sm);
 }
 
 .r-name {
@@ -5820,13 +6157,17 @@ nav {
     font-weight: 300;
 }
 
+/* About — dark clay panel */
 .section-about {
-    padding: 100px 60px;
-    background: linear-gradient(135deg, #0b1f3a 0%, #0f2a4f 50%, #0b1f3a 100%);
+    margin: 24px 18px 0;
+    padding: 96px 60px;
+    border-radius: var(--clay-r-xl);
+    background: var(--clay-navy-fill);
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 80px;
     align-items: center;
+    box-shadow: var(--clay-dark-out);
 }
 
 .about-eyebrow {
@@ -5834,7 +6175,7 @@ nav {
     font-size: 11px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #1d5aa8 0%, #1a4c88 100%);
+    background: linear-gradient(135deg, #4c8ad4 0%, #1a4c88 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -5855,7 +6196,7 @@ nav {
 }
 
 .about-body {
-    color: #d8e0ea;
+    color: #c3d2e8;
     font-size: 15px;
     line-height: 1.8;
     font-weight: 300;
@@ -5871,15 +6212,23 @@ nav {
 
 .about-list li {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 14px;
     font-size: 14px;
     color: #d8e0ea;
 }
 
 .about-list li i {
-    color: #1d5aa8;
-    margin-top: 2px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: var(--clay-dark-in);
+    color: #4c8ad4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
     flex-shrink: 0;
 }
 
@@ -5892,18 +6241,19 @@ nav {
 }
 
 .about-card {
-    background: linear-gradient(135deg, rgba(18, 58, 107, 0.1) 0%, rgba(29, 90, 168, 0.1) 100%);
-    border: 2px solid rgba(29, 90, 168, 0.3);
-    border-radius: 12px;
-    padding: 52px 40px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%);
+    border: none;
+    border-radius: var(--clay-r-lg);
+    padding: 56px 40px;
     text-align: center;
     position: relative;
     z-index: 1;
+    box-shadow: var(--clay-dark-out-sm);
 }
 
 .about-card i {
-    font-size: 80px;
-    background: linear-gradient(135deg, #123a6b 0%, #1d5aa8 100%);
+    font-size: 72px;
+    background: linear-gradient(135deg, #4c8ad4 0%, #1a4c88 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -5915,39 +6265,42 @@ nav {
     font-size: 12px;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #1d5aa8;
+    color: #a9bcd8;
 }
 
 .deco-tl,
 .deco-br {
     position: absolute;
-    width: 56px;
-    height: 56px;
-    border: 1px solid rgba(255,255,255,0.15);
+    width: 60px;
+    height: 60px;
+    border: none;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 32%, rgba(76, 138, 212, 0.5), transparent 72%);
+    filter: blur(1px);
 }
 
 .deco-tl {
-    top: -14px;
-    left: -14px;
-    border-right: none;
-    border-bottom: none;
+    top: -18px;
+    left: -18px;
 }
 
 .deco-br {
-    bottom: -14px;
-    right: -14px;
-    border-left: none;
-    border-top: none;
+    bottom: -18px;
+    right: -18px;
 }
 
+/* CTA band — accent clay panel */
 .cta-band {
-    background: linear-gradient(135deg, #1d5aa8 0%, #1a4c88 50%, #123a6b 100%);
+    margin: 24px 18px 0;
+    padding: 76px 60px;
+    border-radius: var(--clay-r-xl);
+    background: var(--clay-accent-fill);
     color: #ffffff;
-    padding: 80px 60px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 40px;
+    box-shadow: var(--clay-dark-out);
 }
 
 .cta-label {
@@ -5969,19 +6322,21 @@ nav {
 
 .cta-btns {
     display: flex;
-    gap: 12px;
+    gap: 14px;
     flex-shrink: 0;
 }
 
 .btn-dark {
-    padding: 16px 36px;
-    background: #ffffff;
+    padding: 17px 36px;
+    background: var(--clay-white);
     color: #123a6b;
     text-decoration: none;
     font-weight: 600;
     font-size: 14px;
-    border-radius: 8px;
-    transition: all 0.3s;
+    border: none;
+    border-radius: var(--clay-r-pill);
+    box-shadow: var(--clay-out-sm), 0 14px 28px rgba(8, 20, 45, 0.28);
+    transition: transform 0.3s, box-shadow 0.3s;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -5989,40 +6344,52 @@ nav {
 
 .btn-dark:hover {
     transform: translateY(-3px);
-    box-shadow: 0 12px 32px rgba(255, 255, 255, 0.3);
+    box-shadow: var(--clay-out-sm), 0 20px 36px rgba(8, 20, 45, 0.34);
     color: #123a6b;
     text-decoration: none;
 }
 
+.btn-dark:active {
+    transform: translateY(0);
+    box-shadow: var(--clay-in);
+}
+
 .btn-outline-dark {
-    padding: 16px 36px;
-    background: transparent;
+    padding: 17px 36px;
+    background: rgba(255, 255, 255, 0.08);
     color: #ffffff;
     text-decoration: none;
     font-weight: 500;
     font-size: 14px;
-    border: 2px solid #ffffff;
-    border-radius: 8px;
-    transition: all 0.3s;
+    border: none;
+    border-radius: var(--clay-r-pill);
+    box-shadow: var(--clay-dark-in);
+    transition: background 0.3s, transform 0.2s;
     display: inline-flex;
     align-items: center;
     gap: 8px;
 }
 
 .btn-outline-dark:hover {
-    background: #ffffff;
-    color: #123a6b;
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
     text-decoration: none;
+    transform: translateY(-2px);
 }
 
+/* Footer — light clay bar */
 footer {
-    background: linear-gradient(135deg, #0b1f3a 0%, #0f2a4f 100%);
-    border-top: 3px solid linear-gradient(90deg, #123a6b, #1d5aa8);
-    padding: 36px 60px;
+    margin: 24px 18px 24px;
+    padding: 30px 50px;
+    border-radius: var(--clay-r-lg);
+    background: var(--clay-white);
+    box-shadow: var(--clay-out-sm);
+    border-top: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
+    color: #0b1f3a;
 }
 
 .footer-brand {
@@ -6037,7 +6404,7 @@ footer {
 
 .footer-copy {
     font-size: 12px;
-    color: #d8e0ea;
+    color: #5a6b80;
 }
 
 .footer-nav {
@@ -6048,7 +6415,7 @@ footer {
 
 .footer-nav a {
     font-size: 11px;
-    color: #8494a7;
+    color: #5a6b80;
     text-decoration: none;
     letter-spacing: 1.5px;
     text-transform: uppercase;
@@ -6110,20 +6477,24 @@ footer {
 
 @media (max-width: 768px) {
     nav {
-        padding: 16px 20px;
+        padding: 14px 20px;
+        left: 12px;
+        right: 12px;
+        top: 12px;
     }
 
     .nav-links {
         display: none;
         flex-direction: column;
         position: absolute;
-        top: 100%;
+        top: calc(100% + 12px);
         left: 0;
         right: 0;
-        background: #0b1f3a;
-        padding: 24px 20px;
-        border-top: 1px solid rgba(255,255,255,0.1);
-        gap: 20px;
+        background: var(--clay-white);
+        padding: 22px 20px;
+        border-radius: var(--clay-r-md);
+        box-shadow: var(--clay-out);
+        gap: 18px;
     }
 
     .nav-links.open {
@@ -6135,28 +6506,31 @@ footer {
     }
 
     .hero {
-        padding: 90px 20px 90px;
+        margin: 84px 10px 0;
+        padding: 70px 20px 80px;
+        border-radius: var(--clay-r-lg);
     }
 
     .stats-bar {
         grid-template-columns: repeat(2, 1fr);
-        padding: 20px;
-    }
-
-    .stat-item:nth-child(2) {
-        border-right: none;
+        padding: 0 14px;
+        margin-top: 20px;
     }
 
     .section-features,
     .section-roles,
     .section-about {
-        padding: 60px 20px;
+        margin: 20px 10px 0;
+        padding: 56px 20px;
+        border-radius: var(--clay-r-lg);
     }
 
     .cta-band {
+        margin: 20px 10px 0;
         flex-direction: column;
-        padding: 48px 20px;
+        padding: 44px 22px;
         text-align: center;
+        border-radius: var(--clay-r-lg);
     }
 
     .cta-btns {
@@ -6178,10 +6552,12 @@ footer {
     }
 
     footer {
+        margin: 20px 10px 20px;
         flex-direction: column;
         align-items: center;
         text-align: center;
-        padding: 28px 20px;
+        padding: 26px 20px;
+        border-radius: var(--clay-r-md);
     }
 
     .footer-nav {
@@ -6190,6 +6566,39 @@ footer {
     }
 }
 
+/* Small phones: hero badge/CTA content no longer fits a single row
+   comfortably; stack and shrink rather than relying on flex-wrap alone. */
+@media (max-width: 480px) {
+    .hero-badge {
+        max-width: calc(100vw - 68px);
+        font-size: 9px;
+        letter-spacing: 1px;
+        padding: 8px 16px;
+        white-space: normal;
+    }
+
+    .hero-badge span {
+        min-width: 0;
+        white-space: normal;
+    }
+
+    .hero-cta {
+        flex-direction: column;
+        width: 100%;
+        align-items: center;
+    }
+
+    .hero-cta .btn-white,
+    .hero-cta .btn-ghost {
+        width: 100%;
+        max-width: 300px;
+        justify-content: center;
+    }
+
+    nav {
+        padding: 12px 16px;
+    }
+}
 /* ========== ACCOUNT MANAGEMENT ========== */
 .search-container {
     display: flex;
@@ -6659,7 +7068,9 @@ footer {
 .referral-form .form-field label:has(+ input:required)::after,
 .referral-form .form-field label:has(+ select:required)::after,
 .referral-form .form-field label:has(+ textarea:required)::after {
-    content: ' *';
+    /* Non-breaking space so a tight column can't wrap the "*" onto its
+       own orphaned line, separated from the label text it belongs to. */
+    content: '\00a0*';
     color: var(--danger-color);
 }
 
@@ -6921,6 +7332,15 @@ footer {
     .form-row-two {
         grid-template-columns: 1fr 1fr;
         gap: 15px;
+    }
+
+    .referral-people-heading {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .referral-add-person-btn {
+        justify-content: center;
     }
 }
 
@@ -8017,5 +8437,849 @@ footer {
     padding: 10px 12px;
     font-family: inherit;
     font-size: 13.5px;
+}
+
+/* ============================================================
+   DASHBOARD CLAY RESKIN
+   Brings every shared dashboard component (sidebar nav, cards,
+   buttons, form fields, modals, tables, badges, alerts, hero
+   banner) onto the same claymorphism system already used on the
+   landing page (--clay-* tokens, defined above under "LANDING
+   PAGE STYLES"). Every role's pages/<role>/*.php compose from
+   these same shared classes, so reskinning them here updates
+   the whole app at once instead of touching 40+ page files.
+
+   Deliberately placed last in the file and deliberately narrow:
+   several of these selectors (.form-group, .form-group input,
+   .main-content, .table-container, .form-row) already have 2-3
+   earlier definitions elsewhere (auth forms, modals, sdo-specific
+   tweaks) that only ever set spacing/layout, not color — rather
+   than hunt down and edit every prior occurrence, this block only
+   touches surface (background/border/shadow/radius/color) and
+   relies on being last-in-source-order at equal specificity to
+   win the cascade for just those properties, leaving spacing,
+   grid layout, and the mobile (max-width) overrides untouched. */
+
+.main-content {
+    background: var(--clay-canvas);
+}
+
+.page-content {
+    background: var(--clay-canvas);
+}
+
+.sidebar {
+    background: var(--clay-navy-fill);
+    box-shadow: var(--clay-dark-out);
+}
+
+.sidebar-menu a {
+    border-left: none;
+    border-radius: var(--clay-r-pill);
+    margin: 4px 12px;
+}
+
+.sidebar-menu a:hover {
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: var(--clay-dark-out-sm);
+}
+
+.sidebar-menu a.active {
+    background: var(--clay-accent-fill);
+    color: #fff;
+    border-left-color: transparent;
+    box-shadow: var(--clay-dark-in);
+    text-shadow: none;
+}
+
+.page-hero,
+.account-hero {
+    margin: 0 0 24px;
+    border: none;
+    border-bottom: none;
+    border-radius: var(--clay-r-lg);
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-out);
+}
+
+.main-content.teacher-page .page-hero {
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-out-sm);
+}
+
+.card,
+.stat-card,
+.school-folder {
+    background: var(--clay-white);
+    border: none;
+    border-radius: var(--clay-r-md);
+    box-shadow: var(--clay-out-sm);
+}
+
+.card:hover,
+.stat-card:hover {
+    box-shadow: var(--clay-out);
+}
+
+.card::before,
+.card:nth-child(2)::before,
+.card:nth-child(3)::before,
+.card:nth-child(4)::before {
+    display: none;
+}
+
+.card-header,
+.card-footer {
+    border-color: rgba(15, 42, 79, 0.08);
+}
+
+.card-title::before {
+    background: var(--clay-accent-fill);
+}
+
+.btn,
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-secondary,
+.btn-outline,
+.btn-outline-primary,
+.btn-ghost,
+.btn-clear-filters,
+.btn-edit,
+.btn-sm {
+    border-radius: var(--clay-r-pill);
+    border: none;
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: var(--clay-accent-fill);
+    box-shadow: var(--clay-out-sm);
+}
+.btn-primary:hover { box-shadow: var(--clay-out-sm), 0 14px 26px rgba(18, 58, 107, 0.32); }
+.btn-primary:active { box-shadow: var(--clay-in); }
+
+.btn-success {
+    background: linear-gradient(135deg, #1b8f63 0%, #146247 100%);
+    box-shadow: var(--clay-out-sm);
+}
+.btn-success:hover { box-shadow: var(--clay-out-sm), 0 14px 26px rgba(27, 127, 90, 0.3); }
+.btn-success:active { box-shadow: var(--clay-in); }
+
+.btn-danger {
+    background: linear-gradient(135deg, #c23328 0%, #8f1e17 100%);
+    box-shadow: var(--clay-out-sm);
+}
+.btn-danger:hover { box-shadow: var(--clay-out-sm), 0 14px 26px rgba(179, 38, 30, 0.3); }
+.btn-danger:active { box-shadow: var(--clay-in); }
+
+.btn-warning {
+    background: linear-gradient(135deg, #b8720a 0%, #8a5400 100%);
+    box-shadow: var(--clay-out-sm);
+}
+.btn-warning:hover { box-shadow: var(--clay-out-sm), 0 14px 26px rgba(161, 92, 0, 0.3); }
+.btn-warning:active { box-shadow: var(--clay-in); }
+
+.btn-secondary {
+    background: var(--clay-white);
+    color: #1a4c88;
+    box-shadow: var(--clay-out-sm);
+}
+.btn-secondary:hover { box-shadow: var(--clay-out-sm), 0 10px 20px rgba(11, 31, 58, 0.12); }
+.btn-secondary:active { box-shadow: var(--clay-in); }
+
+.btn-outline,
+.btn-outline-primary,
+.btn-clear-filters {
+    background: var(--clay-white);
+    box-shadow: var(--clay-out-sm);
+}
+.btn-outline:hover,
+.btn-outline-primary:hover,
+.btn-clear-filters:hover { box-shadow: var(--clay-out-sm), 0 10px 20px rgba(11, 31, 58, 0.12); }
+.btn-outline:active,
+.btn-outline-primary:active,
+.btn-clear-filters:active { box-shadow: var(--clay-in); }
+
+.btn-ghost {
+    border: none;
+    background: rgba(15, 42, 79, 0.05);
+}
+.btn-ghost:hover { background: rgba(15, 42, 79, 0.09); }
+
+.btn-edit {
+    background: var(--clay-accent-fill);
+    box-shadow: var(--clay-out-sm);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea,
+.form-control,
+.form-field input,
+.form-field select,
+.form-field textarea,
+.modal-body input[type="text"],
+.modal-body input[type="email"],
+.modal-body input[type="date"],
+.modal-body input[type="number"],
+.modal-body textarea {
+    border: none;
+    border-radius: var(--clay-r-md);
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-in);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+.form-control:focus,
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus,
+.modal-body input[type="text"]:focus,
+.modal-body input[type="email"]:focus,
+.modal-body input[type="date"]:focus,
+.modal-body input[type="number"]:focus,
+.modal-body textarea:focus {
+    border-color: transparent;
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-in), 0 0 0 3px rgba(29, 90, 168, 0.18);
+}
+
+.form-group label {
+    color: #0f2a4f;
+}
+
+.modal-content {
+    border-radius: var(--clay-r-lg);
+    box-shadow: var(--clay-dark-out);
+}
+
+.modal-header {
+    background: var(--clay-accent-fill);
+    border-radius: var(--clay-r-lg) var(--clay-r-lg) 0 0;
+}
+
+.modal-footer {
+    background: var(--clay-light-bg);
+    border-top: none;
+}
+
+.table-container,
+.account-table-container,
+.data-table {
+    background: var(--clay-light-bg);
+    border: none;
+    border-radius: var(--clay-r-lg);
+    box-shadow: var(--clay-out);
+}
+
+.table th {
+    background: transparent;
+    border-bottom: 1px solid rgba(15, 42, 79, 0.1);
+}
+
+.accounts-table thead {
+    background: transparent;
+    border-bottom: 1px solid rgba(15, 42, 79, 0.1);
+}
+
+th {
+    background: transparent;
+    border-image: none;
+    border-bottom: 1px solid rgba(15, 42, 79, 0.12);
+}
+
+.table tbody tr:hover,
+.accounts-table tbody tr:hover,
+tr:hover {
+    background-color: rgba(29, 90, 168, 0.06);
+}
+
+.badge {
+    border-radius: var(--clay-r-sm);
+}
+
+.user-type-badge {
+    border-radius: var(--clay-r-pill);
+}
+
+.alert {
+    border-radius: var(--clay-r-md);
+    box-shadow: var(--clay-out-sm);
+}
+
+/* A handful of pages hand-copied the pre-clay ".card" formula (white bg,
+   #e8eff7 border, var(--shadow), and for two of them a decorative colored
+   ::before top stripe) under their own class name instead of reusing
+   .card — .guidelines-section/.referral-form (pages/teacher/referral-form.php),
+   .content-section, .form-container, .pipeline-stage,
+   .assignment-person-card (sdo assignment modal), and .school-folder
+   (pages/sdo/school-management.php). Same clay treatment, applied here
+   so they don't stay flat while everything around them goes clay. */
+.guidelines-section,
+.referral-form,
+.content-section,
+.form-container,
+.pipeline-stage,
+.assignment-person-card,
+.school-folder {
+    background: var(--clay-white);
+    border: none;
+    border-radius: var(--clay-r-md);
+    box-shadow: var(--clay-out-sm);
+}
+
+.guidelines-section::before,
+.referral-form::before {
+    display: none;
+}
+
+/* pages/teacher/referral-form.php's .referral-form scopes its own
+   .form-field input/select/textarea rule (~line 7062) more specifically
+   than the generic .form-field input clay rule above, so it wins the
+   cascade on specificity regardless of source order — needs its own
+   override to actually pick up the clay treatment. */
+.referral-form .form-field input[type="text"],
+.referral-form .form-field input[type="tel"],
+.referral-form .form-field input[type="date"],
+.referral-form .form-field select,
+.referral-form .form-field textarea {
+    border: none;
+    border-radius: var(--clay-r-md);
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-in);
+}
+
+.referral-form .form-field input[type="text"]:focus,
+.referral-form .form-field input[type="tel"]:focus,
+.referral-form .form-field input[type="date"]:focus,
+.referral-form .form-field select:focus,
+.referral-form .form-field textarea:focus {
+    border-color: transparent;
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-in), 0 0 0 3px rgba(29, 90, 168, 0.18);
+}
+
+.referral-form .form-field input[readonly] {
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-in);
+}
+
+.radio-inline {
+    border: none;
+    border-radius: var(--clay-r-pill);
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-out-sm);
+}
+
+.radio-inline:has(input:checked) {
+    background: var(--clay-accent-fill);
+    box-shadow: var(--clay-in);
+}
+
+/* pages/student/schedule.php has its own topbar #userAvatar box (distinct
+   from the sidebar's #sidebarAvatar) sized/rounded via inline style —
+   setUserInfo() in js/utils.js now injects an <img> into it the same way
+   renderSidebarAvatar() does, so it needs to actually fill that box. */
+#userAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+/* ========== MULTI-PERSON REFERRAL (pages/teacher/referral-form.php) ==========
+   Lets a teacher list everyone involved in one incident (e.g. an offender
+   and a victim) — each becomes its own person card, tagged with an optional
+   role, inside the same clay .referral-form panel. */
+.referral-people-section {
+    margin-bottom: 28px;
+}
+
+.referral-people-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.referral-people-heading label {
+    display: block;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+/* Live headcount ("3 people") next to the heading — kept in sync by
+   renumberPersonCards() in referral-form.js. Empty (single person, the
+   normal case) renders nothing, so the heading reads exactly as before. */
+.referral-people-count {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: var(--clay-r-pill);
+    background: var(--clay-accent-fill);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
+.referral-people-hint {
+    margin: 0;
+    font-size: 13px;
+    color: #5a6b80;
+}
+
+/* People already logged for this referral, collapsed to file icons.
+   Default (everything narrower than the 1600px breakpoint below): in-flow,
+   right-aligned within the same centered max-width .referral-container
+   uses, sitting above it — this guarantees it can never overlap the
+   guidelines panel, no matter how narrow the two-column layout gets.
+   Empty (no one collapsed yet) collapses to nothing so it never reserves
+   space it isn't using. */
+.referral-people-chips-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: 0 auto 20px;
+    max-width: 1400px;
+}
+
+.referral-people-chips-bar:empty {
+    display: none;
+}
+
+/* Float it as a fixed sidebar from 1600px up — the original spot. Doing
+   this safely (without it ever sitting on top of .referral-container)
+   needs *reserved* space, not just a wider breakpoint: .referral-container
+   (max-width 1400px, centered in .page-content) doesn't naturally hit that
+   cap until sidebar(250) + page-content padding(72) + 1400 = 1722px, so
+   below that it just fills the available width with no gutter at all for
+   a fixed right-edge panel to sit in without overlapping the card. Instead
+   of pushing the breakpoint out (which silently kills the floating panel
+   on every real screen ≤1920px — a regression, not a fix), reserve the
+   gutter directly: .page-content gets extra right padding whenever it
+   holds this chips bar, which pushes .referral-container's whole centered
+   box left by the same amount, guaranteeing real clearance at every width
+   ≥1600px. Verified via Playwright: zero overlap 1600px–2560px+, panel
+   stays in the same fixed/vertically-centered spot throughout. */
+@media (min-width: 1600px) {
+    .page-content:has(> .referral-people-chips-bar) {
+        padding-right: 210px;
+    }
+    .referral-people-chips-bar {
+        position: fixed;
+        top: 50%;
+        right: 24px;
+        transform: translateY(-50%);
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: flex-end;
+        justify-content: flex-start;
+        max-width: none;
+        margin: 0;
+        z-index: 20;
+        max-height: 80vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 4px;
+        scrollbar-width: thin;
+    }
+}
+
+.referral-add-person-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Holds every person's card — collapsed ones render as small file-icon
+   chips that flow side by side (like files in a folder view), while the
+   one currently being edited takes the full row. */
+#peopleList {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+/* Edit Person modal: reuses the app's standard .modal chrome (already
+   clay-styled, see .modal-content/.modal-header overrides above) so this
+   matches every other dialog in the app rather than inventing a new look.
+   The card markup inside is shared with the inline "add a new person" flow
+   (#peopleList), which still needs its own title/fold/remove-× — but here,
+   the modal already supplies a title bar and a close ×, so that inner
+   chrome is redundant (two stacked headers, two overlapping × buttons) and
+   is hidden/flattened, scoped to .person-edit-modal only. "Remove this
+   person" moves from a cryptic corner × to a labeled button in the modal
+   footer instead. */
+.person-edit-modal .modal-content {
+    max-width: 640px;
+}
+
+.person-edit-modal .modal-body {
+    padding: 24px 28px 4px;
+}
+
+.person-edit-modal .referral-person-card {
+    flex: none;
+}
+
+.person-edit-modal .referral-person-remove {
+    display: none;
+}
+
+.person-edit-modal .referral-person-full {
+    animation: none;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+}
+
+.person-edit-modal .referral-person-title-group,
+.person-edit-modal .referral-person-fold {
+    display: none;
+}
+
+.person-edit-modal .referral-person-header {
+    justify-content: flex-end;
+    margin-bottom: 22px;
+}
+
+.person-edit-modal .form-row-three,
+.person-edit-modal .form-row-two {
+    margin-bottom: 18px;
+}
+
+.person-edit-remove-btn {
+    color: #b3261e;
+    margin-right: auto;
+}
+.person-edit-remove-btn:hover {
+    background: rgba(179, 38, 30, 0.08);
+}
+
+.referral-person-card {
+    position: relative;
+    flex: 1 1 100%;
+}
+
+.referral-person-card.is-collapsed {
+    flex: 0 0 auto;
+}
+
+.referral-person-full {
+    background: var(--clay-light-bg);
+    border-radius: var(--clay-r-md);
+    box-shadow: var(--clay-in);
+    padding: 20px 22px;
+    animation: referralPersonExpandIn 0.25s ease;
+}
+
+.referral-person-card.is-collapsed .referral-person-full {
+    display: none;
+}
+
+@keyframes referralPersonExpandIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.referral-person-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+/* Static — just the "Person" label, not clickable. Kept separate from the
+   fold button so it can never shift the role dropdown / fold control,
+   which stay pinned to the fixed right edge of the header. */
+.referral-person-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
+    min-width: 0;
+}
+
+.referral-person-title {
+    font-weight: 700;
+    color: #0f2a4f;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* Collapse/expand toggle — sits right next to the role dropdown at the
+   fixed right side of the header (not attached to the title), so it never
+   moves around. */
+.referral-person-fold {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--clay-white);
+    color: #5a6b80;
+    box-shadow: var(--clay-out-sm);
+    cursor: pointer;
+    font-size: 12px;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.referral-person-fold:hover {
+    box-shadow: var(--clay-out-sm), 0 8px 16px rgba(11, 31, 58, 0.15);
+    transform: translateY(-1px);
+}
+
+.person-role {
+    padding: 8px 14px;
+    border: none;
+    border-radius: var(--clay-r-pill);
+    background: var(--clay-white);
+    box-shadow: var(--clay-out-sm);
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f2a4f;
+    cursor: pointer;
+}
+
+/* Floats at the card's top-right corner, overlapping the edge — works the
+   same whether the card is showing its full form or its collapsed chip,
+   since it's positioned relative to .referral-person-card itself. */
+.referral-person-remove {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: var(--clay-white);
+    color: #b3261e;
+    box-shadow: var(--clay-out-sm);
+    cursor: pointer;
+    font-size: 12px;
+    z-index: 1;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.referral-person-remove:hover {
+    box-shadow: var(--clay-out-sm), 0 8px 16px rgba(179, 38, 30, 0.25);
+    transform: translateY(-1px);
+}
+
+.referral-person-remove:active {
+    box-shadow: var(--clay-in);
+    transform: translateY(0);
+}
+
+/* Collapsed representation: a small file/document icon labeled with the
+   person's name — click it to reopen the full form. Hidden unless the
+   card is collapsed. */
+.referral-person-chip {
+    display: none;
+}
+
+.referral-person-card.is-collapsed .referral-person-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 68px;
+    padding: 10px 8px 8px;
+    border: none;
+    border-radius: var(--clay-r-sm);
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-out-sm);
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    animation: referralChipPopIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes referralChipPopIn {
+    from { opacity: 0; transform: scale(0.75) translateY(-6px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.referral-person-chip:hover {
+    box-shadow: var(--clay-out);
+    transform: translateY(-2px);
+}
+
+.referral-person-chip i {
+    font-size: 22px;
+    color: #1a4c88;
+}
+
+.referral-person-chip.role-offender i {
+    color: var(--danger);
+}
+
+.referral-person-chip.role-victim i {
+    color: var(--info);
+}
+
+.referral-person-chip-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #0f2a4f;
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.referral-person-card .form-field {
+    position: relative;
+}
+
+.person-search-status {
+    margin-top: 6px;
+    font-size: 12px;
+    min-height: 16px;
+    color: #5a6b80;
+}
+
+.person-suggestion-box {
+    position: relative;
+}
+
+.person-suggestion-list {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--clay-white);
+    border-radius: var(--clay-r-sm);
+    box-shadow: var(--clay-out);
+    max-height: 220px;
+    overflow: auto;
+}
+
+.person-suggestion-list:empty {
+    box-shadow: none;
+}
+
+.suggestion-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(15, 42, 79, 0.06);
+    transition: background 0.15s ease;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.is-highlighted {
+    background: rgba(29, 90, 168, 0.08);
+}
+
+.suggestion-item-name {
+    font-weight: 600;
+    color: #0f2a4f;
+    font-size: 14px;
+}
+
+.suggestion-item-grade {
+    font-size: 12px;
+    color: #5a6b80;
+    margin-top: 2px;
+}
+
+/* Pre-existing ordering bug: this file's "@media (max-width: 480px)"
+   block (collapses .form-row-three/.form-row-two to a single column) sits
+   *before* its "@media (max-width: 768px)" block (sets them to a 2-column
+   grid) in source order. At any viewport ≤480px both queries match, and
+   since they share equal specificity, the later 768px block wins — so
+   phones actually got the 2-column layout the 480px block was trying to
+   prevent, cutting off labels like "Grade & Level" / "Parent/Guardian's
+   Contact Number". Appended here (after everything, including both of
+   those blocks) so it reliably wins without having to reorder — and risk
+   side-effecting — the existing blocks. */
+@media (max-width: 480px) {
+    .form-row-three,
+    .form-row-two {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== Referral detail view clay polish (2026-08-25) =====
+   The referral detail views (pages/{teacher,counselor,coordinator,other-
+   school}/…referral…) lean on plain Bootstrap-style utility class names —
+   .bg-light, .p-3, .rounded, .border-left, .border-secondary — for the
+   read-only Description/Intervention/Behaviors/Family Background text
+   panels. This app never loads Bootstrap's actual stylesheet (only its
+   icon font, see the <link> in <head>), so those classes render with
+   *zero* CSS — plain unstyled text, not merely "unstyled by the clay
+   system". Same story for the plain browser-default <hr> dividers and the
+   flat/bordered .stage-circle progress dots (createStageIndicator() in
+   js/utils.js — shared by all 4 pages, so fixing it here fixes every
+   referral status page's stage tracker at once). None of this was covered
+   by the original clay reskin pass, which grepped shared *component*
+   selectors (.card, .btn-*, .form-field input, etc.), not one-off utility
+   classes only ever used on these detail pages. */
+hr {
+    border: none;
+    border-top: 1px solid rgba(15, 42, 79, 0.08);
+    margin: 24px 0;
+}
+
+h3.text-primary,
+h4.text-primary {
+    padding-bottom: 10px;
+    margin-top: 4px;
+    margin-bottom: 16px;
+    border-bottom: 2px solid rgba(18, 58, 107, 0.12);
+}
+
+.bg-light {
+    background: var(--clay-light-bg);
+    box-shadow: var(--clay-in);
+}
+
+.rounded {
+    border-radius: var(--clay-r-md);
+}
+
+.p-3 {
+    padding: 16px 18px;
+}
+
+.stage-circle {
+    background: var(--clay-white);
+    border: none;
+    box-shadow: var(--clay-out-sm);
+}
+
+.stage.active .stage-circle {
+    background: var(--clay-accent-fill);
+    color: white;
+    box-shadow: var(--clay-out-sm);
+}
+
+.stage.completed .stage-circle {
+    background: linear-gradient(135deg, #1b8f63 0%, #146247 100%);
+    color: white;
+    box-shadow: var(--clay-out-sm);
 }
 

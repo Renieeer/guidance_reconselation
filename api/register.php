@@ -113,47 +113,52 @@ try {
     $hashedPassword = password_hash($plainPassword, PASSWORD_BCRYPT);
 
     // Only require OTP verification when mail is actually configured —
-    // otherwise every new account would be created pending a code that can
-    // never arrive, locking them out of login entirely. See
-    // email-verification.php for the same "safe no-op until configured"
-    // pattern used by appointment notification emails.
+    // otherwise every new registration would be stuck pending a code that
+    // can never arrive. See email-verification.php for the same "safe no-op
+    // until configured" pattern used by appointment notification emails.
     $mailEnabled = is_mail_enabled();
-    $initialEmailVerified = $mailEnabled ? 0 : 1;
 
-    // Insert new account into users_tables
-    $insertQuery = "INSERT INTO users_tables (First_name, Last_name, Password, Type, email, school_attended, email_verified, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
-    $stmt = $conn->prepare($insertQuery);
-    if (!$stmt) {
-        throw new Exception("Prepare failed: " . $conn->error);
-    }
+    if ($mailEnabled) {
+        // Don't persist the account until the OTP proves the email address
+        // is real and reachable — stash the registration instead, and the
+        // users_tables row gets created by verify_email_otp() once the code
+        // checks out.
+        save_pending_registration($conn, $email, $firstName, $lastName, $hashedPassword, $role, $school);
 
-    $stmt->bind_param("ssssssi", $firstName, $lastName, $hashedPassword, $role, $email, $school, $initialEmailVerified);
+        $fullName = trim($firstName . ' ' . $lastName);
+        $otpResult = generate_and_send_otp($conn, $email, $fullName);
+        echo json_encode([
+            'success' => true,
+            'needsVerification' => true,
+            'email' => $email,
+            'message' => $otpResult['emailSent']
+                ? 'Please check your email for a 6-digit verification code to finish creating your account.'
+                : 'We could not send a verification email right now. Please contact your school administrator.'
+        ]);
+    } else {
+        $verified = 1;
+        $insertQuery = "INSERT INTO users_tables (First_name, Last_name, Password, Type, email, school_attended, email_verified, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        $stmt = $conn->prepare($insertQuery);
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
 
-    if ($stmt->execute()) {
-        if ($mailEnabled) {
-            $fullName = trim($firstName . ' ' . $lastName);
-            $otpResult = generate_and_send_otp($conn, $email, $fullName);
-            echo json_encode([
-                'success' => true,
-                'needsVerification' => true,
-                'email' => $email,
-                'message' => $otpResult['emailSent']
-                    ? 'Account created. Please check your email for a 6-digit verification code.'
-                    : 'Account created, but the verification email could not be sent. Please contact your school administrator.'
-            ]);
-        } else {
+        $stmt->bind_param("ssssssi", $firstName, $lastName, $hashedPassword, $role, $email, $school, $verified);
+
+        if ($stmt->execute()) {
             echo json_encode([
                 'success' => true,
                 'needsVerification' => false,
                 'message' => 'Account created successfully'
             ]);
+        } else {
+            throw new Exception("Execute failed: " . $stmt->error);
         }
-    } else {
-        throw new Exception("Execute failed: " . $stmt->error);
+
+        $stmt->close();
     }
 
-    $stmt->close();
     $conn->close();
 
 } catch (Exception $e) {

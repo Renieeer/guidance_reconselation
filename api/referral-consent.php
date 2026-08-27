@@ -17,7 +17,7 @@ function send_json(int $statusCode, array $payload): void {
     exit;
 }
 
-// Stage 3 (Parent Consent) uploads — the signed consent form for
+// Stage 3 (Parent Call-up/Consent) uploads — the signed consent form for
 // assessment & interventions, filed against the referral it belongs to.
 // Files live outside webroot execution reach via uploads/consent-forms/.htaccess
 // (blocks script execution + directory listing) and are re-named on disk so

@@ -70,7 +70,7 @@
     </div>
 
     <!-- Edit Account Modal -->
-    <div id="editAccountModal" class="modal" style="display: none;">
+    <div id="editAccountModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h2>Edit Account</h2>

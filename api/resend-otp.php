@@ -46,15 +46,27 @@ try {
     $account = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    if (!$account) {
-        send_json(404, ['success' => false, 'message' => 'No account found with that email.']);
+    if ($account) {
+        if ((int)$account['email_verified'] === 1) {
+            send_json(200, ['success' => true, 'alreadyVerified' => true, 'message' => 'This email is already verified. You can log in now.']);
+        }
+        $fullName = trim($account['First_name'] . ' ' . $account['Last_name']);
+    } else {
+        // No account yet — the account is only created once the OTP is
+        // confirmed (see save_pending_registration() in email-verification.php),
+        // so this is expected while a registration is still in progress.
+        $pendingStmt = $conn->prepare("SELECT first_name, last_name FROM pending_registrations WHERE email = ?");
+        $pendingStmt->bind_param('s', $email);
+        $pendingStmt->execute();
+        $pending = $pendingStmt->get_result()->fetch_assoc();
+        $pendingStmt->close();
+
+        if (!$pending) {
+            send_json(404, ['success' => false, 'message' => 'No account found with that email.']);
+        }
+        $fullName = trim($pending['first_name'] . ' ' . $pending['last_name']);
     }
 
-    if ((int)$account['email_verified'] === 1) {
-        send_json(200, ['success' => true, 'alreadyVerified' => true, 'message' => 'This email is already verified. You can log in now.']);
-    }
-
-    $fullName = trim($account['First_name'] . ' ' . $account['Last_name']);
     $result = generate_and_send_otp($conn, $email, $fullName);
 
     send_json($result['success'] ? 200 : 429, $result);

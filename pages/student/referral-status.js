@@ -1,28 +1,9 @@
 // Student Referral Status
 document.addEventListener('DOMContentLoaded', function() {
-    checkAuth();
-    loadUserInfo();
+    initPage();
     loadReferrals();
     setupEventListeners();
 });
-
-function loadUserInfo() {
-    // Try multiple storage keys for compatibility
-    let user = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-    if (!user.name && !user.first_name) {
-        user = JSON.parse(sessionStorage.getItem('user') || '{}');
-    }
-    
-    if (user.name || user.first_name) {
-        const fullName = user.first_name ? `${user.first_name} ${user.last_name}` : user.name;
-        document.getElementById('userName').textContent = fullName || 'Student';        if (document.getElementById('userRole')) {
-            const role = user.role || user.user_type || 'Student';
-            document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ');
-        }
-        const initials = ((user.first_name?.[0] || user.name?.[0]) || '') + ((user.last_name?.[0] || '') || '');
-        document.getElementById('userAvatar').textContent = initials.substring(0, 2);
-    }
-}
 
 function loadReferrals() {
     // Try multiple storage keys for compatibility
@@ -121,14 +102,14 @@ function displayProgressOverview(referrals) {
     const progressList = document.getElementById('referralProgressList');
     
     const stageLabels = {
-        1: 'Admission of Case',
-        2: 'Initial Screening',
-        3: 'Parent Consent',
-        4: 'Assessment Proper',
-        5: 'Parent Conference',
-        6: 'External Referral'
+        1: 'Interview/Background',
+        2: 'Initial Risk Assessment',
+        3: 'Parent Call-up/Consent',
+        4: 'Counseling',
+        5: 'Intervention',
+        6: 'Student Follow-up'
     };
-    
+
     const stageIcons = {
         1: '📋',
         2: '👀',
@@ -239,12 +220,12 @@ function viewReferral(referralId) {
                 // Update phase display
                 const phase = parseInt(ref.stage) || 1;
                 const phaseLabels = {
-                    1: 'Phase 1: Admission of Case',
-                    2: 'Phase 2: Initial Screening',
-                    3: 'Phase 3: Parent Consent',
-                    4: 'Phase 4: Assessment Proper',
-                    5: 'Phase 5: Parent Conference',
-                    6: 'Phase 6: External Referral'
+                    1: 'Phase 1: Interview/Background',
+                    2: 'Phase 2: Initial Risk Assessment',
+                    3: 'Phase 3: Parent Call-up/Consent',
+                    4: 'Phase 4: Counseling',
+                    5: 'Phase 5: Intervention',
+                    6: 'Phase 6: Student Follow-up'
                 };
                 document.getElementById('refPhase').value = phaseLabels[phase] || 'Phase ' + phase;
                 

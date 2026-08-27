@@ -139,13 +139,13 @@
 
                     <div class="sh-folder-content">
                         <div class="sh-folder-content-header">
-                            <div class="sh-folder-content-title" id="shActiveFolderTitle">Referrals</div>
+                            <div>
+                                <div class="sh-timeline-eyebrow">Activity Log &middot; Guidance Portal</div>
+                                <div class="sh-folder-content-title" id="shActiveFolderTitle">Recent History</div>
+                            </div>
                         </div>
                         <div class="sh-folder-body" id="shBody-personal"></div>
-                        <div class="sh-folder-body" id="shBody-referrals"></div>
-                        <div class="sh-folder-body" id="shBody-counseling"></div>
-                        <div class="sh-folder-body" id="shBody-follow_ups"></div>
-                        <div class="sh-folder-body" id="shBody-appointments"></div>
+                        <div class="sh-folder-body sh-timeline" id="shBody-timeline"></div>
                     </div>
                 </div>
 

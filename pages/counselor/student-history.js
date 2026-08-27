@@ -6,9 +6,9 @@ let shAllStudents = [];
 let shAllRecords = [];   // normalized flat list across all 4 record types
 let shCurrentStudent = null;
 let shStudentsLoaded = false;
-// Which folder's records are shown in the right-hand content panel — only
-// one at a time, picked via the left-hand nav list.
-let shActiveFolder = 'referrals';
+// 'personal' shows the static profile panel; anything else shows the merged
+// activity timeline (optionally narrowed to one record type via shTypeFilter).
+let shActiveFolder = 'timeline';
 
 function esc(value) {
     const div = document.createElement('div');
@@ -104,8 +104,7 @@ function shInit() {
     document.getElementById('shFolderGrid').addEventListener('click', (e) => {
         const navTab = e.target.closest('.sh-folder-tab[data-folder]');
         if (navTab) {
-            shActiveFolder = navTab.getAttribute('data-folder');
-            shApplyActiveFolder();
+            shSelectFolder(navTab.getAttribute('data-folder'));
             return;
         }
         const fileRow = e.target.closest('.sh-file-row');
@@ -115,12 +114,11 @@ function shInit() {
     });
 
     // The compact header chips mirror the folder nav below — clicking
-    // either one switches the same active folder and keeps both in sync.
+    // either one applies the same selection and keeps both in sync.
     document.getElementById('shStatChips').addEventListener('click', (e) => {
         const chip = e.target.closest('.sh-stat-chip[data-folder]');
         if (!chip) return;
-        shActiveFolder = chip.getAttribute('data-folder');
-        shApplyActiveFolder();
+        shSelectFolder(chip.getAttribute('data-folder'));
         document.getElementById('shFolderGrid').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
 
@@ -129,6 +127,22 @@ function shInit() {
     if (presetStudentId) {
         shLoadStudent(presetStudentId);
     }
+}
+
+// "Personal Information" swaps to the static profile panel. Any record-type
+// tab instead narrows the merged timeline to that type via the existing
+// Record Type filter — clicking an already-selected one toggles it back off
+// so the timeline returns to showing every record type together.
+function shSelectFolder(folder) {
+    if (folder === 'personal') {
+        shActiveFolder = 'personal';
+        shApplyActiveFolder();
+        return;
+    }
+    shActiveFolder = 'timeline';
+    const typeSelect = document.getElementById('shTypeFilter');
+    typeSelect.value = typeSelect.value === folder ? '' : folder;
+    shRenderFolders();
 }
 
 function shShowBrowseList() {
@@ -222,11 +236,10 @@ function shLoadStudent(studentId) {
             }
             shCurrentStudent = result.student;
             const counts = result.counts || {};
-            // Default to the first folder (in display order) that actually
-            // has records, so a student with e.g. zero referrals but real
-            // counseling history doesn't land on an empty panel.
-            const folderOrder = ['referrals', 'counseling', 'follow_ups', 'appointments'];
-            shActiveFolder = folderOrder.find(t => (counts[t] || 0) > 0) || 'referrals';
+            // Land on the merged timeline with every record type showing
+            // together, rather than pre-picking one type to isolate.
+            shActiveFolder = 'timeline';
+            document.getElementById('shTypeFilter').value = '';
             shBuildNormalizedRecords(result.data || {});
             shRenderStudentHeader(result.student, counts);
             shRenderPersonalInfo(result.student);
@@ -380,24 +393,28 @@ function shPopulateStatusFilter() {
 }
 
 function shApplyActiveFolder() {
+    const typeFilter = document.getElementById('shTypeFilter').value;
+    const highlighted = shActiveFolder === 'personal' ? 'personal' : (typeFilter || null);
+
+    document.querySelectorAll('.sh-folder-tab[data-folder]').forEach(tab => {
+        tab.classList.toggle('active', tab.getAttribute('data-folder') === highlighted);
+    });
+    document.querySelectorAll('.sh-stat-chip[data-folder]').forEach(chip => {
+        chip.classList.toggle('active', chip.getAttribute('data-folder') === highlighted);
+    });
+    document.getElementById('shBody-personal').classList.toggle('active', shActiveFolder === 'personal');
+    document.getElementById('shBody-timeline').classList.toggle('active', shActiveFolder !== 'personal');
+
     const titles = {
-        personal: 'Personal Information',
         referrals: 'Referrals',
         counseling: 'Counseling Sessions',
         follow_ups: 'Counseling Appointment Span',
         appointments: 'Online Appointments'
     };
-    document.querySelectorAll('.sh-folder-tab[data-folder]').forEach(tab => {
-        tab.classList.toggle('active', tab.getAttribute('data-folder') === shActiveFolder);
-    });
-    document.querySelectorAll('.sh-stat-chip[data-folder]').forEach(chip => {
-        chip.classList.toggle('active', chip.getAttribute('data-folder') === shActiveFolder);
-    });
-    document.querySelectorAll('.sh-folder-body').forEach(body => {
-        body.classList.toggle('active', body.id === `shBody-${shActiveFolder}`);
-    });
     const titleEl = document.getElementById('shActiveFolderTitle');
-    if (titleEl) titleEl.textContent = titles[shActiveFolder] || '';
+    if (titleEl) {
+        titleEl.textContent = shActiveFolder === 'personal' ? 'Personal Information' : (titles[typeFilter] || 'Recent History');
+    }
 }
 
 function shGetFilters() {
@@ -442,30 +459,19 @@ function shRenderFolders() {
 
     document.getElementById('shResultCount').innerHTML = `Showing <strong>${totalMatches}</strong> of <strong>${shAllRecords.length}</strong> records`;
 
-    // When a specific record type is chosen, hide the other nav tabs and
-    // switch the content panel to it — the fastest path to the records
-    // being looked for. Otherwise leave the active tab alone so changing
-    // other filters (search text, dates) doesn't jump the panel around.
-    const visibleTypes = ['referrals', 'counseling', 'follow_ups', 'appointments'].filter(t => !filters.type || filters.type === t);
-    document.querySelectorAll('.sh-folder-tab[data-folder]:not([data-folder="personal"])').forEach(tab => {
-        tab.classList.toggle('sh-folder-hidden', !visibleTypes.includes(tab.getAttribute('data-folder')));
-    });
-    if (filters.type) {
-        shActiveFolder = filters.type;
-    } else if (shActiveFolder !== 'personal' && !visibleTypes.includes(shActiveFolder)) {
-        shActiveFolder = visibleTypes[0];
-    }
-
     document.getElementById('shCount-referrals').textContent = grouped.referrals.length;
     document.getElementById('shCount-counseling').textContent = grouped.counseling.length;
     document.getElementById('shCount-follow_ups').textContent = grouped.follow_ups.length;
     document.getElementById('shCount-appointments').textContent = grouped.appointments.length;
 
+    // Any filter interaction is about the record timeline, not the static
+    // Personal Information panel, so it always takes over as the active view.
     const hasActiveFilters = shHasActiveFilters(filters);
-    shRenderReferralFolder(grouped.referrals, hasActiveFilters);
-    shRenderCounselingFolder(grouped.counseling, hasActiveFilters);
-    shRenderFollowUpFolder(grouped.follow_ups, hasActiveFilters);
-    shRenderAppointmentFolder(grouped.appointments, hasActiveFilters);
+    if (shActiveFolder !== 'personal' || hasActiveFilters) {
+        shActiveFolder = 'timeline';
+    }
+
+    shRenderTimeline(grouped, hasActiveFilters);
 
     shApplyActiveFolder();
 }
@@ -477,14 +483,55 @@ function shEmptyFolderHtml(noun, hasActiveFilters) {
     return `<div class="sh-folder-empty">${esc(message)}</div>`;
 }
 
-function shRenderReferralFolder(records, hasActiveFilters) {
-    const body = document.getElementById('shBody-referrals');
-    if (records.length === 0) {
-        body.innerHTML = shEmptyFolderHtml('referrals', hasActiveFilters);
-        return;
-    }
-    body.innerHTML = records.map(({ raw: r }) => {
-        const screeningsHtml = (r.screenings || []).length === 0 ? '' : `
+function shParseDate(value) {
+    if (!value) return null;
+    const d = new Date(typeof value === 'string' ? value.replace(' ', 'T') : value);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function shTimelineDotColor(status) {
+    const cls = shStatusBadgeClass(status);
+    if (cls === 'badge-completed') return 'var(--ok)';
+    if (cls === 'badge-in-progress') return 'var(--info)';
+    if (cls === 'badge-rejected') return 'var(--danger)';
+    return 'var(--warn)';
+}
+
+function shTimelineGroupLabel(dateObj) {
+    const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((startOf(new Date()) - startOf(dateObj)) / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+}
+
+const SH_RESOLVED_APPOINTMENT_STATUSES = ['approved', 'declined', 'rejected', 'completed', 'done', 'cancelled', 'canceled'];
+
+/* Builds one timeline entry — reusing the exact same .sh-file/.sh-file-row/
+   .sh-file-detail structure the old per-folder cards used, so the existing
+   click-to-expand delegation in shInit() keeps working unchanged. Each type
+   gets a "who did what" head line so the feed reads as a log of counselor/
+   coordinator (or the student's own) actions, matching how the referring
+   record actually gets attributed in the data. */
+function shBuildTimelineEntry(record) {
+    let actorLine = '';
+    let dateVal = record.date;
+    let detailBody = '';
+
+    if (record.type === 'referrals') {
+        const r = record.raw;
+        actorLine = `<strong>${esc(r.teacher_name || 'A teacher')}</strong> submitted a referral — <strong>${esc(r.referral_reason || 'Referral')}</strong>${r.referral_code ? ` <span style="color:var(--text-light);font-weight:400;">(${esc(r.referral_code)})</span>` : ''}`;
+        dateVal = r.date_submitted;
+        detailBody = `
+            <div class="sh-detail-row"><div class="sh-detail-label">Description</div><div class="sh-detail-value">${esc(r.description) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Interventions Tried</div><div class="sh-detail-value">${esc(r.intervention_attempts) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Observed Behaviors</div><div class="sh-detail-value">${esc(r.observed_behaviors) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Parent / Guardian</div><div class="sh-detail-value">${esc(r.parent_guardian) || '—'} ${r.parent_contact ? `(${esc(r.parent_contact)})` : ''}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Referred By</div><div class="sh-detail-value">${esc(r.teacher_name) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Grade / Section</div><div class="sh-detail-value">${esc(r.grade) || '—'} ${r.section ? '/ ' + esc(r.section) : ''}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Stage</div><div class="sh-detail-value">${esc(r.stage)}/6</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Last Updated</div><div class="sh-detail-value">${esc(shFormatDateTime(r.updated_at))}</div></div>
+            ${(r.screenings || []).length === 0 ? '' : `
             <div class="sh-subheading">Screening Notes (${r.screenings.length})</div>
             <div class="sh-mini-list">
                 ${r.screenings.map(s => `
@@ -495,130 +542,228 @@ function shRenderReferralFolder(records, hasActiveFilters) {
                         <div style="color:var(--text-light);margin-top:2px;">by ${esc(s.counselor_name || 'N/A')}</div>
                     </div>
                 `).join('')}
-            </div>`;
-
-        return `
-        <div class="sh-file">
-            <div class="sh-file-row">
-                <i class="fas fa-file-alt sh-file-icon"></i>
-                <div class="sh-file-main">
-                    <div class="sh-file-title">${esc(r.referral_reason || 'Referral')} ${r.referral_code ? `<span style="color:var(--text-light);font-weight:400;">(${esc(r.referral_code)})</span>` : ''}</div>
-                    <div class="sh-file-meta">
-                        <span><i class="bi bi-calendar3"></i> ${esc(shFormatDate(r.date_submitted))}</span>
-                        <span>Stage ${esc(r.stage)}/6</span>
-                        <span class="badge ${shStatusBadgeClass(r.status)}">${esc(r.status)}</span>
-                        <span style="text-transform:capitalize;">${esc(r.urgency)} urgency</span>
-                    </div>
-                </div>
-                <i class="fas fa-chevron-right sh-file-chevron"></i>
-            </div>
-            <div class="sh-file-detail">
-                <div class="sh-detail-row"><div class="sh-detail-label">Description</div><div class="sh-detail-value">${esc(r.description) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Interventions Tried</div><div class="sh-detail-value">${esc(r.intervention_attempts) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Observed Behaviors</div><div class="sh-detail-value">${esc(r.observed_behaviors) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Parent / Guardian</div><div class="sh-detail-value">${esc(r.parent_guardian) || '—'} ${r.parent_contact ? `(${esc(r.parent_contact)})` : ''}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Referred By</div><div class="sh-detail-value">${esc(r.teacher_name) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Grade / Section</div><div class="sh-detail-value">${esc(r.grade) || '—'} ${r.section ? '/ ' + esc(r.section) : ''}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Last Updated</div><div class="sh-detail-value">${esc(shFormatDateTime(r.updated_at))}</div></div>
-                ${screeningsHtml}
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function shRenderCounselingFolder(records, hasActiveFilters) {
-    const body = document.getElementById('shBody-counseling');
-    if (records.length === 0) {
-        body.innerHTML = shEmptyFolderHtml('counseling sessions', hasActiveFilters);
-        return;
-    }
-    body.innerHTML = records.map(({ raw: c }) => {
+            </div>`}
+        `;
+    } else if (record.type === 'counseling') {
+        const c = record.raw;
         const detail = c.student_detail || {};
         const hasDetail = detail && (detail.scenario_id || detail.action || detail.reason);
-        return `
-        <div class="sh-file">
+        const resolved = ['completed', 'resolved', 'done', 'closed'].includes(String(c.status || '').toLowerCase());
+        actorLine = `<strong>${esc(c.counselor_name || 'A counselor')}</strong> ${resolved ? 'resolved counseling case' : 'logged a counseling session'} — <strong>${esc(c.case_title || c.section_name || 'Counseling Case')}</strong>`;
+        dateVal = c.created_at || c.case_date;
+        detailBody = `
+            <div class="sh-detail-row"><div class="sh-detail-label">Summary</div><div class="sh-detail-value">${esc(c.case_summary) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Objective</div><div class="sh-detail-value">${esc(c.case_objective) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">First Action Taken</div><div class="sh-detail-value">${esc(c.first_action) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Counselor</div><div class="sh-detail-value">${esc(c.counselor_name) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Student's Role</div><div class="sh-detail-value">${esc(c.student_role) || '—'}</div></div>
+            ${hasDetail ? `
+            <div class="sh-detail-row"><div class="sh-detail-label">Scenario</div><div class="sh-detail-value">${esc(detail.scenario_id) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Action</div><div class="sh-detail-value">${esc(detail.action) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Reason</div><div class="sh-detail-value">${esc(detail.reason) || '—'}</div></div>
+            ` : ''}
+        `;
+    } else if (record.type === 'follow_ups') {
+        const f = record.raw;
+        actorLine = `<strong>${esc(f.counselor_name || 'A counselor')}</strong> added a follow-up note — <strong>${esc(f.category_name || f.case_title || 'Follow-up Session')}</strong>`;
+        dateVal = f.created_at || f.follow_up_date;
+        detailBody = `
+            <div class="sh-detail-row"><div class="sh-detail-label">Note</div><div class="sh-detail-value">${esc(f.note) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Linked Case</div><div class="sh-detail-value">${esc(f.case_title || f.case_uid) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Follow-Up Date</div><div class="sh-detail-value">${esc(shFormatDate(f.follow_up_date))}</div></div>
+        `;
+    } else if (record.type === 'appointments') {
+        const a = record.raw;
+        const status = String(a.status || '').toLowerCase();
+        const resolved = SH_RESOLVED_APPOINTMENT_STATUSES.includes(status);
+        if (resolved) {
+            actorLine = `<strong>Counselor</strong> ${esc(status)} an appointment request — <strong>${esc(a.reason || 'Appointment')}</strong>`;
+            dateVal = a.updated_at || a.created_at;
+        } else {
+            const studentName = (shCurrentStudent && shCurrentStudent.name) || 'Student';
+            actorLine = `<strong>${esc(studentName)}</strong> requested an appointment — <strong>${esc(a.reason || 'Appointment')}</strong>`;
+            dateVal = a.created_at;
+        }
+        detailBody = `
+            <div class="sh-detail-row"><div class="sh-detail-label">Preferred Date</div><div class="sh-detail-value">${esc(shFormatDate(a.preferred_date))} ${esc(a.preferred_time || '')}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Student Notes</div><div class="sh-detail-value">${esc(a.notes) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Counselor Notes</div><div class="sh-detail-value">${esc(a.counselor_notes) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Requested</div><div class="sh-detail-value">${esc(shFormatDateTime(a.created_at))}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Last Updated</div><div class="sh-detail-value">${esc(shFormatDateTime(a.updated_at))}</div></div>
+        `;
+    } else {
+        return null;
+    }
+
+    const dateObj = shParseDate(dateVal) || new Date(0);
+    const dot = shTimelineDotColor(record.status);
+    const meta = `${esc(shFormatDateTime(dateVal))} &middot; <span class="badge ${shStatusBadgeClass(record.status)}">${esc(record.status)}</span>`;
+
+    const html = `
+        <div class="sh-file sh-timeline-item">
             <div class="sh-file-row">
-                <i class="fas fa-comments sh-file-icon"></i>
+                <span class="sh-timeline-dot" style="background:${dot}"></span>
                 <div class="sh-file-main">
-                    <div class="sh-file-title">${esc(c.case_title || c.section_name || 'Counseling Case')}</div>
-                    <div class="sh-file-meta">
-                        <span><i class="bi bi-calendar3"></i> ${esc(shFormatDate(c.case_date))}</span>
-                        ${c.category_name ? `<span>${esc(c.category_name)}</span>` : ''}
-                        <span class="badge ${shStatusBadgeClass(c.status)}">${esc(c.status)}</span>
-                    </div>
+                    <div class="sh-timeline-text">${actorLine}</div>
+                    <div class="sh-timeline-meta">${meta}</div>
                 </div>
                 <i class="fas fa-chevron-right sh-file-chevron"></i>
             </div>
-            <div class="sh-file-detail">
-                <div class="sh-detail-row"><div class="sh-detail-label">Summary</div><div class="sh-detail-value">${esc(c.case_summary) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Objective</div><div class="sh-detail-value">${esc(c.case_objective) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">First Action Taken</div><div class="sh-detail-value">${esc(c.first_action) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Counselor</div><div class="sh-detail-value">${esc(c.counselor_name) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Student's Role</div><div class="sh-detail-value">${esc(c.student_role) || '—'}</div></div>
-                ${hasDetail ? `
-                <div class="sh-detail-row"><div class="sh-detail-label">Scenario</div><div class="sh-detail-value">${esc(detail.scenario_id) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Action</div><div class="sh-detail-value">${esc(detail.action) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Reason</div><div class="sh-detail-value">${esc(detail.reason) || '—'}</div></div>
-                ` : ''}
-                <div class="sh-detail-row"><div class="sh-detail-label">Recorded</div><div class="sh-detail-value">${esc(shFormatDateTime(c.created_at))}</div></div>
+            <div class="sh-file-detail">${detailBody}</div>
+        </div>`;
+
+    return { dateObj, html };
+}
+
+const SH_RESOLVED_CASE_STATUSES = ['completed', 'resolved', 'done', 'closed'];
+
+/* A counseling case with linked follow-ups becomes one "case thread" — Day 1
+   is the case itself, Day 2+ are its follow-ups in date order — instead of
+   showing up as separate flat entries. This is the "one timeline of every
+   session" view: every day of one case reads as a single continuous story. */
+function shBuildCaseThreadEntry(c, followUpsRaw) {
+    const sortedFollowUps = followUpsRaw.slice().sort((a, b) => {
+        const da = shParseDate(a.follow_up_date || a.created_at) || new Date(0);
+        const db = shParseDate(b.follow_up_date || b.created_at) || new Date(0);
+        return da - db;
+    });
+
+    const resolved = SH_RESOLVED_CASE_STATUSES.includes(String(c.status || '').toLowerCase());
+    const day1Note = [
+        c.case_summary,
+        c.case_objective ? `Objective: ${c.case_objective}` : '',
+        c.first_action ? `First action: ${c.first_action}` : ''
+    ].filter(Boolean).join(' ') || 'Counseling session recorded.';
+
+    const days = [{ rawDate: c.created_at || c.case_date, label: 'Initial session', note: day1Note }]
+        .concat(sortedFollowUps.map(f => ({
+            rawDate: f.follow_up_date || f.created_at,
+            label: 'Follow-up',
+            note: f.note || 'Follow-up session recorded.'
+        })));
+
+    if (resolved && days.length > 1) {
+        days[days.length - 1].label = 'Closing';
+    }
+
+    const counselorName = esc(c.counselor_name || 'A counselor');
+    const daysHtml = days.map((day, i) => {
+        const dayNum = i + 1;
+        const isLast = i === days.length - 1;
+        const pill = isLast && resolved ? 'REVIEW' : (dayNum === 1 ? 'OPENED' : 'CONTINUED');
+        return `
+        <div class="sh-case-day">
+            <div class="sh-case-day-row">
+                <span class="sh-case-day-badge">${dayNum}</span>
+                <div class="sh-case-day-bar">
+                    <span>Day ${dayNum} — ${esc(day.label)}</span>
+                    <span class="sh-case-day-pill">${pill}</span>
+                </div>
+            </div>
+            <div class="sh-case-note-row">
+                <span class="sh-case-note-icon"><i class="fas fa-pen"></i></span>
+                <div class="sh-case-note-body">
+                    <div class="sh-case-note-head"><strong>${counselorName}</strong> added a note &middot; ${esc(shFormatDateTime(day.rawDate))}</div>
+                    <div class="sh-case-note-text">${esc(day.note)}</div>
+                </div>
             </div>
         </div>`;
     }).join('');
+
+    const lastDay = days[days.length - 1];
+    const doneHtml = resolved ? `
+        <div class="sh-case-done-row">
+            <span class="sh-case-done-icon"><i class="fas fa-check"></i></span>
+            <div class="sh-case-note-body">
+                <div class="sh-case-note-head"><strong>${counselorName}</strong> marked the case as done &middot; ${esc(shFormatDateTime(c.updated_at || lastDay.rawDate))}</div>
+                <div class="sh-case-done-summary">${days.length} day${days.length === 1 ? '' : 's'} &middot; ${days.length} note${days.length === 1 ? '' : 's'}</div>
+            </div>
+        </div>` : '';
+
+    const html = `
+        <div class="sh-case-thread">
+            <div class="sh-case-thread-header">
+                <div>
+                    <div class="sh-case-thread-title">${c.case_uid ? `Case #${esc(c.case_uid)} &middot; ` : ''}${esc(c.case_title || c.section_name || 'Counseling Case')}</div>
+                    <div class="sh-case-thread-sub">${esc(c.category_name || 'Counseling')} &middot; Handled by ${counselorName}</div>
+                </div>
+                <span class="badge ${shStatusBadgeClass(c.status)} sh-case-thread-status">${esc(c.status)}</span>
+            </div>
+            <div class="sh-case-thread-days">${daysHtml}</div>
+            ${doneHtml}
+        </div>`;
+
+    const dateObj = shParseDate(resolved ? (c.updated_at || lastDay.rawDate) : lastDay.rawDate) || new Date(0);
+    return { dateObj, html };
 }
 
-function shRenderFollowUpFolder(records, hasActiveFilters) {
-    const body = document.getElementById('shBody-follow_ups');
-    if (records.length === 0) {
-        body.innerHTML = shEmptyFolderHtml('follow-up appointments', hasActiveFilters);
+function shRenderTimeline(grouped, hasActiveFilters) {
+    const body = document.getElementById('shBody-timeline');
+    const totalCount = grouped.referrals.length + grouped.counseling.length + grouped.follow_ups.length + grouped.appointments.length;
+    if (totalCount === 0) {
+        body.innerHTML = shEmptyFolderHtml('records', hasActiveFilters);
         return;
     }
-    body.innerHTML = records.map(({ raw: f }) => `
-        <div class="sh-file">
-            <div class="sh-file-row">
-                <i class="fas fa-calendar-check sh-file-icon"></i>
-                <div class="sh-file-main">
-                    <div class="sh-file-title">${esc(f.category_name || f.case_title || 'Follow-up Session')}</div>
-                    <div class="sh-file-meta">
-                        <span><i class="bi bi-calendar3"></i> ${esc(shFormatDate(f.follow_up_date))}</span>
-                        <span>${esc(f.counselor_name || 'N/A')}</span>
-                    </div>
-                </div>
-                <i class="fas fa-chevron-right sh-file-chevron"></i>
-            </div>
-            <div class="sh-file-detail">
-                <div class="sh-detail-row"><div class="sh-detail-label">Note</div><div class="sh-detail-value">${esc(f.note) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Linked Case</div><div class="sh-detail-value">${esc(f.case_title || f.case_uid) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Recorded</div><div class="sh-detail-value">${esc(shFormatDateTime(f.created_at))}</div></div>
-            </div>
-        </div>`).join('');
-}
 
-function shRenderAppointmentFolder(records, hasActiveFilters) {
-    const body = document.getElementById('shBody-appointments');
-    if (records.length === 0) {
-        body.innerHTML = shEmptyFolderHtml('online appointments', hasActiveFilters);
-        return;
-    }
-    body.innerHTML = records.map(({ raw: a }) => `
-        <div class="sh-file">
-            <div class="sh-file-row">
-                <i class="fas fa-calendar-day sh-file-icon"></i>
-                <div class="sh-file-main">
-                    <div class="sh-file-title">${esc(a.reason || 'Appointment Request')}</div>
-                    <div class="sh-file-meta">
-                        <span><i class="bi bi-calendar3"></i> ${esc(shFormatDate(a.preferred_date))} ${esc(a.preferred_time || '')}</span>
-                        <span class="badge ${shStatusBadgeClass(a.status)}">${esc(a.status)}</span>
-                    </div>
-                </div>
-                <i class="fas fa-chevron-right sh-file-chevron"></i>
-            </div>
-            <div class="sh-file-detail">
-                <div class="sh-detail-row"><div class="sh-detail-label">Student Notes</div><div class="sh-detail-value">${esc(a.notes) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Counselor Notes</div><div class="sh-detail-value">${esc(a.counselor_notes) || '—'}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Requested</div><div class="sh-detail-value">${esc(shFormatDateTime(a.created_at))}</div></div>
-                <div class="sh-detail-row"><div class="sh-detail-label">Last Updated</div><div class="sh-detail-value">${esc(shFormatDateTime(a.updated_at))}</div></div>
-            </div>
-        </div>`).join('');
+    // Bucket follow-ups by case so each counseling case can absorb its own
+    // follow-ups into one thread. A follow-up whose case isn't in the
+    // current (filtered) counseling results falls back to a standalone
+    // entry — e.g. filtering to "Counseling Follow-Ups" only.
+    const followUpsByCase = {};
+    grouped.follow_ups.forEach(f => {
+        const key = f.raw.case_uid || '';
+        if (!key) return;
+        (followUpsByCase[key] = followUpsByCase[key] || []).push(f.raw);
+    });
+
+    const threadedCaseUids = new Set();
+    const entries = [];
+
+    grouped.counseling.forEach(c => {
+        const caseUid = c.raw.case_uid || '';
+        const linkedFollowUps = caseUid ? followUpsByCase[caseUid] : null;
+        if (linkedFollowUps && linkedFollowUps.length > 0) {
+            threadedCaseUids.add(caseUid);
+            entries.push(shBuildCaseThreadEntry(c.raw, linkedFollowUps));
+        } else {
+            const entry = shBuildTimelineEntry(c);
+            if (entry) entries.push(entry);
+        }
+    });
+
+    grouped.follow_ups.forEach(f => {
+        const caseUid = f.raw.case_uid || '';
+        if (caseUid && threadedCaseUids.has(caseUid)) return;
+        const entry = shBuildTimelineEntry(f);
+        if (entry) entries.push(entry);
+    });
+
+    grouped.referrals.forEach(r => {
+        const entry = shBuildTimelineEntry(r);
+        if (entry) entries.push(entry);
+    });
+
+    grouped.appointments.forEach(a => {
+        const entry = shBuildTimelineEntry(a);
+        if (entry) entries.push(entry);
+    });
+
+    entries.sort((a, b) => b.dateObj - a.dateObj);
+
+    let html = '';
+    let currentGroup = null;
+    entries.forEach(entry => {
+        const label = shTimelineGroupLabel(entry.dateObj);
+        if (label !== currentGroup) {
+            if (currentGroup !== null) html += '</div>';
+            html += `<div class="sh-timeline-group"><div class="sh-timeline-group-label">${esc(label)}</div>`;
+            currentGroup = label;
+        }
+        html += entry.html;
+    });
+    html += '</div>';
+
+    body.innerHTML = html;
 }
 
 document.addEventListener('DOMContentLoaded', shInit);

@@ -167,11 +167,11 @@ function openEditModal(id, firstName, lastName, email, type) {
     document.getElementById('editPassword').value = '';
     document.getElementById('editPasswordConfirm').value = '';
     
-    document.getElementById('editAccountModal').style.display = 'flex';
+    document.getElementById('editAccountModal').classList.add('show');
 }
 
 function closeEditModal() {
-    document.getElementById('editAccountModal').style.display = 'none';
+    document.getElementById('editAccountModal').classList.remove('show');
     currentEditingAccountId = null;
     document.getElementById('editAccountForm').reset();
 }

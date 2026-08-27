@@ -75,7 +75,10 @@ function loadReferralDetail(referral) {
 
     // Populate details - use snake_case keys from database
     document.getElementById('detailRefId').textContent = referral.referral_code || referral.id;
-    document.getElementById('detailStudentName').textContent = referral.student_name;
+    const detailStudentNameEl = document.getElementById('detailStudentName');
+    detailStudentNameEl.textContent = referral.student_name;
+    const detailRoleBadge = referralRoleBadge(referral.referral_role);
+    if (detailRoleBadge) detailStudentNameEl.insertAdjacentHTML('beforeend', ' ' + detailRoleBadge);
     document.getElementById('detailStudentId').textContent = referral.student_id || 'N/A';
     document.getElementById('detailGrade').textContent = referral.grade || 'N/A';
     document.getElementById('detailAge').textContent = referral.age || 'N/A';
@@ -86,9 +89,7 @@ function loadReferralDetail(referral) {
     document.getElementById('detailStatus').innerHTML = createBadge(getStatusLabel(referral.stage));
     document.getElementById('detailStage').textContent = `${referral.stage}/6`;
     document.getElementById('detailReason').textContent = referral.referral_reason;
-    document.getElementById('detailDescription').textContent = referral.description || 'Not provided';
     document.getElementById('detailIntervention').textContent = referral.intervention_attempts || 'Not provided';
-    document.getElementById('detailBehaviors').textContent = referral.observed_behaviors || 'Not provided';
     document.getElementById('detailParent').textContent = referral.parent_guardian || 'Not provided';
     document.getElementById('detailContactNum').textContent = referral.parent_contact || 'Not provided';
     document.getElementById('detailContactEmail').textContent = referral.parent_email || 'Not provided';
@@ -213,7 +214,7 @@ function loadReferralsList() {
     tbody.innerHTML = allReferrals.map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name}</td>
+            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
             <td>${referral.referral_reason}</td>
             <td>${referral.teacher_name || 'Unknown'}</td>
@@ -266,7 +267,7 @@ function applyFilters() {
     tbody.innerHTML = filtered.map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name}</td>
+            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
             <td>${referral.referral_reason}</td>
             <td>${referral.teacher_name || 'Unknown'}</td>

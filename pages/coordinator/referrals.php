@@ -59,17 +59,10 @@
                         <!-- Referral Reason & Description -->
                         <h3 class="text-primary">Referral Information</h3>
                         <p><strong>Reason for Referral:</strong> <span id="detailReason"></span></p>
-                        <p><strong>Description:</strong></p>
-                        <p id="detailDescription" class="bg-light p-3 rounded border-left border-secondary"></p>
 
                         <div class="mt-3">
                             <p><strong>Intervention Attempts:</strong></p>
                             <p id="detailIntervention" class="bg-light p-3 rounded"></p>
-                        </div>
-
-                        <div class="mt-3">
-                            <p><strong>Observed Behaviors:</strong></p>
-                            <p id="detailBehaviors" class="bg-light p-3 rounded"></p>
                         </div>
 
                         <hr style="margin: 20px 0;">
@@ -176,12 +169,12 @@
                 <div class="form-group">
                     <label for="newStage">Select New Stage</label>
                     <select id="newStage">
-                        <option value="1">Stage 1: Admission of Case</option>
-                        <option value="2">Stage 2: Initial Screening</option>
-                        <option value="3">Stage 3: Parent Consent</option>
-                        <option value="4">Stage 4: Assessment Proper</option>
-                        <option value="5">Stage 5: Parent Conference</option>
-                        <option value="6">Stage 6: External Referral</option>
+                        <option value="1">Stage 1: Interview/Background</option>
+                        <option value="2">Stage 2: Initial Risk Assessment</option>
+                        <option value="3">Stage 3: Parent Call-up/Consent</option>
+                        <option value="4">Stage 4: Counseling</option>
+                        <option value="5">Stage 5: Intervention</option>
+                        <option value="6">Stage 6: Student Follow-up</option>
                     </select>
                 </div>
                 <div class="form-group">

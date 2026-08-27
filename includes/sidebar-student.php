@@ -7,6 +7,9 @@
 <!-- Sidebar -->
 <div class="sidebar">
     <div class="sidebar-header">
+        <a href="profile.php" class="sidebar-avatar-link" title="My Profile">
+            <span class="sidebar-avatar" id="sidebarAvatar">S</span>
+        </a>
         <h2>Student</h2>
         <p>Guidance System</p>
     </div>
@@ -17,7 +20,8 @@
         <li><a href="feedback.php"><i class="bi bi-chat-dots"></i> Feedback</a></li>
         <li><a href="appointment-history.php"><i class="bi bi-clock-history"></i> History</a></li>
         <li><a href="schedule.php"><i class="bi bi-calendar3"></i> Schedule</a></li>
-        
+        <li><a href="profile.php"><i class="bi bi-person-badge"></i> My Profile</a></li>
+
         <li><a href="#" id="logoutBtn"><i class="bi bi-box-arrow-left"></i> Logout</a></li>
     </ul>
 </div>

@@ -299,6 +299,7 @@
         </div>
     </div>
 
+    <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -307,6 +308,8 @@
         });
 
         function setupUserInfo() {
+            renderSidebarAvatar();
+
             const user = JSON.parse(localStorage.getItem('currentUser') || '{}') || JSON.parse(sessionStorage.getItem('user') || '{}');
             const userName = user.name || sessionStorage.getItem('userName');
             const userRole = user.role || sessionStorage.getItem('userRole');
@@ -315,7 +318,7 @@
             const userAvatar = document.getElementById('userAvatar');
 
             if (userName) {
-                userNameElement.textContent = userName;
+                if (userNameElement) userNameElement.textContent = userName;
                 if (userRoleElement) {
                     userRoleElement.textContent = userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1).replace('-', ' ') : 'Counselor';
                 }

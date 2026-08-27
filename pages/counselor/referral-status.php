@@ -59,17 +59,24 @@
                         <!-- Referral Reason & Description -->
                         <h3 class="text-primary">Referral Information</h3>
                         <p><strong>Reason for Referral:</strong> <span id="detReferralReason"></span></p>
-                        <p><strong>Description:</strong></p>
-                        <p id="detDescription" class="bg-light p-3 rounded"></p>
 
                         <div class="mt-3">
                             <p><strong>Intervention Attempts:</strong></p>
                             <p id="detIntervention" class="bg-light p-3 rounded"></p>
                         </div>
 
-                        <div class="mt-3">
-                            <p><strong>Observed Behaviors:</strong></p>
-                            <p id="detBehaviors" class="bg-light p-3 rounded"></p>
+                        <hr>
+
+                        <!-- Referring Teacher -->
+                        <h3 class="text-primary">Referred By</h3>
+                        <div class="form-row">
+                            <div>
+                                <p><strong>Teacher:</strong> <span id="detTeacherName"></span></p>
+                                <p><strong>School:</strong> <span id="detTeacherSchool"></span></p>
+                            </div>
+                            <div>
+                                <p><strong>Contact Number:</strong> <span id="detTeacherContact"></span></p>
+                            </div>
                         </div>
 
                         <hr>
@@ -90,9 +97,9 @@
 
                         <hr>
 
-                        <!-- Initial Screening (Stage 2) -->
+                        <!-- Initial Risk Assessment (Stage 2) -->
                         <div id="screeningFormSection" style="display: none;">
-                            <h3 class="text-primary">Initial Screening (Stage 2)</h3>
+                            <h3 class="text-primary">Initial Risk Assessment (Stage 2)</h3>
                             <p class="text-muted" style="margin-top:-6px;">Document the interview, observations, and risk level assessment for this student.</p>
 
                             <div id="screeningHistoryList" style="margin-bottom: 16px;"></div>
@@ -123,9 +130,9 @@
                             </form>
                         </div>
 
-                        <!-- Parent Consent (Stage 3) -->
+                        <!-- Parent Call-up/Consent (Stage 3) -->
                         <div id="consentSection" style="display: none;">
-                            <h3 class="text-primary">Parent Consent (Stage 3)</h3>
+                            <h3 class="text-primary">Parent Call-up/Consent (Stage 3)</h3>
                             <p class="text-muted" style="margin-top:-6px;">Upload the signed parent consent form for assessment and interventions.</p>
 
                             <div id="consentFileList" style="margin-bottom: 16px;"></div>
@@ -303,9 +310,9 @@
                                 <label style="display: block; margin-bottom: 5px; font-weight: 500;">Stage</label>
                                 <select id="stageFilter" style="padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
                                     <option value="">All Stages</option>
-                                    <option value="3">Parent Consent (3)</option>
-                                    <option value="4">Assessment Proper (4)</option>
-                                    <option value="5">Parent Conference (5)</option>
+                                    <option value="3">Parent Call-up/Consent (3)</option>
+                                    <option value="4">Counseling (4)</option>
+                                    <option value="5">Intervention (5)</option>
                                 </select>
                             </div>
                             <button class="btn btn-primary" onclick="applyStageFilter()">Filter</button>

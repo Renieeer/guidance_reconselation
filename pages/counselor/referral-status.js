@@ -83,7 +83,7 @@ function loadDetailView(referral) {
 
     // Load details - use snake_case keys from database
     document.getElementById('detRefId').textContent = referral.referral_code || referral.id;
-    document.getElementById('detStudentName').textContent = referral.student_name;
+    document.getElementById('detStudentName').innerHTML = `${escapeHtml(referral.student_name)} ${referralRoleBadge(referral.referral_role)}`;
     document.getElementById('detStudentGradeSection').textContent = (referral.grade || 'N/A') + ' - ' + (referral.section || 'N/A');
     document.getElementById('detReason').textContent = referral.referral_reason;
     document.getElementById('detDateSubmitted').textContent = formatDate(referral.date_submitted);
@@ -93,9 +93,12 @@ function loadDetailView(referral) {
 
     // Referral Information
     document.getElementById('detReferralReason').textContent = referral.referral_reason || 'Not provided';
-    document.getElementById('detDescription').textContent = referral.description || 'Not provided';
     document.getElementById('detIntervention').textContent = referral.intervention_attempts || 'Not provided';
-    document.getElementById('detBehaviors').textContent = referral.observed_behaviors || 'Not provided';
+
+    // Referred By (the teacher, not the student's family)
+    document.getElementById('detTeacherName').textContent = referral.teacher_name || 'Not provided';
+    document.getElementById('detTeacherSchool').textContent = referral.school_attended || 'Not provided';
+    document.getElementById('detTeacherContact').textContent = referral.teacher_contact || 'Not provided';
 
     // Family/Contact Information
     document.getElementById('detParent').textContent = referral.parent_guardian || 'Not provided';
@@ -107,7 +110,7 @@ function loadDetailView(referral) {
     const stageContainer = document.getElementById('detailStagesContainer');
     stageContainer.innerHTML = createStageIndicator(referral.stage);
 
-    // Show the Initial Screening interview form for stage 2
+    // Show the Initial Risk Assessment interview form for stage 2
     const screeningSection = document.getElementById('screeningFormSection');
     if (referral.stage === 2) {
         screeningSection.style.display = 'block';
@@ -117,7 +120,7 @@ function loadDetailView(referral) {
         screeningSection.style.display = 'none';
     }
 
-    // Show the Parent Consent file upload for stage 3
+    // Show the Parent Call-up/Consent file upload for stage 3
     const consentSection = document.getElementById('consentSection');
     if (referral.stage === 3) {
         consentSection.style.display = 'block';
@@ -485,7 +488,7 @@ function loadListView() {
     tbody.innerHTML = allReferrals.map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name}</td>
+            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
             <td>${referral.referral_reason}</td>
             <td>${formatDate(referral.date_submitted)}</td>
@@ -527,7 +530,7 @@ function applyStageFilter() {
     tbody.innerHTML = filtered.map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name}</td>
+            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
             <td>${referral.referral_reason}</td>
             <td>${formatDate(referral.date_submitted)}</td>
