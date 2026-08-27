@@ -58,6 +58,10 @@ function appointment_email_content(string $event, array $appointment): array
             $subject = 'Appointment Change Proposed';
             $intro = 'Your guidance counselor has proposed a change to your requested appointment.';
             break;
+        case 'reminder':
+            $subject = 'Reminder: Your Appointment Is Tomorrow';
+            $intro = 'This is a friendly reminder that your counselling appointment is scheduled for tomorrow.';
+            break;
         default:
             $subject = 'Appointment Status Updated';
             $intro = 'There has been an update to your counselling appointment.';
