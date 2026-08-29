@@ -215,8 +215,9 @@ function setupEventListeners() {
         submitNewCase();
     });
 
-    // Export button
-    document.getElementById('exportBtn').addEventListener('click', exportReport);
+    // Export buttons
+    document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
+    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
 
     // Filter button
     document.getElementById('filterBtn').addEventListener('click', () => {
@@ -268,29 +269,136 @@ function submitNewCase() {
     showNotification('Note saved. To log a real case with a category, use Case Management.');
 }
 
-function exportReport() {
-    const header = ['Category of Cases', ...visibleGrades.map(g => `Grade ${g}`), 'Totals'];
-    let csv = header.join(',') + '\n';
+// Two-row grade header (Grade N spanning Male/Female/Total) shared by both
+// exporters, mirroring the on-page table instead of a single row like
+// "Grade 7 - M" — those truncate to identical-looking "Grade 7 -" labels
+// once Excel/PDF column width is narrower than the full text.
+function buildGradeHeaderRows() {
+    const pdfHead = [
+        [
+            { content: 'Category of Cases', rowSpan: 2, styles: { valign: 'middle' } },
+            ...visibleGrades.map(g => ({ content: `Grade ${g}`, colSpan: 3, styles: { halign: 'center' } })),
+            { content: 'Overall Total', rowSpan: 2, styles: { valign: 'middle' } }
+        ],
+        visibleGrades.flatMap(() => ['Male', 'Female', 'Total'])
+    ];
+    const excelRow1 = ['Category of Cases', ...visibleGrades.flatMap(g => [`Grade ${g}`, '', '']), 'Overall Total'];
+    const excelRow2 = ['', ...visibleGrades.flatMap(() => ['Male', 'Female', 'Total']), ''];
+    return { pdfHead, excelRow1, excelRow2 };
+}
+
+// Shared table shape used by both the PDF and Excel exporters
+function buildExportTable() {
+    const body = [];
+    const sectionHeaderRows = [];
+    const subtotalRows = [];
 
     displayRows.forEach(row => {
         if (row.type === 'header') {
+            sectionHeaderRows.push(body.length);
+            body.push([row.label, ...visibleGrades.flatMap(() => ['', '', '']), '']);
             return;
         }
+
         const totals = rowTotals(row);
-        const gradeTotals = visibleGrades.map(g => (totals[g]?.m || 0) + (totals[g]?.f || 0));
-        const total = gradeTotals.reduce((sum, n) => sum + n, 0);
-        csv += `"${row.label}",${gradeTotals.join(',')},${total}\n`;
+        const rowCells = [row.label];
+        let overallTotal = 0;
+        visibleGrades.forEach(g => {
+            const cell = totals[g] || { m: 0, f: 0 };
+            const total = cell.m + cell.f;
+            overallTotal += total;
+            rowCells.push(cell.m, cell.f, total);
+        });
+        rowCells.push(overallTotal);
+
+        if (row.type === 'subtotal') {
+            subtotalRows.push(body.length);
+        }
+        body.push(rowCells);
     });
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `coordinator-cases-${(currentSchool || 'school').replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    return { body, sectionHeaderRows, subtotalRows };
+}
+
+function exportFileBaseName() {
+    return `coordinator-cases-${(currentSchool || 'school').replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`;
+}
+
+// Export report as an Excel workbook (.xlsx)
+function exportToExcel() {
+    if (typeof XLSX === 'undefined') {
+        showNotification('Excel export library failed to load.');
+        return;
+    }
+
+    const { body } = buildExportTable();
+    const { excelRow1, excelRow2 } = buildGradeHeaderRows();
+    const titleRows = [
+        [`Coordinator Report Cases - ${currentSchool || 'School'}`],
+        [`Generated: ${new Date().toLocaleDateString()}`],
+        []
+    ];
+    const worksheet = XLSX.utils.aoa_to_sheet([...titleRows, excelRow1, excelRow2, ...body]);
+
+    const headerRowIndex = titleRows.length;
+    const lastCol = 1 + visibleGrades.length * 3;
+    const merges = [
+        { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } },
+        { s: { r: headerRowIndex, c: lastCol }, e: { r: headerRowIndex + 1, c: lastCol } }
+    ];
+    visibleGrades.forEach((_, i) => {
+        const startCol = 1 + i * 3;
+        merges.push({ s: { r: headerRowIndex, c: startCol }, e: { r: headerRowIndex, c: startCol + 2 } });
+    });
+    worksheet['!merges'] = merges;
+    worksheet['!cols'] = [{ wch: 34 }, ...visibleGrades.flatMap(() => [{ wch: 8 }, { wch: 8 }, { wch: 8 }]), { wch: 14 }];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
+    XLSX.writeFile(workbook, `${exportFileBaseName()}.xlsx`);
+
+    showNotification('Excel report exported successfully!');
+}
+
+// Export report as a PDF document
+function exportToPDF() {
+    if (typeof window.jspdf === 'undefined') {
+        showNotification('PDF export library failed to load.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const { body, sectionHeaderRows, subtotalRows } = buildExportTable();
+    const { pdfHead } = buildGradeHeaderRows();
+
+    doc.setFontSize(14);
+    doc.text(`Coordinator Report Cases - ${currentSchool || 'School'}`, 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+
+    doc.autoTable({
+        head: pdfHead,
+        body,
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
+        styles: { fontSize: 7, cellPadding: 2 },
+        didParseCell: (data) => {
+            if (data.section !== 'body') return;
+            if (sectionHeaderRows.includes(data.row.index)) {
+                data.cell.styles.fillColor = [226, 232, 240];
+                data.cell.styles.fontStyle = 'bold';
+            } else if (subtotalRows.includes(data.row.index)) {
+                data.cell.styles.fillColor = [241, 245, 249];
+                data.cell.styles.fontStyle = 'bold';
+            }
+        }
+    });
+
+    doc.save(`${exportFileBaseName()}.pdf`);
+    showNotification('PDF report exported successfully!');
 }
 
 function showNotification(message) {

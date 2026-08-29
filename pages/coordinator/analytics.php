@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="main-wrapper">
@@ -32,6 +35,6 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="analytics.js"></script>
+    <script src="analytics.js?v=<?php echo filemtime(__DIR__ . '/analytics.js'); ?>"></script>
 </body>
 </html>

@@ -54,7 +54,10 @@
                             <input type="date" id="rangeEnd" class="form-control">
                             <button type="button" class="btn btn-primary btn-sm" id="applyRangeBtn">Apply</button>
                         </div>
-                        <button class="btn btn-primary" id="exportBtn"><i class="bi bi-download"></i> Export Report</button>
+                        <div class="export-btn-group">
+                            <button class="btn btn-danger" id="exportPdfBtn"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+                            <button class="btn btn-success" id="exportExcelBtn"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+                        </div>
                     </div>
                 </div>
 
@@ -124,6 +127,9 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="district-report-cases.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="district-report-cases.js?v=<?php echo filemtime(__DIR__ . '/district-report-cases.js'); ?>"></script>
 </body>
 </html>

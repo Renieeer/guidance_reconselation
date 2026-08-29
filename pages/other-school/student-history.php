@@ -7,6 +7,23 @@
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/student-history.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Personal Information is also reachable via the "Personal Info"
+           stat chip in the student header card (#shStatChips) — confirmed
+           working independently of this nav (Playwright: clicking it
+           activates #shBody-personal on its own). So, same as the
+           student's own "My History" page, this folder-card picker is
+           hidden rather than a needed access path — see
+           project_student_history_timeline memory for the fuller history
+           of this page's redesign. Hidden, not removed from the DOM:
+           student-history.js still updates #shCount-* on every render. */
+        #shFolderNav {
+            display: none;
+        }
+        #shFolderGrid.sh-folder-layout {
+            grid-template-columns: 1fr;
+        }
+    </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body>

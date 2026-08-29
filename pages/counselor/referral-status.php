@@ -58,25 +58,23 @@
 
                         <!-- Referral Reason & Description -->
                         <h3 class="text-primary">Referral Information</h3>
-                        <p><strong>Reason for Referral:</strong> <span id="detReferralReason"></span></p>
-
-                        <div class="mt-3">
-                            <p><strong>Intervention Attempts:</strong></p>
-                            <p id="detIntervention" class="bg-light p-3 rounded"></p>
+                        <div class="form-row">
+                            <div>
+                                <p><strong>Reason for Referral:</strong> <span id="detReferralReason"></span></p>
+                            </div>
+                            <div>
+                                <p><strong>Initial Actions Taken:</strong> <span id="detIntervention"></span></p>
+                            </div>
                         </div>
 
                         <hr>
 
                         <!-- Referring Teacher -->
                         <h3 class="text-primary">Referred By</h3>
-                        <div class="form-row">
-                            <div>
-                                <p><strong>Teacher:</strong> <span id="detTeacherName"></span></p>
-                                <p><strong>School:</strong> <span id="detTeacherSchool"></span></p>
-                            </div>
-                            <div>
-                                <p><strong>Contact Number:</strong> <span id="detTeacherContact"></span></p>
-                            </div>
+                        <div class="form-row-three">
+                            <p><strong>Teacher:</strong> <span id="detTeacherName"></span></p>
+                            <p><strong>School:</strong> <span id="detTeacherSchool"></span></p>
+                            <p><strong>Contact Number:</strong> <span id="detTeacherContact"></span></p>
                         </div>
 
                         <hr>
@@ -96,6 +94,23 @@
                         </div>
 
                         <hr>
+
+                        <!-- Interview/Background (Stage 1) -->
+                        <div id="interviewFormSection" style="display: none;">
+                            <h3 class="text-primary">Interview / Background Check-up (Stage 1)</h3>
+                            <p class="text-muted" style="margin-top:-6px;">Document the initial interview and background check-up for this student.</p>
+
+                            <div id="interviewHistoryList" style="margin-bottom: 16px;"></div>
+
+                            <form id="interviewForm">
+                                <div class="form-group">
+                                    <label for="interviewNotes">Interview / Background Notes</label>
+                                    <textarea id="interviewNotes" name="interviewNotes" placeholder="What was discussed during the interview, and any background check-up findings..."></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-success">Save Interview Notes</button>
+                            </form>
+                        </div>
 
                         <!-- Initial Risk Assessment (Stage 2) -->
                         <div id="screeningFormSection" style="display: none;">

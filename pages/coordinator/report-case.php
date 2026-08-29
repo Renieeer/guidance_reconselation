@@ -26,7 +26,8 @@
                 <!-- Action Buttons -->
                 <div class="card mb-5">
                     <div style="display: flex; gap: 16px; align-items: center;">
-                        <button class="btn btn-primary" id="exportBtn"><i class="bi bi-download"></i> Export Report</button>
+                        <button class="btn btn-danger" id="exportPdfBtn"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+                        <button class="btn btn-success" id="exportExcelBtn"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
                         <button class="btn btn-secondary" id="filterBtn" style="background: #e2e8f0; color: #0f172a;"><i class="bi bi-funnel"></i> Filter</button>
                     </div>
                 </div>
@@ -157,6 +158,9 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="report-case.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="report-case.js?v=<?php echo filemtime(__DIR__ . '/report-case.js'); ?>"></script>
 </body>
 </html>

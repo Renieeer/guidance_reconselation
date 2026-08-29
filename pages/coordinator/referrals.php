@@ -58,11 +58,13 @@
 
                         <!-- Referral Reason & Description -->
                         <h3 class="text-primary">Referral Information</h3>
-                        <p><strong>Reason for Referral:</strong> <span id="detailReason"></span></p>
-
-                        <div class="mt-3">
-                            <p><strong>Intervention Attempts:</strong></p>
-                            <p id="detailIntervention" class="bg-light p-3 rounded"></p>
+                        <div class="form-row">
+                            <div>
+                                <p><strong>Reason for Referral:</strong> <span id="detailReason"></span></p>
+                            </div>
+                            <div>
+                                <p><strong>Initial Actions Taken:</strong> <span id="detailIntervention"></span></p>
+                            </div>
                         </div>
 
                         <hr style="margin: 20px 0;">

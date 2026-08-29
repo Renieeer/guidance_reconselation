@@ -114,6 +114,16 @@ function loadDetailView(referral) {
     const stageContainer = document.getElementById('detailStagesContainer');
     stageContainer.innerHTML = createStageIndicator(referral.stage);
 
+    // Show the Interview/Background form for stage 1
+    const interviewSection = document.getElementById('interviewFormSection');
+    if (referral.stage === 1) {
+        interviewSection.style.display = 'block';
+        document.getElementById('interviewForm').onsubmit = submitInterviewNotes;
+        loadInterviewHistory(referral.id);
+    } else {
+        interviewSection.style.display = 'none';
+    }
+
     // Show the Initial Risk Assessment interview form for stage 2
     const screeningSection = document.getElementById('screeningFormSection');
     if (referral.stage === 2) {
@@ -146,10 +156,10 @@ function loadDetailView(referral) {
         acknowledgementSection.style.display = 'none';
     }
 
-    // Stages 1, 4, 5 don't have a dedicated documentation form yet —
-    // say so explicitly instead of leaving a blank gap that reads as broken.
+    // Stages 4, 5 don't have a dedicated documentation form yet — say so
+    // explicitly instead of leaving a blank gap that reads as broken.
     document.getElementById('noStageDocSection').style.display =
-        (referral.stage === 2 || referral.stage === 3 || referral.stage === 6) ? 'none' : 'block';
+        [1, 2, 3, 6].includes(referral.stage) ? 'none' : 'block';
 
     // Load case actions
     loadCaseActions();
@@ -263,6 +273,80 @@ function loadScreeningHistory(referralId) {
         .catch(error => {
             container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
         });
+}
+
+// Same api/referral-screening.php table as the Stage 2 screening notes
+// above, just filtered to stage=1 so this list never shows Stage 2's risk
+// assessment entries mixed in (see the stage column added there).
+function loadInterviewHistory(referralId) {
+    const container = document.getElementById('interviewHistoryList');
+    if (!container) return;
+    container.innerHTML = '<p class="text-muted">Loading previous interview notes...</p>';
+
+    fetch(`../../api/referral-screening.php?referral_id=${referralId}&stage=1`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load interview notes');
+            const rows = result.data || [];
+            if (rows.length === 0) {
+                container.innerHTML = '<p class="text-muted">No interview notes recorded yet.</p>';
+                return;
+            }
+            container.innerHTML = rows.map(row => `
+                <div style="background:#f9fafb; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <strong>${escapeHtml(row.counselor_name || 'Counselor')}</strong>
+                        <small class="text-muted">${formatDate(row.created_at)}</small>
+                    </div>
+                    ${row.interview_notes ? `<div>${escapeHtml(row.interview_notes)}</div>` : ''}
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
+        });
+}
+
+function submitInterviewNotes(e) {
+    e.preventDefault();
+
+    const interviewNotes = document.getElementById('interviewNotes').value.trim();
+    if (!interviewNotes) {
+        showAlert('Enter interview / background notes before saving.', 'error');
+        return;
+    }
+
+    const user = getCurrentUser();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    fetch('../../api/referral-screening.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || '',
+            interview_notes: interviewNotes,
+            stage: 1
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) throw new Error(result.message || 'Failed to save interview notes');
+        showAlert('Interview notes saved.', 'success');
+        document.getElementById('interviewForm').reset();
+        loadInterviewHistory(currentReferral.id);
+    })
+    .catch(error => {
+        showAlert(error.message || 'Failed to save interview notes.', 'error');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
 }
 
 function submitScreeningNotes(e) {

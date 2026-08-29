@@ -8,6 +8,24 @@
     <link rel="stylesheet" href="../../css/student-history.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        /* Folder-card picker was pure duplication of the Record Type
+           dropdown already in the filter bar above it (the counselor/
+           other-school twins of this page later got the same treatment —
+           see project_student_history_timeline memory). Hidden rather than
+           removed from the DOM — student-history.js still updates
+           #shCount-* on every render regardless of visibility.
+           grid-template-columns (not display — JS sets that inline via
+           style.display='grid', which would win over a display override
+           here) is collapsed to one column so the content panel takes the
+           full width instead of leaving an empty 300px gap on the left. */
+        #shFolderNav {
+            display: none;
+        }
+        #shFolderGrid.sh-folder-layout {
+            grid-template-columns: 1fr;
+        }
+    </style>
 </head>
 <body>
     <div class="main-wrapper">

@@ -61,30 +61,65 @@ function getReferralApiRole() {
     return REFERRAL_API_ROLE[user && user.role] || 'counselor';
 }
 
-function downloadCSV(name, rows) {
-    const csv = rows.map(r => r.map(c => { const s = String(c ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\r\n');
-    const bom = String.fromCharCode(0xFEFF);
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
+// Generic tabular PDF export (title + head/body table) shared by the 7.1,
+// 7.2, and 7.3 reports. 7.5's exportChildSummaryPDF()/exportChildSummaryExcel()
+// build their own docs since they mix a text summary block with a table.
+function downloadPDF(filename, title, head, body) {
+    if (typeof window.jspdf === 'undefined') { showAlert('PDF export library failed to load.', 'error'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.setTextColor(20);
+    doc.text(title, 14, 15);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+    doc.autoTable({
+        head: [head],
+        body,
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fillColor: [18, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+        styles: { fontSize: 8, cellPadding: 3 }
+    });
+    doc.save(filename);
+}
+
+// Generic tabular Excel export, mirroring downloadPDF's signature so each
+// report can hand both exporters the same title/head/body.
+function downloadExcel(filename, title, head, body) {
+    if (typeof XLSX === 'undefined') { showAlert('Excel export library failed to load.', 'error'); return; }
+    const worksheet = XLSX.utils.aoa_to_sheet([
+        [title],
+        [`Generated: ${new Date().toLocaleDateString()}`],
+        [],
+        head,
+        ...body
+    ]);
+    worksheet['!cols'] = head.map(h => ({ wch: Math.max(12, String(h).length + 2) }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
+    XLSX.writeFile(workbook, filename);
 }
 
 function mkChart(canvas, config) { const c = new Chart(canvas.getContext('2d'), config); charts.push(c); return c; }
 const legendRight = { plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 12, font: { size: 12 } } } } };
 const noLegend = { plugins: { legend: { display: false } } };
 
-function panelHeader(key, subtitle, onExport) {
+function panelHeader(key, subtitle, onExportPdf, onExportExcel) {
     const m = meta(key);
     const h = el(`<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:22px;">
         <div>
             <h2 class="card-title" style="margin-bottom:6px;">${esc(m.name)} <span class="text-muted" style="font-weight:400; font-size:13px;">Report ${m.code}</span></h2>
             <p class="text-muted" style="margin:0; max-width:64ch;">${esc(subtitle)}</p>
         </div>
-        <button type="button" class="btn btn-primary btn-sm"><i class="bi bi-download"></i> Export CSV</button>
+        <div style="display:flex; gap:10px;">
+            <button type="button" class="btn btn-danger btn-sm" data-export="pdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+            <button type="button" class="btn btn-success btn-sm" data-export="excel"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+        </div>
     </div>`);
-    $('.btn-primary', h).addEventListener('click', onExport);
+    h.querySelector('[data-export="pdf"]').addEventListener('click', onExportPdf);
+    h.querySelector('[data-export="excel"]').addEventListener('click', onExportExcel);
     return h;
 }
 const statCards = cards => `<div class="dashboard-grid" style="margin-bottom:24px;">${cards.map(c => `
@@ -99,13 +134,13 @@ function renderAppointments(key) {
     const isOnline = key === 'online';
     const rows = appointments.filter(a => a.booking_type === key);
     const frag = document.createDocumentFragment();
+    const exportTitle = `${meta(key).name} — Report ${meta(key).code}`;
+    const exportHeader = ['Date', 'Time', 'Student', 'Reason', 'Status'];
+    const exportBody = () => rows.map(r => [r.preferred_date, r.preferred_time, r.student_name, r.reason, r.status]);
     frag.append(panelHeader(key,
         isOnline ? 'Appointments students booked themselves through the online scheduling system.' : 'Appointments scheduled directly by staff for a student (e.g. a walk-in, or "Appoint Students" on a case).',
-        () => {
-            const header = ['Date', 'Time', 'Student', 'Reason', 'Status'];
-            const body = rows.map(r => [r.preferred_date, r.preferred_time, r.student_name, r.reason, r.status]);
-            downloadCSV(`gms_${key}_appointments.csv`, [header, ...body]);
-        }));
+        () => downloadPDF(`gms_${key}_appointments.pdf`, exportTitle, exportHeader, exportBody()),
+        () => downloadExcel(`gms_${key}_appointments.xlsx`, exportTitle, exportHeader, exportBody())));
 
     if (rows.length === 0) {
         frag.append(el(emptyNote(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`)));
@@ -148,14 +183,17 @@ function renderReferrals() {
     const reasons = Object.entries(agg).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
     const total = referrals.length;
 
+    const referralsExportTitle = 'Referral Distribution — Report 7.3';
+    const referralsExportHeader = ['Reason', 'Count', '% of total'];
+    const referralsExportBody = () => {
+        const body = reasons.map(r => [r.reason, r.count, total ? ((r.count / total) * 100).toFixed(1) + '%' : '0%']);
+        body.push(['TOTAL', total, '100%']);
+        return body;
+    };
     frag.append(panelHeader('referrals',
         'Every referral reason on record for your school — the full breakdown, not just the top few.',
-        () => {
-            const header = ['Reason', 'Count', '% of total'];
-            const body = reasons.map(r => [r.reason, r.count, total ? ((r.count / total) * 100).toFixed(1) + '%' : '0%']);
-            body.push(['TOTAL', total, '100%']);
-            downloadCSV('gms_referral_distribution.csv', [header, ...body]);
-        }));
+        () => downloadPDF('gms_referral_distribution.pdf', referralsExportTitle, referralsExportHeader, referralsExportBody()),
+        () => downloadExcel('gms_referral_distribution.xlsx', referralsExportTitle, referralsExportHeader, referralsExportBody())));
 
     if (total === 0) {
         frag.append(el(emptyNote('No referrals recorded for your school yet.')));
@@ -187,7 +225,7 @@ function renderReferrals() {
 /* ---- 7.5 child summary case ---- */
 function renderChild() {
     const frag = document.createDocumentFragment();
-    frag.append(panelHeader('child', 'The complete guidance record for one student — profile, case history, and follow-ups.', exportChildSummary));
+    frag.append(panelHeader('child', 'The complete guidance record for one student — profile, case history, and follow-ups.', exportChildSummaryPDF, exportChildSummaryExcel));
 
     if (studentsList.length === 0) {
         frag.append(el(emptyNote('No students on file for your school yet.')));
@@ -291,22 +329,69 @@ async function loadStudentDetail(studentId) {
     }
 }
 
-function exportChildSummary() {
+function exportChildSummaryPDF() {
     const cached = state.student ? studentDetailCache[state.student] : null;
     if (!cached) { showAlert('Select a student first.', 'error'); return; }
+    if (typeof window.jspdf === 'undefined') { showAlert('PDF export library failed to load.', 'error'); return; }
+
+    const { jsPDF } = window.jspdf;
     const s = cached.student;
     const cases = cached.data.counseling || [];
-    const rows = [
-        ['CHILD SUMMARY CASE — ' + s.name],
-        ['LRN', s.lrn || ''],
-        ['Grade & Section', gradeLabel(s.grade) + ' · ' + (s.section || '')],
+    const referralCount = (cached.data.referrals || []).length;
+
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.setTextColor(20);
+    doc.text(`Child Summary Case — ${s.name}`, 14, 15);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text('Report 7.5', 14, 21);
+
+    doc.setFontSize(10);
+    doc.setTextColor(30);
+    const summaryLines = [
+        `LRN: ${s.lrn || 'N/A'}`,
+        `Grade & Section: ${gradeLabel(s.grade)} · ${s.section || 'N/A'}`,
+        `Sessions: ${cases.length}    Referrals: ${referralCount}`
+    ];
+    summaryLines.forEach((line, i) => doc.text(line, 14, 30 + i * 6));
+
+    doc.autoTable({
+        head: [['Case ID', 'Date', 'Category', 'Counselor', 'Status']],
+        body: cases.map(c => [c.case_uid, c.case_date, c.category_name || c.case_title || '', c.counselor_name || '', c.status]),
+        startY: 30 + summaryLines.length * 6 + 4,
+        theme: 'grid',
+        headStyles: { fillColor: [18, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+        styles: { fontSize: 8, cellPadding: 3 }
+    });
+
+    doc.save(`gms_child_summary_${s.student_id}.pdf`);
+}
+
+function exportChildSummaryExcel() {
+    const cached = state.student ? studentDetailCache[state.student] : null;
+    if (!cached) { showAlert('Select a student first.', 'error'); return; }
+    if (typeof XLSX === 'undefined') { showAlert('Excel export library failed to load.', 'error'); return; }
+
+    const s = cached.student;
+    const cases = cached.data.counseling || [];
+    const referralCount = (cached.data.referrals || []).length;
+
+    const worksheet = XLSX.utils.aoa_to_sheet([
+        [`Child Summary Case — ${s.name}`],
+        ['LRN', s.lrn || 'N/A'],
+        ['Grade & Section', `${gradeLabel(s.grade)} · ${s.section || 'N/A'}`],
         ['Sessions', cases.length],
-        ['Referrals', (cached.data.referrals || []).length],
+        ['Referrals', referralCount],
         [],
         ['Case ID', 'Date', 'Category', 'Counselor', 'Status'],
-    ];
-    cases.forEach(c => rows.push([c.case_uid, c.case_date, c.category_name || c.case_title || '', c.counselor_name || '', c.status]));
-    downloadCSV(`gms_child_summary_${s.student_id}.csv`, rows);
+        ...cases.map(c => [c.case_uid, c.case_date, c.category_name || c.case_title || '', c.counselor_name || '', c.status])
+    ]);
+    worksheet['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 12 }];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Child Summary');
+    XLSX.writeFile(workbook, `gms_child_summary_${s.student_id}.xlsx`);
 }
 
 /* ---- dispatcher + render ---- */
