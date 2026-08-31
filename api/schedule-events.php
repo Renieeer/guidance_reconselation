@@ -91,6 +91,14 @@ function ensure_schedule_table(mysqli $conn): void {
             'message' => 'Failed to initialize schedule table: ' . $conn->error
         ]);
     }
+
+    // `end_time` is newer than the original table shape and MySQL 8 has no
+    // "ADD COLUMN IF NOT EXISTS", so existence is checked via SHOW COLUMNS
+    // first (same pattern as api/school-config.php's `district` column).
+    $endTimeColumn = $conn->query("SHOW COLUMNS FROM schedule_events LIKE 'end_time'");
+    if (!$endTimeColumn || $endTimeColumn->num_rows === 0) {
+        $conn->query("ALTER TABLE schedule_events ADD COLUMN end_time VARCHAR(20) DEFAULT '' AFTER event_time");
+    }
 }
 
 function generate_event_id(): string {
@@ -115,6 +123,7 @@ try {
                 start_date AS date,
                 end_date AS endDate,
                 event_time AS time,
+                end_time AS endTime,
                 all_day AS allDay,
                 description,
                 location,
@@ -224,9 +233,14 @@ try {
 
         $eventType = trim((string)($payload['type'] ?? 'None'));
         $eventTime = trim((string)($payload['time'] ?? ''));
+        $endTime = trim((string)($payload['endTime'] ?? ''));
         $description = trim((string)($payload['description'] ?? ''));
         $location = trim((string)($payload['location'] ?? ''));
         $allDay = !empty($payload['allDay']) ? 1 : 0;
+
+        if (!$allDay && $eventTime !== '' && $endTime !== '' && $endTime <= $eventTime) {
+            send_json(400, ['success' => false, 'message' => 'End time must be after start time']);
+        }
 
         $eventId = trim((string)($payload['id'] ?? ''));
         if ($eventId === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $eventId)) {
@@ -235,9 +249,9 @@ try {
 
         $insertSql = "
             INSERT INTO schedule_events (
-                event_id, title, event_type, start_date, end_date, event_time,
+                event_id, title, event_type, start_date, end_date, event_time, end_time,
                 all_day, description, location, school_attended, created_by, created_role
-            ) VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?)
         ";
 
         $stmt = $conn->prepare($insertSql);
@@ -251,13 +265,14 @@ try {
         $dbDescription = $description;
 
         $stmt->bind_param(
-            'ssssssisssss',
+            'sssssssisssss',
             $eventId,
             $title,
             $eventType,
             $startDate,
             $dbEndDate,
             $eventTime,
+            $endTime,
             $allDay,
             $dbDescription,
             $dbLocation,
@@ -284,6 +299,7 @@ try {
                 'date' => $startDate,
                 'endDate' => $endDate,
                 'time' => $eventTime,
+                'endTime' => $endTime,
                 'allDay' => (bool)$allDay,
                 'description' => $description,
                 'location' => $location,
@@ -331,15 +347,20 @@ try {
 
         $eventType = trim((string)($payload['type'] ?? 'None'));
         $eventTime = trim((string)($payload['time'] ?? ''));
+        $endTime = trim((string)($payload['endTime'] ?? ''));
         $description = trim((string)($payload['description'] ?? ''));
         $location = trim((string)($payload['location'] ?? ''));
         $allDay = !empty($payload['allDay']) ? 1 : 0;
         $dbEndDate = $endDate ?: '';
 
+        if (!$allDay && $eventTime !== '' && $endTime !== '' && $endTime <= $eventTime) {
+            send_json(400, ['success' => false, 'message' => 'End time must be after start time']);
+        }
+
         $updateSql = "
             UPDATE schedule_events SET
                 title = ?, event_type = ?, start_date = ?, end_date = NULLIF(?, ''),
-                event_time = ?, all_day = ?, description = NULLIF(?, ''), location = NULLIF(?, '')
+                event_time = ?, end_time = ?, all_day = ?, description = NULLIF(?, ''), location = NULLIF(?, '')
             WHERE event_id = ? AND school_attended = ?
         ";
 
@@ -350,12 +371,13 @@ try {
         }
 
         $stmt->bind_param(
-            'sssssissss',
+            'ssssssissss',
             $title,       // s
             $eventType,   // s
             $startDate,   // s
             $dbEndDate,   // s
             $eventTime,   // s
+            $endTime,     // s
             $allDay,      // i
             $description, // s
             $location,    // s
@@ -386,6 +408,7 @@ try {
                 'date' => $startDate,
                 'endDate' => $endDate,
                 'time' => $eventTime,
+                'endTime' => $endTime,
                 'allDay' => (bool)$allDay,
                 'description' => $description,
                 'location' => $location

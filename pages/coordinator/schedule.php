@@ -51,56 +51,6 @@
                     <div id="scheduleCalendar"></div>
                 </div>
 
-                <!-- Add Event Form -->
-                <div class="card mb-5">
-                    <h2 class="card-title mb-4">Create Schedule Event</h2>
-                    
-                    <form id="scheduleForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="eventTitle">Event Title *</label>
-                                <input type="text" id="eventTitle" name="eventTitle" placeholder="e.g., Counseling Session" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="eventType">Event Type *</label>
-                                <select id="eventType" name="eventType" required>
-                                    <option value="">Select Type</option>
-                                    <option value="Meeting">Meeting</option>
-                                    <option value="Training">Training</option>
-                                    <option value="Event">Event</option>
-                                    <option value="Review">Case Review</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="eventDate">Date *</label>
-                                <input type="date" id="eventDate" name="eventDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="eventTime">Time *</label>
-                                <input type="time" id="eventTime" name="eventTime" required>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="eventDescription">Description</label>
-                            <textarea id="eventDescription" name="eventDescription" placeholder="Event details..."></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="eventLocation">Location</label>
-                            <input type="text" id="eventLocation" name="eventLocation" placeholder="e.g., Guidance Office">
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-success">Add Event</button>
-                            <button type="reset" class="btn btn-secondary">Clear</button>
-                        </div>
-                    </form>
-                </div>
-
                 <!-- Schedule Table -->
                 <div class="table-container">
                     <h2 class="mb-4">Upcoming Events</h2>
@@ -150,41 +100,56 @@
             <div id="createScheduleModal" class="modal" style="display: none;">
                 <div class="modal-content schedule-create-modal">
                     <div class="modal-header">
-                        <h2>Create Schedule</h2>
+                        <h2><i class="bi bi-calendar-plus"></i> Create Schedule</h2>
                         <span class="modal-close" id="closeCreateScheduleModal">&times;</span>
                     </div>
                     <div class="modal-body">
                         <form id="createScheduleModalForm">
                             <div class="form-group">
-                                <label for="modalEventTitle">Title</label>
+                                <label for="modalEventTitle"><i class="bi bi-card-text"></i> Title</label>
                                 <input type="text" id="modalEventTitle" placeholder="Enter title" required>
                             </div>
-                            <div class="form-group">
-                                <label for="modalEventStart">Start Date</label>
-                                <input type="text" id="modalEventStart" readonly>
-                            </div>
-                            <div class="form-group">
-                                <label for="modalEventEnd">End Date</label>
-                                <input type="datetime-local" id="modalEventEnd" placeholder="yyyy/mm/dd hh:mm">
-                            </div>
-                            <div class="form-group">
-                                <label class="modal-checkbox">
+
+                            <div class="schedule-modal-section">
+                                <span class="schedule-modal-section-label"><i class="bi bi-calendar3"></i> Date &amp; Time</span>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="modalEventStart">Start Date</label>
+                                        <input type="text" id="modalEventStart" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="modalEventEnd">End Date</label>
+                                        <input type="date" id="modalEventEnd">
+                                    </div>
+                                </div>
+                                <small class="text-muted schedule-modal-hint">End date is only needed for events spanning more than one day.</small>
+
+                                <label class="modal-checkbox schedule-modal-allday">
                                     <input type="checkbox" id="modalEventAllDay">
                                     <span>All Day</span>
                                 </label>
+
+                                <div id="modalEventTimeFields">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="modalEventStartTime">Start Time *</label>
+                                            <input type="time" id="modalEventStartTime">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="modalEventEndTime">End Time *</label>
+                                            <input type="time" id="modalEventEndTime">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted schedule-modal-hint">Blocks this time window — students can only book online appointments outside it.</small>
+                                </div>
                             </div>
+
                             <div class="form-group">
-                                <label>Schedule Meeting</label>
-                                <button type="button" class="btn btn-success btn-sm" style="width: 100%; justify-content: flex-start; gap: 8px;">
-                                    <i class="bi bi-camera-video-fill"></i> Add video conference link
-                                </button>
-                            </div>
-                            <div class="form-group">
-                                <label for="modalEventDescription">Description</label>
+                                <label for="modalEventDescription"><i class="bi bi-chat-left-text"></i> Description</label>
                                 <textarea id="modalEventDescription" rows="5"></textarea>
                             </div>
                             <div class="form-group">
-                                <label for="modalEventLabel">Label</label>
+                                <label for="modalEventLabel"><i class="bi bi-tag"></i> Label</label>
                                 <select id="modalEventLabel">
                                     <option value="None">None</option>
                                     <option value="Meeting">Meeting</option>
@@ -195,7 +160,7 @@
                                 </select>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-success">Save Event</button>
+                                <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Save Event</button>
                                 <button type="button" class="btn btn-secondary" id="cancelCreateScheduleModal">Cancel</button>
                             </div>
                         </form>

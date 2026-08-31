@@ -2999,14 +2999,68 @@ body.auth-page {
 }
 
 .schedule-create-modal .form-group label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 7px;
     margin-bottom: 8px;
     font-size: 15px;
     color: #1a4c88;
     font-weight: 600;
 }
 
+.schedule-create-modal .form-group label i,
+.schedule-create-modal .modal-header h2 i {
+    color: #5a6b80;
+    font-size: 13px;
+}
+
+.schedule-create-modal .modal-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.schedule-create-modal .modal-header h2 i {
+    color: #ffffff;
+    font-size: 16px;
+}
+
+/* Groups the date/time fields into one visually distinct block so the
+   form reads as "what" (title/description/label) then "when" at a glance,
+   instead of a flat stack of same-weight fields. */
+.schedule-modal-section {
+    background: #f8fafc;
+    border: 1px solid #e7edf4;
+    border-radius: 12px;
+    padding: 16px 16px 4px;
+    margin-bottom: 18px;
+}
+
+.schedule-modal-section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 12px;
+    color: var(--secondary-color);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.schedule-modal-hint {
+    display: block;
+    margin-top: -6px;
+    margin-bottom: 14px;
+}
+
+.schedule-modal-allday {
+    margin: 2px 0 16px;
+}
+
 .schedule-create-modal input[type="text"],
+.schedule-create-modal input[type="date"],
+.schedule-create-modal input[type="time"],
 .schedule-create-modal input[type="datetime-local"],
 .schedule-create-modal textarea,
 .schedule-create-modal select {
@@ -3021,6 +3075,8 @@ body.auth-page {
 }
 
 .schedule-create-modal input[type="text"]:focus,
+.schedule-create-modal input[type="date"]:focus,
+.schedule-create-modal input[type="time"]:focus,
 .schedule-create-modal input[type="datetime-local"]:focus,
 .schedule-create-modal textarea:focus,
 .schedule-create-modal select:focus {
@@ -4368,7 +4424,7 @@ tr:hover {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-left: 8px;
+    padding: 24px 32px;
     color: var(--text-color);
     line-height: 1.7;
 }
@@ -6618,6 +6674,28 @@ footer {
     padding: 10px 20px;
 }
 
+.search-container select {
+    padding: 10px 15px;
+    border: 1px solid #d8e0ea;
+    border-radius: 5px;
+    font-size: 14px;
+    background: white;
+    min-width: 130px;
+}
+
+.accounts-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 16px 12px;
+}
+
+.accounts-pagination .accounts-page-info {
+    font-size: 13px;
+    color: #5a6b80;
+}
+
 .accounts-table {
     width: 100%;
     border-collapse: collapse;
@@ -7041,6 +7119,13 @@ footer {
     margin-bottom: 28px;
 }
 
+/* Referral person card's Name/Grade/Gender row plus an auto-filled Age
+   field — a dedicated 4-column override so the base .form-row-three (used
+   elsewhere as a strict 3-up grid) isn't changed for every other page. */
+.referral-person-row-with-age {
+    grid-template-columns: 1fr 1fr 1fr 0.6fr;
+}
+
 .form-row-two {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -7123,6 +7208,14 @@ footer {
 }
 
 .referral-form .form-field input[readonly] {
+    background: #f2f6fb;
+    cursor: not-allowed;
+}
+
+/* Walk-in referral form's Age field (counselor/referral-status.php and
+   other-school/referrals.php) — same "auto-filled, not editable" look as
+   the teacher referral form's readonly fields above. */
+#newRefAge[readonly] {
     background: #f2f6fb;
     cursor: not-allowed;
 }
@@ -8018,12 +8111,26 @@ footer {
 
 
 /* Grade scope picker: a real checkbox per grade, styled as a small toggle
-   chip so multi-selecting grades reads clearly at a glance. */
+   chip so multi-selecting grades reads clearly at a glance. Framed as one
+   bordered control so it reads like the pill inputs/selects around it
+   instead of loose chips floating in the form. */
 .grade-checkbox-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
     width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #d8e0ea;
+    border-radius: 10px;
+    background-color: #f5f7fa;
+    transition: var(--transition-fast);
+}
+
+.grade-checkbox-group:focus-within {
+    border-color: var(--secondary-color);
+    background-color: white;
+    box-shadow: 0 0 0 4px rgba(15, 42, 79, 0.1), inset 0 0 0 1px rgba(15, 42, 79, 0.05);
 }
 
 .grade-checkbox {
@@ -8072,11 +8179,27 @@ footer {
     outline-offset: 2px;
 }
 
+/* "All" toggle: same chip, but wider/labeled and set off from the grade
+   numbers with a divider so it doesn't read as just another grade. */
+.grade-checkbox-all {
+    padding-right: 10px;
+    margin-right: 2px;
+    border-right: 1.5px solid #d8e0ea;
+}
+
+.grade-checkbox-all span {
+    width: auto;
+    padding: 0 12px;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
 .grade-checkbox-hint {
     width: 100%;
     font-size: 11px;
     color: var(--text-light);
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .school-role-empty-text {

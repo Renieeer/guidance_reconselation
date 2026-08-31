@@ -28,18 +28,22 @@ try {
     $referralId = trim((string)($payload['referral_id'] ?? $payload['id'] ?? ''));
     $stage = isset($payload['stage']) ? (int)$payload['stage'] : 0;
     $status = trim((string)($payload['status'] ?? ''));
+    // Not provided (a plain "Advance to Next Stage" click) clears the note —
+    // a note set by a gated stage (e.g. "For counseling") shouldn't keep
+    // showing once a later, ungated advance has moved past it.
+    $stageNote = isset($payload['stage_note']) ? trim((string)$payload['stage_note']) : '';
 
     if ($referralId === '' || $stage <= 0 || $status === '') {
         send_json(400, ['success' => false, 'message' => 'Missing required fields']);
     }
 
-    $stmt = $conn->prepare('UPDATE referral SET stage = ?, status = ?, updated_at = NOW() WHERE ReferralID = ? OR referral_code = ?');
+    $stmt = $conn->prepare("UPDATE referral SET stage = ?, status = ?, stage_note = NULLIF(?, ''), updated_at = NOW() WHERE ReferralID = ? OR referral_code = ?");
     if (!$stmt) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }
 
     $referralCode = $referralId;
-    $stmt->bind_param('isss', $stage, $status, $referralId, $referralCode);
+    $stmt->bind_param('issss', $stage, $status, $stageNote, $referralId, $referralCode);
 
     if (!$stmt->execute()) {
         send_json(500, ['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
@@ -47,7 +51,7 @@ try {
 
     $stmt->close();
 
-    $fetch = $conn->prepare('SELECT ReferralID AS id, referral_code, student_name, StudentID AS student_id, Grade AS grade, section, age, gender, Reason AS referral_reason, description, intervention_attempts, observed_behaviors, parent_guardian, parent_contact, parent_email, family_background, urgency, TeacherID AS teacher_id, teacher_name, teacher_contact, school_attended, student_school, stage, status, date_submitted, updated_at FROM referral WHERE ReferralID = ? OR referral_code = ? LIMIT 1');
+    $fetch = $conn->prepare('SELECT ReferralID AS id, referral_code, student_name, StudentID AS student_id, Grade AS grade, section, age, gender, Reason AS referral_reason, description, intervention_attempts, observed_behaviors, parent_guardian, parent_contact, parent_email, family_background, urgency, TeacherID AS teacher_id, teacher_name, teacher_contact, school_attended, student_school, stage, status, stage_note, date_submitted, updated_at FROM referral WHERE ReferralID = ? OR referral_code = ? LIMIT 1');
     if (!$fetch) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }

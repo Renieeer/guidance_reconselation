@@ -127,6 +127,12 @@ if (table_exists($conn, 'referral')) {
                         'observations' => $row['observations'] ?? '',
                         'risk_level' => $row['risk_level'] ?? '',
                         'counselor_name' => $row['counselor_name'] ?? '',
+                        // Distinguishes a Stage 1 Interview/Background entry
+                        // from a Stage 2 Risk Assessment one — read by
+                        // shBuildReferralThreadEntry() in student-history.js
+                        // to label each "Day N" correctly. Defaults to 2 for
+                        // any row inserted before this column existed.
+                        'stage' => isset($row['stage']) ? (int)$row['stage'] : 2,
                         'created_at' => $row['created_at'] ?? null
                     ];
                 }

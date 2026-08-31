@@ -47,6 +47,7 @@ function initSchoolManagementPage() {
     initSchoolDetailModal();
     initSchoolFoldersToolbar();
     initEditModeToggle();
+    initGradeCheckboxGroups();
 
     loadSchoolAssignments();
 }
@@ -230,21 +231,27 @@ function setRoleFieldsRequired(rolePrefix, isRequired) {
         }
     });
 
-    // Grade select isn't required (blank = no restriction), but reset it
-    // back to default when the role block is hidden.
-    const gradeEl = document.getElementById(`${rolePrefix}Grade`);
-    if (gradeEl && !isRequired) {
-        gradeEl.selectedIndex = 0;
+    // Grade checkboxes aren't required (none checked = no restriction), but
+    // reset them back to default when the role block is hidden.
+    const gradeGroup = document.getElementById(`${rolePrefix}Grade`);
+    if (gradeGroup && !isRequired) {
+        gradeGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
     }
 }
 
 function getRolePayload(rolePrefix) {
+    const checkedGrades = Array.from(
+        document.querySelectorAll(`#${rolePrefix}Grade input[type="checkbox"]:checked:not([data-select-all])`)
+    ).map(cb => cb.value);
+
     return {
         firstName: document.getElementById(`${rolePrefix}FirstName`)?.value.trim() || '',
         lastName: document.getElementById(`${rolePrefix}LastName`)?.value.trim() || '',
         email: document.getElementById(`${rolePrefix}Email`)?.value.trim() || '',
         password: document.getElementById(`${rolePrefix}Password`)?.value || '',
-        grade: document.getElementById(`${rolePrefix}Grade`)?.value || ''
+        grade: checkedGrades.join(',')
     };
 }
 
@@ -451,8 +458,31 @@ function gradeDisplayLabel(grade) {
 
 const GRADE_CHECKBOX_VALUES = [7, 8, 9, 10, 11, 12];
 
+// Delegated once for the whole page so it covers both the static
+// coordinator/counselor/combined groups in the Add School form and any
+// buildGradeCheckboxes() group re-rendered into the school detail modal.
+function initGradeCheckboxGroups() {
+    document.addEventListener('change', (event) => {
+        const target = event.target;
+        if (!target.matches('.grade-checkbox-group input[type="checkbox"]')) {
+            return;
+        }
+
+        const group = target.closest('.grade-checkbox-group');
+        const allBox = group.querySelector('[data-select-all]');
+        const gradeBoxes = Array.from(group.querySelectorAll('input[type="checkbox"]:not([data-select-all])'));
+
+        if (target.hasAttribute('data-select-all')) {
+            gradeBoxes.forEach(cb => { cb.checked = target.checked; });
+        } else if (allBox) {
+            allBox.checked = gradeBoxes.every(cb => cb.checked);
+        }
+    });
+}
+
 function buildGradeCheckboxes(accountId, grade) {
     const selected = new Set(parseGradeScope(grade));
+    const allSelected = GRADE_CHECKBOX_VALUES.every(g => selected.has(g));
     const boxes = GRADE_CHECKBOX_VALUES.map(g => `
                     <label class="grade-checkbox">
                         <input type="checkbox" value="${g}" ${selected.has(g) ? 'checked' : ''}>
@@ -461,6 +491,10 @@ function buildGradeCheckboxes(accountId, grade) {
 
     return `
                 <div class="grade-checkbox-group" data-account-id="${accountId}">
+                    <label class="grade-checkbox grade-checkbox-all">
+                        <input type="checkbox" data-select-all ${allSelected ? 'checked' : ''}>
+                        <span>All</span>
+                    </label>
                     ${boxes}
                     <span class="grade-checkbox-hint">Leave all unchecked to allow every grade.</span>
                 </div>`;
@@ -595,7 +629,7 @@ async function saveInlineGrade(btn) {
     const group = document.querySelector(`.grade-checkbox-group[data-account-id="${accountId}"]`);
     if (!accountId || !group) return;
 
-    const grade = Array.from(group.querySelectorAll('input[type="checkbox"]:checked'))
+    const grade = Array.from(group.querySelectorAll('input[type="checkbox"]:checked:not([data-select-all])'))
         .map(cb => cb.value)
         .join(',');
 

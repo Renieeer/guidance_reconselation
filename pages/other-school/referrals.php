@@ -33,18 +33,28 @@
                             <button class="btn btn-secondary" onclick="backToList()">Back to List</button>
                         </div>
 
+                        <!-- Referral Overview -->
+                        <h3 class="text-primary">Referral Overview</h3>
+                        <div class="form-row-three">
+                            <p><strong>Teacher:</strong> <span id="detTeacherName"></span></p>
+                            <p><strong>School:</strong> <span id="detTeacherSchool"></span></p>
+                            <p><strong>Contact Number:</strong> <span id="detTeacherContact"></span></p>
+                        </div>
+                        <div class="form-row">
+                            <p><strong>Parent/Guardian:</strong> <span id="detParent"></span></p>
+                            <p><strong>Contact Number:</strong> <span id="detContactNum"></span></p>
+                        </div>
                         <div class="form-row">
                             <div>
                                 <p><strong>Referral ID:</strong> <span id="detRefId"></span></p>
                                 <p><strong>Student:</strong> <span id="detStudentName"></span></p>
                                 <p><strong>Grade/Section:</strong> <span id="detStudentGradeSection"></span></p>
-                                <p><strong>Reason:</strong> <span id="detReason"></span></p>
                             </div>
                             <div>
                                 <p><strong>Date Submitted:</strong> <span id="detDateSubmitted"></span></p>
                                 <p><strong>Urgency:</strong> <span id="detUrgency"></span></p>
                                 <p><strong>Status:</strong> <span id="detStatus"></span></p>
-                                <p><strong>Current Stage:</strong> <span id="detStage"></span></p>
+                                <p><strong>Current Stage:</strong> <span id="detStage"></span><span id="detStageNote" class="text-muted"></span></p>
                             </div>
                         </div>
 
@@ -58,93 +68,100 @@
 
                         <!-- Referral Reason & Description -->
                         <h3 class="text-primary">Referral Information</h3>
-                        <p><strong>Reason for Referral:</strong> <span id="detReferralReason"></span></p>
-
-                        <div class="mt-3">
-                            <p><strong>Intervention Attempts:</strong></p>
-                            <p id="detIntervention" class="bg-light p-3 rounded"></p>
-                        </div>
-
-                        <hr>
-
-                        <!-- Referring Teacher -->
-                        <h3 class="text-primary">Referred By</h3>
                         <div class="form-row">
                             <div>
-                                <p><strong>Teacher:</strong> <span id="detTeacherName"></span></p>
-                                <p><strong>School:</strong> <span id="detTeacherSchool"></span></p>
+                                <p><strong>Reason for Referral:</strong> <span id="detReferralReason"></span></p>
                             </div>
                             <div>
-                                <p><strong>Contact Number:</strong> <span id="detTeacherContact"></span></p>
+                                <p><strong>Initial Actions Taken:</strong> <span id="detIntervention"></span></p>
                             </div>
                         </div>
 
                         <hr>
 
-                        <!-- Family Information -->
-                        <h3 class="text-primary">Family/Contact Information</h3>
-                        <div class="form-row">
-                            <div>
-                                <p><strong>Parent/Guardian:</strong> <span id="detParent"></span></p>
-                                <p><strong>Contact Number:</strong> <span id="detContactNum"></span></p>
-                            </div>
-                            <div>
-                                <p><strong>Email:</strong> <span id="detContactEmail"></span></p>
-                                <p><strong>Family Background:</strong></p>
-                                <p id="detFamilyBg" class="bg-light p-3 rounded"></p>
-                            </div>
-                        </div>
+                        <!-- Interview/Background (Stage 1) -->
+                        <div id="interviewFormSection" style="display: none;">
+                            <h3 class="text-primary">Interview / Background Check-up (Stage 1)</h3>
+                            <p class="text-muted" style="margin-top:-6px;">Document the initial interview and background check-up for this student.</p>
 
-                        <hr>
+                            <div id="interviewHistoryList" style="margin-bottom: 16px;"></div>
+
+                            <form id="interviewForm">
+                                <div class="form-group">
+                                    <label for="interviewNotes">Interview / Background Notes</label>
+                                    <textarea id="interviewNotes" name="interviewNotes" placeholder="What was discussed during the interview, and any background check-up findings..."></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-success">Save Interview Notes</button>
+                            </form>
+                        </div>
 
                         <!-- Initial Risk Assessment (Stage 2) -->
                         <div id="screeningFormSection" style="display: none;">
                             <h3 class="text-primary">Initial Risk Assessment (Stage 2)</h3>
-                            <p class="text-muted" style="margin-top:-6px;">Document the interview, observations, and risk level assessment for this student.</p>
+                            <p class="text-muted" style="margin-top:-6px;">Attach the completed assessment document (optional), then confirm whether the student has completed it.</p>
 
-                            <div id="screeningHistoryList" style="margin-bottom: 16px;"></div>
+                            <div id="assessmentFileList" style="margin-bottom: 16px;"></div>
 
-                            <form id="screeningForm">
+                            <form id="assessmentUploadForm" style="margin-bottom: 24px;">
                                 <div class="form-group">
-                                    <label for="screeningInterview">Interview Notes</label>
-                                    <textarea id="screeningInterview" name="screeningInterview" placeholder="What was discussed during the interview..."></textarea>
+                                    <label for="assessmentFile">Assessment Document (PDF, JPG, or PNG — max 5 MB, optional)</label>
+                                    <input type="file" id="assessmentFile" name="assessmentFile" accept=".pdf,.jpg,.jpeg,.png">
                                 </div>
 
-                                <div class="form-group">
-                                    <label for="screeningObservations">Observations</label>
-                                    <textarea id="screeningObservations" name="screeningObservations" placeholder="Document your observations of the student..."></textarea>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="screeningRiskLevel">Risk Level</label>
-                                    <select id="screeningRiskLevel" name="screeningRiskLevel">
-                                        <option value="">Select level</option>
-                                        <option value="Low">Low</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="High">High</option>
-                                        <option value="Critical">Critical</option>
-                                    </select>
-                                </div>
-
-                                <button type="submit" class="btn btn-success">Save Screening Notes</button>
+                                <button type="submit" class="btn btn-secondary">Upload Document</button>
                             </form>
+
+                            <div class="form-group">
+                                <label>Has the student completed the assessment you gave?</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="button" class="btn btn-success" id="assessmentCompletedYesBtn">
+                                        <i class="bi bi-check-lg"></i> Yes — Proceed to Stage 3
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="assessmentCompletedNoBtn">Not yet</button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Parent Call-up/Consent (Stage 3) -->
                         <div id="consentSection" style="display: none;">
                             <h3 class="text-primary">Parent Call-up/Consent (Stage 3)</h3>
-                            <p class="text-muted" style="margin-top:-6px;">Upload the signed parent consent form for assessment and interventions.</p>
+                            <p class="text-muted" style="margin-top:-6px;">Upload the signed parent consent form (optional), then confirm whether the student and parent agree to proceed.</p>
 
                             <div id="consentFileList" style="margin-bottom: 16px;"></div>
 
-                            <form id="consentUploadForm">
+                            <form id="consentUploadForm" style="margin-bottom: 24px;">
                                 <div class="form-group">
-                                    <label for="consentFile">Consent Form (PDF, JPG, or PNG — max 5 MB)</label>
-                                    <input type="file" id="consentFile" name="consentFile" accept=".pdf,.jpg,.jpeg,.png" required>
+                                    <label for="consentFile">Consent Form (PDF, JPG, or PNG — max 5 MB, optional)</label>
+                                    <input type="file" id="consentFile" name="consentFile" accept=".pdf,.jpg,.jpeg,.png">
                                 </div>
 
-                                <button type="submit" class="btn btn-success">Upload Consent Form</button>
+                                <button type="submit" class="btn btn-secondary">Upload Consent Form</button>
                             </form>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="consentStudentAgree">Did the student agree to proceed?</label>
+                                    <select id="consentStudentAgree">
+                                        <option value="">Select answer</option>
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="consentParentAgree">Did the parent/guardian agree to proceed?</label>
+                                    <select id="consentParentAgree">
+                                        <option value="">Select answer</option>
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p class="text-muted" style="margin-top:-6px;">If both agree, the referral moves to Stage 4. If either disagrees, it moves to Stage 5.</p>
+
+                            <button type="button" class="btn btn-success" id="consentDecisionSubmitBtn">
+                                <i class="bi bi-check-lg"></i> Confirm &amp; Continue
+                            </button>
                         </div>
 
                         <!-- Case Closing Acknowledgement (Stage 6) -->
@@ -236,7 +253,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="newRefAge">Age</label>
-                                    <input type="number" id="newRefAge" min="1" max="30">
+                                    <input type="text" id="newRefAge" readonly placeholder="Auto-filled from student record" title="Calculated automatically from the student's date of birth — not manually editable">
                                 </div>
                             </div>
 

@@ -20,6 +20,9 @@
                         <h2 class="account-hero-title">Manage every account in your school</h2>
                         <p class="account-hero-text">Search by name or email, open any user record, and update account details or reset a password when a staff member or student forgets it.</p>
                     </div>
+                    <div class="page-hero-actions" style="margin-left:auto;">
+                        <button type="button" id="openIssueCodeModalBtn" class="btn btn-primary"><i class="bi bi-envelope-plus"></i> Issue Teacher Access Code</button>
+                    </div>
                 </div>
 
                 <div class="card">
@@ -117,6 +120,42 @@
                         <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Issue Teacher Access Code Modal -->
+    <div id="issueCodeModal" class="modal">
+        <div class="modal-content" style="max-width: 460px;">
+            <div class="modal-header">
+                <h2>Issue Teacher Access Code</h2>
+                <span class="modal-close" onclick="closeIssueCodeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="margin-top:0;">Emails a one-time access code straight to the teacher's inbox — they'll enter it, along with their details, on the Staff Registration page. The code expires in 2 hours and can only be used once.</p>
+
+                <form id="issueCodeForm">
+                    <div id="issueCodeError" class="error-alert"></div>
+
+                    <div class="form-group">
+                        <label for="issueCodeEmail">Teacher's Email</label>
+                        <input type="email" id="issueCodeEmail" placeholder="teacher@example.com" required autocomplete="off">
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary" id="issueCodeSubmitBtn">Generate Code</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeIssueCodeModal()">Cancel</button>
+                    </div>
+                </form>
+
+                <div id="issueCodeResult" class="grade-checkbox-group" style="display:none; flex-direction:column; align-items:flex-start; gap:10px; margin-top: 16px;">
+                    <span class="text-muted" id="issueCodeStatus" style="font-size:13px;"></span>
+                    <div id="issueCodeFallback" style="display:none; align-items:center; gap:10px; width:100%;">
+                        <code id="issueCodeValue" style="font-size:20px; font-weight:700; letter-spacing:2px; background:white; padding:8px 12px; border-radius:8px; border:1.5px solid var(--border-color); flex:1;"></code>
+                        <button type="button" class="btn btn-secondary btn-sm" id="copyIssueCodeBtn">Copy</button>
+                    </div>
+                    <span class="text-muted" id="issueCodeExpiry" style="font-size:12px;"></span>
+                </div>
             </div>
         </div>
     </div>

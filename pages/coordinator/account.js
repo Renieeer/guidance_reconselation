@@ -2,20 +2,160 @@
 
 let currentEditingAccountId = null;
 let allAccounts = [];
+// Grade filter + pagination — applied client-side on top of whatever
+// loadSchoolAccounts()/searchAccounts() last fetched. 'all' page size
+// disables paging entirely.
+let currentGradeFilter = '';
+let pageSize = 20;
+let currentPage = 1;
 
 function initAccountPage() {
     initPage();
     loadSchoolAccounts();
-    
+
     // Setup search
     document.getElementById('searchInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             searchAccounts();
         }
     });
-    
+
+    document.getElementById('gradeFilter').addEventListener('change', (e) => {
+        currentGradeFilter = e.target.value;
+        currentPage = 1;
+        applyFiltersAndRender();
+    });
+
+    document.getElementById('pageSizeFilter').addEventListener('change', (e) => {
+        pageSize = e.target.value === 'all' ? Infinity : parseInt(e.target.value, 10);
+        currentPage = 1;
+        applyFiltersAndRender();
+    });
+
+    document.getElementById('accountsPagination').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-page]');
+        if (!btn || btn.disabled) return;
+        currentPage = btn.getAttribute('data-page') === 'next' ? currentPage + 1 : currentPage - 1;
+        applyFiltersAndRender();
+    });
+
     // Setup edit form
     document.getElementById('editAccountForm').addEventListener('submit', saveAccountChanges);
+
+    initIssueCodeModal();
+}
+
+// Coordinator-issued teacher access codes — see api/issue-teacher-access-code.php.
+// The code is emailed straight to the teacher's inbox. It's only shown here
+// as a fallback if that email couldn't be sent (e.g. mail is disabled).
+function initIssueCodeModal() {
+    const openBtn = document.getElementById('openIssueCodeModalBtn');
+    const modal = document.getElementById('issueCodeModal');
+    const form = document.getElementById('issueCodeForm');
+    const copyBtn = document.getElementById('copyIssueCodeBtn');
+
+    if (!openBtn || !modal || !form) {
+        return;
+    }
+
+    openBtn.addEventListener('click', () => {
+        resetIssueCodeModal();
+        modal.classList.add('show');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeIssueCodeModal();
+        }
+    });
+
+    form.addEventListener('submit', issueTeacherAccessCode);
+
+    copyBtn?.addEventListener('click', () => {
+        const codeEl = document.getElementById('issueCodeValue');
+        const code = codeEl ? codeEl.textContent : '';
+        if (!code) return;
+        navigator.clipboard?.writeText(code).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        }).catch(() => {});
+    });
+}
+
+function resetIssueCodeModal() {
+    const form = document.getElementById('issueCodeForm');
+    const errorDiv = document.getElementById('issueCodeError');
+    const resultDiv = document.getElementById('issueCodeResult');
+    if (form) {
+        form.reset();
+        form.style.display = 'block';
+    }
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.classList.remove('show');
+    }
+    if (resultDiv) {
+        resultDiv.style.display = 'none';
+    }
+}
+
+function closeIssueCodeModal() {
+    document.getElementById('issueCodeModal')?.classList.remove('show');
+}
+
+async function issueTeacherAccessCode(e) {
+    e.preventDefault();
+
+    const emailInput = document.getElementById('issueCodeEmail');
+    const errorDiv = document.getElementById('issueCodeError');
+    const submitBtn = document.getElementById('issueCodeSubmitBtn');
+    const email = emailInput.value.trim();
+
+    errorDiv.textContent = '';
+    errorDiv.classList.remove('show');
+
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Generating...';
+
+    try {
+        const response = await fetch('../../api/issue-teacher-access-code.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to generate access code.');
+        }
+
+        document.getElementById('issueCodeForm').style.display = 'none';
+
+        const statusEl = document.getElementById('issueCodeStatus');
+        const fallbackEl = document.getElementById('issueCodeFallback');
+        if (data.emailSent) {
+            statusEl.textContent = `Access code emailed to ${email}.`;
+            fallbackEl.style.display = 'none';
+        } else {
+            statusEl.textContent = "Couldn't email the code — copy it and give it to the teacher directly:";
+            document.getElementById('issueCodeValue').textContent = data.code;
+            fallbackEl.style.display = 'flex';
+        }
+
+        const expiryEl = document.getElementById('issueCodeExpiry');
+        if (expiryEl && data.expiresAt) {
+            const expiryDate = new Date(data.expiresAt.replace(' ', 'T'));
+            expiryEl.textContent = `Expires ${expiryDate.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' })} — single use only.`;
+        }
+        document.getElementById('issueCodeResult').style.display = 'flex';
+    } catch (error) {
+        errorDiv.textContent = error.message || 'Network error. Please try again.';
+        errorDiv.classList.add('show');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
 }
 
 function getCurrentSchool() {
@@ -82,15 +222,16 @@ function loadSchoolAccounts() {
             if (!result.success || !result.data) {
                 throw new Error(result.message || 'Failed to load accounts');
             }
-            
+
             allAccounts = result.data;
-            renderAccountsTable(allAccounts);
+            currentPage = 1;
+            applyFiltersAndRender();
         })
         .catch(error => {
             console.error('Error loading accounts:', error);
             const tbody = document.getElementById('accountsTableBody');
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="5" class="no-accounts"><i class="bi bi-exclamation-triangle"></i> <p>Error: ${error.message}</p></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="no-accounts"><i class="bi bi-exclamation-triangle"></i> <p>Error: ${error.message}</p></td></tr>`;
             }
         });
 }
@@ -118,9 +259,10 @@ function searchAccounts() {
             if (!result.success || !result.data) {
                 throw new Error(result.message || 'Failed to search accounts');
             }
-            
+
             allAccounts = result.data;
-            renderAccountsTable(allAccounts);
+            currentPage = 1;
+            applyFiltersAndRender();
         })
         .catch(error => {
             console.error('Error searching accounts:', error);
@@ -128,11 +270,52 @@ function searchAccounts() {
         });
 }
 
+// Applies the grade filter (client-side, on top of whatever the last
+// fetch returned) and pagination, then renders the current page.
+// gradeScopeToList (utils.js) parses a Grade cell whether it's a single
+// student grade ("10") or a comma-scoped staff list ("7,8,9,10"), so one
+// check covers both — an account matches if the selected grade is
+// anywhere in its Grade value.
+function applyFiltersAndRender() {
+    const filtered = currentGradeFilter
+        ? allAccounts.filter(a => gradeScopeToList(a.Grade).includes(parseInt(currentGradeFilter, 10)))
+        : allAccounts;
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIdx = pageSize === Infinity ? 0 : (currentPage - 1) * pageSize;
+    const endIdx = pageSize === Infinity ? filtered.length : Math.min(startIdx + pageSize, filtered.length);
+
+    renderAccountsTable(filtered.slice(startIdx, endIdx));
+    renderPagination(filtered.length, startIdx, endIdx, totalPages);
+}
+
+function renderPagination(totalFiltered, startIdx, endIdx, totalPages) {
+    const el = document.getElementById('accountsPagination');
+    if (!el) return;
+
+    if (totalFiltered === 0 || pageSize === Infinity || totalPages <= 1) {
+        el.innerHTML = '';
+        return;
+    }
+
+    el.innerHTML = `
+        <button type="button" class="btn btn-secondary btn-sm" data-page="prev" ${currentPage <= 1 ? 'disabled' : ''}>
+            <i class="bi bi-chevron-left"></i> Prev
+        </button>
+        <span class="accounts-page-info">Showing ${startIdx + 1}&ndash;${endIdx} of ${totalFiltered} &middot; Page ${currentPage} of ${totalPages}</span>
+        <button type="button" class="btn btn-secondary btn-sm" data-page="next" ${currentPage >= totalPages ? 'disabled' : ''}>
+            Next <i class="bi bi-chevron-right"></i>
+        </button>`;
+}
+
 function renderAccountsTable(accounts) {
     const tbody = document.getElementById('accountsTableBody');
-    
+
     if (!accounts || accounts.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="no-accounts"><i class="bi bi-inbox"></i> <p>No accounts found</p></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="no-accounts"><i class="bi bi-inbox"></i> <p>No accounts found</p></td></tr>`;
         return;
     }
 
@@ -145,6 +328,7 @@ function renderAccountsTable(accounts) {
                     ${formatUserType(account.Type)}
                 </span>
             </td>
+            <td>${gradeScopeLabel(account.Grade) || '&mdash;'}</td>
             <td>${formatDate(account.created_at)}</td>
             <td>
                 <div class="action-buttons">

@@ -83,17 +83,18 @@ function loadReferralDetail(referral) {
     document.getElementById('detailGrade').textContent = referral.grade || 'N/A';
     document.getElementById('detailAge').textContent = referral.age || 'N/A';
     document.getElementById('detailGender').textContent = referral.gender || 'N/A';
-    document.getElementById('detailSubmittedBy').textContent = referral.teacher_name || 'Unknown';
     document.getElementById('detailDateSubmitted').textContent = formatDate(referral.date_submitted);
     document.getElementById('detailUrgency').textContent = referral.urgency || 'normal';
     document.getElementById('detailStatus').innerHTML = createBadge(getStatusLabel(referral.stage));
     document.getElementById('detailStage').textContent = `${referral.stage}/6`;
+    document.getElementById('detailStageNote').textContent = referral.stage_note ? ` — ${referral.stage_note}` : '';
     document.getElementById('detailReason').textContent = referral.referral_reason;
     document.getElementById('detailIntervention').textContent = referral.intervention_attempts || 'Not provided';
+    document.getElementById('detailTeacherName').textContent = referral.teacher_name || 'Not provided';
+    document.getElementById('detailTeacherSchool').textContent = referral.school_attended || 'Not provided';
+    document.getElementById('detailTeacherContact').textContent = referral.teacher_contact || 'Not provided';
     document.getElementById('detailParent').textContent = referral.parent_guardian || 'Not provided';
     document.getElementById('detailContactNum').textContent = referral.parent_contact || 'Not provided';
-    document.getElementById('detailContactEmail').textContent = referral.parent_email || 'Not provided';
-    document.getElementById('detailFamilyBg').textContent = referral.family_background || 'Not provided';
 
     // Load stage progress
     loadStageProgress();

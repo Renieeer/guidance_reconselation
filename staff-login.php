@@ -33,8 +33,8 @@
                 <div class="brand-icon">
                     <i class="bi bi-briefcase"></i>
                 </div>
-                <h2>Staff Portal</h2>
-                <p>For Teachers, Counselors, and Coordinators</p>
+                <h2>Teacher Portal</h2>
+                <p>For Teachers</p>
             </div>
 
             <div class="auth-features">
@@ -54,40 +54,15 @@
         </div>
 
         <div class="auth-right">
-            <!-- Access-code gate: shown first so students can't even reach
-                 the actual staff login form below. -->
-            <div class="auth-box" id="staffPinGate">
-                <h1>Staff Access Code</h1>
-                <p class="auth-subtitle">Enter the staff access code given by your SDO to continue.</p>
-
-                <form id="staffPinForm" class="auth-form">
-                    <div id="staffPinError" class="error-alert"></div>
-
-                    <div class="form-group">
-                        <label for="staffPin">Access Code</label>
-                        <div class="input-wrapper password-wrapper">
-                            <input type="password" id="staffPin" name="staffPin" placeholder="••••••" required autocomplete="off" inputmode="numeric">
-                            <button type="button" class="toggle-password" id="toggleStaffPin">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-auth-primary">
-                        <span>Continue</span>
-                        <i class="bi bi-arrow-right"></i>
-                    </button>
-                </form>
-
-                <p class="text-muted" style="text-align:center; margin-top: 16px; font-size: 13px;">
-                    Not staff? <a href="login.php" class="auth-link">Go to Student Login</a>
-                </p>
-            </div>
-
-            <!-- Real login form: hidden until the access code above is verified. -->
-            <div class="auth-box" id="staffLoginBox" style="display:none;">
-                <h1>Staff Sign In</h1>
-                <p class="auth-subtitle">Sign in with your teacher, counselor, or coordinator account</p>
+            <!-- No separate access-code gate here — a teacher account only
+                 exists once it's been through the coordinator-issued access
+                 code + email OTP in staff-register.php, so a plain
+                 email/password sign-in is already backed by both checks.
+                 See js/auth.js's staff-portal role guard for what keeps
+                 non-teacher accounts off this form. -->
+            <div class="auth-box" id="staffLoginBox">
+                <h1>Teacher Sign In</h1>
+                <p class="auth-subtitle">Sign in with your teacher account</p>
 
                 <form id="loginForm" class="auth-form">
                     <div id="loginError" class="error-alert"></div>
@@ -121,8 +96,7 @@
                 </div>
 
                 <p class="text-muted" style="text-align:center; margin-top: 16px; font-size: 13px;">
-                    Counselor and Coordinator accounts are created by the SDO.<br>
-                    Not staff? <a href="login.php" class="auth-link">Go to Student Login</a>
+                    Not a teacher? <a href="login.php" class="auth-link">Go to Login</a>
                 </p>
             </div>
         </div>
@@ -130,7 +104,6 @@
 
     <script src="js/otp-verify.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/staff-pin.js"></script>
     <script>
         const navToggle = document.getElementById('navToggle');
         const navLinks = document.getElementById('navLinks');

@@ -83,10 +83,8 @@ async function refreshScheduleEventsSafely() {
 async function initSchedulePage() {
     initPage();
     setupCalendarControls();
-    setTodayDate('eventDate');
     await loadScheduleEvents();
     loadAppointmentRequests();
-    document.getElementById('scheduleForm').addEventListener('submit', addScheduleEvent);
     setupCreateScheduleModal();
     setupRequestModal();
 }
@@ -111,6 +109,19 @@ function setupCalendarControls() {
     });
 }
 
+// Start/End Time only make sense for a timed block within the day — an
+// All Day event has nothing to blank out for students, so the fields are
+// hidden (and their required-ness dropped) whenever All Day is checked.
+function updateModalTimeFieldsVisibility() {
+    const allDay = document.getElementById('modalEventAllDay')?.checked || false;
+    const fields = document.getElementById('modalEventTimeFields');
+    const startTime = document.getElementById('modalEventStartTime');
+    const endTime = document.getElementById('modalEventEndTime');
+    if (fields) fields.style.display = allDay ? 'none' : '';
+    if (startTime) startTime.required = !allDay;
+    if (endTime) endTime.required = !allDay;
+}
+
 function setupCreateScheduleModal() {
     document.getElementById('closeCreateScheduleModal')?.addEventListener('click', closeCreateScheduleModal);
     document.getElementById('cancelCreateScheduleModal')?.addEventListener('click', closeCreateScheduleModal);
@@ -119,6 +130,7 @@ function setupCreateScheduleModal() {
             closeCreateScheduleModal();
         }
     });
+    document.getElementById('modalEventAllDay')?.addEventListener('change', updateModalTimeFieldsVisibility);
 
     document.getElementById('createScheduleModalForm')?.addEventListener('submit', submitCreateScheduleModal);
 }
@@ -291,6 +303,8 @@ function openCreateScheduleModal(dateStr) {
     const endInput = document.getElementById('modalEventEnd');
     const allDayInput = document.getElementById('modalEventAllDay');
     const labelSelect = document.getElementById('modalEventLabel');
+    const startTimeInput = document.getElementById('modalEventStartTime');
+    const endTimeInput = document.getElementById('modalEventEndTime');
 
     if (modalTitle) modalTitle.textContent = 'Create Schedule';
     if (startInput) {
@@ -298,9 +312,15 @@ function openCreateScheduleModal(dateStr) {
     }
     if (titleInput) titleInput.value = '';
     if (descriptionInput) descriptionInput.value = '';
-    if (endInput) endInput.value = '';
+    if (endInput) {
+        endInput.value = '';
+        endInput.min = dateStr;
+    }
     if (allDayInput) allDayInput.checked = false;
     if (labelSelect) labelSelect.value = 'None';
+    if (startTimeInput) startTimeInput.value = '';
+    if (endTimeInput) endTimeInput.value = '';
+    updateModalTimeFieldsVisibility();
 
     if (modal) {
         modal.style.display = 'flex';
@@ -330,14 +350,22 @@ function openEditScheduleModal(eventId) {
     const endInput = document.getElementById('modalEventEnd');
     const allDayInput = document.getElementById('modalEventAllDay');
     const labelSelect = document.getElementById('modalEventLabel');
+    const startTimeInput = document.getElementById('modalEventStartTime');
+    const endTimeInput = document.getElementById('modalEventEndTime');
 
     if (modalTitle) modalTitle.textContent = 'Edit Schedule';
     if (startInput) startInput.value = `${event.date || ''} ${event.allDay ? '00:00' : (event.time || '00:00')}`;
     if (titleInput) titleInput.value = event.title || '';
     if (descriptionInput) descriptionInput.value = event.description || '';
-    if (endInput) endInput.value = event.endDate ? `${event.endDate}T00:00` : '';
+    if (endInput) {
+        endInput.value = event.endDate || '';
+        endInput.min = event.date || '';
+    }
     if (allDayInput) allDayInput.checked = !!event.allDay;
     if (labelSelect) labelSelect.value = event.type || 'None';
+    if (startTimeInput) startTimeInput.value = event.allDay ? '' : (event.time || '');
+    if (endTimeInput) endTimeInput.value = event.allDay ? '' : (event.endTime || '');
+    updateModalTimeFieldsVisibility();
 
     const viewModal = document.getElementById('viewEventModal');
     if (viewModal) viewModal.style.display = 'none';
@@ -359,15 +387,27 @@ async function submitCreateScheduleModal(e) {
     e.preventDefault();
 
     const title = document.getElementById('modalEventTitle')?.value.trim();
-    const start = document.getElementById('modalEventStart')?.value.trim();
     const end = document.getElementById('modalEventEnd')?.value.trim();
     const allDay = document.getElementById('modalEventAllDay')?.checked || false;
     const description = document.getElementById('modalEventDescription')?.value.trim() || '';
     const label = document.getElementById('modalEventLabel')?.value || 'None';
+    const startTime = document.getElementById('modalEventStartTime')?.value.trim() || '';
+    const endTime = document.getElementById('modalEventEndTime')?.value.trim() || '';
 
     if (!title || !selectedScheduleDate) {
         showAlert('Please choose a date and enter a title.', 'error');
         return;
+    }
+
+    if (!allDay) {
+        if (!startTime || !endTime) {
+            showAlert('Please enter a start time and end time, or check All Day.', 'error');
+            return;
+        }
+        if (endTime <= startTime) {
+            showAlert('End time must be after start time.', 'error');
+            return;
+        }
     }
 
     const isEditing = !!editingScheduleEventId;
@@ -386,7 +426,8 @@ async function submitCreateScheduleModal(e) {
         title,
         type: label,
         date: selectedScheduleDate,
-        time: allDay ? 'All Day' : (start.split(' ')[1] || '00:00'),
+        time: allDay ? 'All Day' : startTime,
+        endTime: allDay ? '' : endTime,
         endDate: end || '',
         allDay,
         description,
@@ -414,46 +455,6 @@ async function submitCreateScheduleModal(e) {
     } catch (error) {
         console.error('Error saving schedule event:', error);
         showAlert(error.message || 'Unable to save schedule event', 'error');
-    }
-}
-
-async function addScheduleEvent(e) {
-    e.preventDefault();
-
-    const formData = new FormData(document.getElementById('scheduleForm'));
-    
-    const event = {
-        id: generateId(),
-        title: formData.get('eventTitle'),
-        type: formData.get('eventType'),
-        date: formData.get('eventDate'),
-        time: formData.get('eventTime'),
-        description: formData.get('eventDescription'),
-        location: formData.get('eventLocation'),
-        createdAt: new Date().toISOString(),
-        school: getCurrentSchool(),
-        createdBy: String(getCurrentUser().id || ''),
-        createdRole: String(getCurrentUser().role || '')
-    };
-
-    try {
-        const response = await fetch(SCHEDULE_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(event)
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || 'Unable to save schedule event');
-        }
-
-        showAlert('Event added successfully!', 'success');
-        document.getElementById('scheduleForm').reset();
-        setTodayDate('eventDate');
-        await loadScheduleEvents();
-    } catch (error) {
-        console.error('Error adding schedule event:', error);
-        showAlert(error.message || 'Unable to add schedule event', 'error');
     }
 }
 

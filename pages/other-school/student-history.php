@@ -7,6 +7,23 @@
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/student-history.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Personal Information is also reachable via the "Personal Info"
+           stat chip in the student header card (#shStatChips) — confirmed
+           working independently of this nav (Playwright: clicking it
+           activates #shBody-personal on its own). So, same as the
+           student's own "My History" page, this folder-card picker is
+           hidden rather than a needed access path — see
+           project_student_history_timeline memory for the fuller history
+           of this page's redesign. Hidden, not removed from the DOM:
+           student-history.js still updates #shCount-* on every render. */
+        #shFolderNav {
+            display: none;
+        }
+        #shFolderGrid.sh-folder-layout {
+            grid-template-columns: 1fr;
+        }
+    </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body>
@@ -25,13 +42,23 @@
                 <!-- Student list / picker -->
                 <div id="shBrowseCard" class="card" style="margin-bottom: 20px;">
                     <div class="sh-picker">
-                        <div class="sh-picker-field" style="flex-basis: 100%;">
+                        <div class="sh-picker-field" style="flex: 1 1 320px;">
                             <label for="shStudentSearch">Search Students</label>
                             <input type="text" id="shStudentSearch" placeholder="Filter by name, ID, or email..." autocomplete="off">
+                        </div>
+                        <div class="sh-picker-field" style="flex: 0 0 auto;">
+                            <label for="shPageSize">Show</label>
+                            <select id="shPageSize">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="30">30</option>
+                                <option value="all">All</option>
+                            </select>
                         </div>
                     </div>
                     <div class="sh-slist-count" id="shSlistCount"></div>
                     <div id="shStudentList" class="sh-slist"></div>
+                    <div id="shSlistPagination" class="sh-slist-pagination"></div>
                 </div>
 
                 <!-- Back to list -->
@@ -81,6 +108,15 @@
                         <div class="sh-filter-field">
                             <label>To</label>
                             <input type="date" id="shDateTo">
+                        </div>
+                        <div class="sh-filter-field">
+                            <label>Show</label>
+                            <select id="shTimelinePageSize">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="30">30</option>
+                                <option value="all">All</option>
+                            </select>
                         </div>
                         <div class="sh-filter-actions">
                             <button class="btn btn-secondary btn-sm" id="shClearFilters" type="button">Clear</button>
@@ -146,6 +182,7 @@
                         </div>
                         <div class="sh-folder-body" id="shBody-personal"></div>
                         <div class="sh-folder-body sh-timeline" id="shBody-timeline"></div>
+                        <div id="shTimelinePagination" class="sh-slist-pagination"></div>
                     </div>
                 </div>
 

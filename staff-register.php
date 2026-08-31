@@ -56,9 +56,17 @@
         <div class="auth-right">
             <div class="auth-box auth-register-box">
                 <h1>Create Your Teacher Account</h1>
-                <p class="auth-subtitle">For teaching staff only — counselor and coordinator accounts are set up by the SDO</p>
+                <p class="auth-subtitle">Enter the access code your school coordinator gave you, then set up your account. Counselor and coordinator accounts are set up by the SDO.</p>
 
                 <form id="registerForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="accessCode">Access Code *</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="accessCode" name="accessCode" placeholder="Code from your coordinator" required autocomplete="off" autocapitalize="characters">
+                        </div>
+                        <small class="error-text"></small>
+                    </div>
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="firstName">First Name *</label>
@@ -83,22 +91,8 @@
                             <input type="email" id="email" name="email" placeholder="your@email.com" required>
                         </div>
                         <small class="error-text"></small>
+                        <small style="color: #666;">Must match the email your coordinator issued the code to.</small>
                     </div>
-
-                    <div class="form-group">
-                        <label for="school">School <span style="color: #ef4444;">*</span></label>
-                        <div class="input-wrapper">
-                            <select id="school" name="school" required>
-                                <option value="">Loading schools...</option>
-                            </select>
-                        </div>
-                        <small class="error-text"></small>
-                    </div>
-
-                    <!-- Fixed to teacher — counselor/coordinator accounts are
-                         SDO-only, created via School Management so their
-                         grade-scope assignment stays under district control. -->
-                    <input type="hidden" id="role" name="role" value="teacher">
 
                     <div class="form-row">
                         <div class="form-group">
@@ -186,7 +180,7 @@
     </div>
 
     <script src="js/otp-verify.js"></script>
-    <script src="js/register.js"></script>
+    <script src="js/staff-register.js"></script>
     <script>
         const navToggle = document.getElementById('navToggle');
         const navLinks = document.getElementById('navLinks');

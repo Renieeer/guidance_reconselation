@@ -17,9 +17,15 @@ function send_json(int $statusCode, array $payload): void {
     exit;
 }
 
-// Stage 2 (Initial Risk Assessment) interview notes — one row per screening
-// session a counselor logs against a referral (interview, observations,
-// risk level assessment, per the guidance office's intake flow).
+// Counselor-logged notes tied to a referral — originally just Stage 2
+// (Initial Risk Assessment) interview/observations/risk-level entries, now
+// shared with Stage 1 (Interview/Background) too via the `stage` column,
+// since both are the same shape of thing (a dated note a counselor wrote
+// against this referral) and both need to show up as their own "Day N" in
+// the student-history timeline (see shBuildReferralThreadEntry() — it reads
+// this same `stage` value to label each entry "Interview/Background" vs
+// "Risk Assessment"). `stage` defaults to 2 so every row inserted before
+// this column existed is still correctly a Stage 2 entry.
 function ensure_referral_screening_table(mysqli $conn): void {
     $conn->query("
         CREATE TABLE IF NOT EXISTS referral_screening (
@@ -30,11 +36,19 @@ function ensure_referral_screening_table(mysqli $conn): void {
             interview_notes TEXT,
             observations TEXT,
             risk_level VARCHAR(20) DEFAULT NULL,
+            stage INT NOT NULL DEFAULT 2,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (screening_id),
             KEY idx_referral_id (referral_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     ");
+
+    // Defensive migration for installations where this table already
+    // existed before the `stage` column was added.
+    $result = $conn->query("SHOW COLUMNS FROM referral_screening LIKE 'stage'");
+    if ($result && $result->num_rows === 0) {
+        $conn->query("ALTER TABLE referral_screening ADD COLUMN stage INT NOT NULL DEFAULT 2");
+    }
 }
 
 ensure_referral_screening_table($conn);
@@ -46,17 +60,31 @@ if ($method === 'GET') {
     if ($referralId <= 0) {
         send_json(400, ['success' => false, 'message' => 'referral_id is required']);
     }
+    // Optional — Stage 1's Interview/Background section and Stage 2's Risk
+    // Assessment section each only want their own entries, not both mixed
+    // together. Omit to get every entry regardless of stage (used by
+    // api/student-history.php's timeline, which wants the full picture).
+    $stageFilter = isset($_GET['stage']) ? (int)$_GET['stage'] : null;
 
-    $stmt = $conn->prepare('
-        SELECT screening_id, referral_id, counselor_id, counselor_name, interview_notes, observations, risk_level, created_at
+    $sql = '
+        SELECT screening_id, referral_id, counselor_id, counselor_name, interview_notes, observations, risk_level, stage, created_at
         FROM referral_screening
         WHERE referral_id = ?
-        ORDER BY created_at DESC, screening_id DESC
-    ');
+    ';
+    if ($stageFilter !== null) {
+        $sql .= ' AND stage = ?';
+    }
+    $sql .= ' ORDER BY created_at DESC, screening_id DESC';
+
+    $stmt = $conn->prepare($sql);
     if (!$stmt) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }
-    $stmt->bind_param('i', $referralId);
+    if ($stageFilter !== null) {
+        $stmt->bind_param('ii', $referralId, $stageFilter);
+    } else {
+        $stmt->bind_param('i', $referralId);
+    }
     if (!$stmt->execute()) {
         send_json(500, ['success' => false, 'message' => 'Execute failed: ' . $stmt->error]);
     }
@@ -66,6 +94,7 @@ if ($method === 'GET') {
     while ($row = $result->fetch_assoc()) {
         $row['screening_id'] = (int)$row['screening_id'];
         $row['referral_id'] = (int)$row['referral_id'];
+        $row['stage'] = (int)$row['stage'];
         $rows[] = $row;
     }
     $stmt->close();
@@ -87,6 +116,9 @@ if ($method === 'POST') {
     $interviewNotes = trim((string)($body['interview_notes'] ?? ''));
     $observations = trim((string)($body['observations'] ?? ''));
     $riskLevel = trim((string)($body['risk_level'] ?? ''));
+    // Defaults to 2 (Risk Assessment) so the existing Stage 2 screening form
+    // — which has never sent a `stage` field — keeps working unchanged.
+    $stage = isset($body['stage']) ? (int)$body['stage'] : 2;
 
     if ($referralId <= 0) {
         send_json(400, ['success' => false, 'message' => 'referral_id is required']);
@@ -97,13 +129,13 @@ if ($method === 'POST') {
     }
 
     $stmt = $conn->prepare('
-        INSERT INTO referral_screening (referral_id, counselor_id, counselor_name, interview_notes, observations, risk_level)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO referral_screening (referral_id, counselor_id, counselor_name, interview_notes, observations, risk_level, stage)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ');
     if (!$stmt) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }
-    $stmt->bind_param('isssss', $referralId, $counselorId, $counselorName, $interviewNotes, $observations, $riskLevel);
+    $stmt->bind_param('isssssi', $referralId, $counselorId, $counselorName, $interviewNotes, $observations, $riskLevel, $stage);
     if (!$stmt->execute()) {
         send_json(500, ['success' => false, 'message' => 'Failed to save screening notes: ' . $stmt->error]);
     }

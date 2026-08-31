@@ -3,6 +3,9 @@ const SCHEDULE_API_URL = '../../api/schedule-events.php';
 let currentCalendarDate = new Date();
 let scheduleEventsCache = [];
 let studentAppointmentRequests = [];
+// Unfiltered — every request for the school, not just this student's own —
+// so slot-blocking can see what other students have already taken.
+let allSchoolAppointmentRequests = [];
 
 document.addEventListener('DOMContentLoaded', initSchedulePage);
 
@@ -53,35 +56,87 @@ window.getWeekendName = function(dateStr) {
     return dayOfWeek === 0 ? 'Sunday' : 'Saturday';
 };
 
-function getBookedDates() {
-    // Return a Set of dates that have scheduled events or appointment requests
-    const booked = new Set();
-    
-    // Add dates with scheduled events
+// Every slot the "Preferred Time" dropdown offers (school hours, 30-minute
+// increments) — kept in one place so the blocking logic and the option list
+// in schedule.php can't silently drift apart.
+const TIME_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30'];
+const SLOT_MINUTES = 30;
+
+function timeToMinutes(timeStr) {
+    const [h, m] = String(timeStr || '0:0').split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+}
+
+// Statuses that still hold a student's requested slot. A rejected request
+// freed it back up, and a proposed_change means the counselor is offering a
+// different time, so the original preferred_time is no longer being held.
+const SLOT_HOLDING_STATUSES = new Set(['pending', 'approved']);
+
+// Blocked time for one date: any All Day schedule event blocks the whole
+// day; a timed event blocks just its [time, endTime) window; every other
+// student's pending/approved request blocks its own 30-minute slot.
+function getBlockedRangesForDate(dateStr) {
+    const ranges = [];
+    let allDay = false;
+
     if (scheduleEventsCache && Array.isArray(scheduleEventsCache)) {
         scheduleEventsCache.forEach(event => {
-            if (event.date) {
-                // Add start date and all dates in range if multi-day
-                const startDate = new Date(event.date);
-                const endDate = event.endDate ? new Date(event.endDate) : startDate;
-                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                    const dateStr = d.toISOString().split('T')[0];
-                    booked.add(dateStr);
-                }
+            if (!event.date) return;
+            const start = String(event.date).split('T')[0];
+            const end = event.endDate ? String(event.endDate).split('T')[0] : start;
+            if (dateStr < start || dateStr > end) return;
+
+            if (event.allDay) {
+                allDay = true;
+            } else if (event.time && event.endTime) {
+                ranges.push([timeToMinutes(event.time), timeToMinutes(event.endTime)]);
             }
         });
     }
-    
-    // Add dates with student appointment requests
-    if (studentAppointmentRequests && Array.isArray(studentAppointmentRequests)) {
-        studentAppointmentRequests.forEach(req => {
-            if (req.preferred_date) {
-                booked.add(req.preferred_date);
-            }
+
+    if (allSchoolAppointmentRequests && Array.isArray(allSchoolAppointmentRequests)) {
+        allSchoolAppointmentRequests.forEach(req => {
+            if (req.preferred_date !== dateStr || !req.preferred_time) return;
+            if (!SLOT_HOLDING_STATUSES.has(String(req.status || '').toLowerCase())) return;
+            const start = timeToMinutes(req.preferred_time);
+            ranges.push([start, start + SLOT_MINUTES]);
         });
     }
-    
-    return booked;
+
+    return { allDay, ranges };
+}
+
+function isSlotBlocked(dateStr, timeStr) {
+    const { allDay, ranges } = getBlockedRangesForDate(dateStr);
+    if (allDay) return true;
+    const start = timeToMinutes(timeStr);
+    const end = start + SLOT_MINUTES;
+    return ranges.some(([rStart, rEnd]) => start < rEnd && end > rStart);
+}
+
+function isDateFullyBlocked(dateStr) {
+    const { allDay } = getBlockedRangesForDate(dateStr);
+    if (allDay) return true;
+    return TIME_SLOTS.every(slot => isSlotBlocked(dateStr, slot));
+}
+
+// Greys out (and deselects, if needed) whichever "Preferred Time" options
+// fall inside a blocked range for the given date, so the student can only
+// submit a request for time that's actually still free that day.
+function updateTimeSlotOptions(dateStr) {
+    const select = document.getElementById('appointmentTimeInput');
+    if (!select) return;
+
+    Array.from(select.options).forEach(option => {
+        if (!option.value) return;
+        const blocked = dateStr ? isSlotBlocked(dateStr, option.value) : false;
+        option.disabled = blocked;
+    });
+
+    if (select.value && select.selectedOptions[0]?.disabled) {
+        select.value = '';
+    }
 }
 
 async function refreshScheduleEvents() {
@@ -152,24 +207,29 @@ async function loadStudentAppointmentRequests() {
         const user = getCurrentUser();
         if (!user || !user.id) {
             studentAppointmentRequests = [];
+            allSchoolAppointmentRequests = [];
             return;
         }
 
         // Fetch all appointment requests and filter by student_id
         const response = await fetch(`../../api/appointment-request.php?school=${encodeURIComponent(getCurrentSchool())}`);
         const result = await response.json();
-        
+
         if (!response.ok || !result.success) {
             studentAppointmentRequests = [];
+            allSchoolAppointmentRequests = [];
             return;
         }
 
+        allSchoolAppointmentRequests = result.data || [];
+
         // Filter requests for this student (compare as strings in case one
         // side is a number and the other a string, e.g. from JSON parsing)
-        studentAppointmentRequests = (result.data || []).filter(req => String(req.student_id) === String(user.id));
+        studentAppointmentRequests = allSchoolAppointmentRequests.filter(req => String(req.student_id) === String(user.id));
     } catch (error) {
         console.error('Error loading student appointment requests:', error);
         studentAppointmentRequests = [];
+        allSchoolAppointmentRequests = [];
     }
 }
 
@@ -343,14 +403,14 @@ function openRequestFormForDate(dateStr) {
         return;
     }
 
-    const booked = getBookedDates();
-    if (booked.has(dateStr)) {
-        showAlert('This date already has scheduled events. Please choose another date.', 'error');
+    if (isDateFullyBlocked(dateStr)) {
+        showAlert('This date is fully booked. Please choose another date.', 'error');
         return;
     }
 
     dateInput.min = getTodayDateStr();
     dateInput.value = dateStr;
+    updateTimeSlotOptions(dateStr);
     formPanel.style.display = 'block';
     timeInput?.focus();
 }
@@ -565,13 +625,14 @@ function setupAppointmentForm() {
             return;
         }
 
-        // Check if booked
-        const booked = getBookedDates();
-        if (booked.has(selectedDate)) {
-            showAlert('This date already has scheduled events. Please choose another date.', 'error');
+        // Check if every slot that day is already taken
+        if (isDateFullyBlocked(selectedDate)) {
+            showAlert('This date is fully booked. Please choose another date.', 'error');
             this.value = '';
             return;
         }
+
+        updateTimeSlotOptions(selectedDate);
     };
 
     dateInput?.addEventListener('input', validateDateInput);
@@ -610,10 +671,9 @@ async function submitAppointmentRequest(e) {
         return;
     }
 
-    // Check if booked
-    const booked = getBookedDates();
-    if (booked.has(dateInput)) {
-        showAlert('This date already has scheduled events. Please choose another date.', 'error');
+    // Check if this specific slot is already taken
+    if (isSlotBlocked(dateInput, timeInput)) {
+        showAlert('That time is no longer available. Please choose another time.', 'error');
         return;
     }
 

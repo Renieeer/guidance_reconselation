@@ -83,17 +83,17 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
                 profile_image: data.user.profileImage || null
             };
 
-            // Teacher/Counselor/Coordinator accounts sign in on staff-login.php,
-            // students sign in on login.php — keep the two portals separate
-            // rather than letting either accept the other's accounts.
-            const STAFF_LOGIN_ROLES = ['teacher', 'coordinator', 'counselor', 'counselor-and-coordinator'];
+            // Only teacher accounts sign in on staff-login.php — everyone
+            // else, including coordinator/counselor/combined accounts,
+            // signs in on the regular login.php.
+            const STAFF_LOGIN_ROLES = ['teacher'];
             const portalType = document.body.getAttribute('data-portal');
-            if (portalType === 'staff' && userData.role === 'student') {
-                showError('This is the staff login. Students should use the Student Login page.');
+            if (portalType === 'staff' && !STAFF_LOGIN_ROLES.includes(userData.role)) {
+                showError('This is the teacher login. Please use the regular Login page for your account.');
                 return;
             }
             if (portalType !== 'staff' && STAFF_LOGIN_ROLES.includes(userData.role)) {
-                showError('Teacher, Counselor, and Coordinator accounts should use the Staff Login page.');
+                showError('Teacher accounts should use the Staff Login page.');
                 return;
             }
 
@@ -178,7 +178,6 @@ function clearAllUserData() {
 // Logout function
 function logout() {
     clearAllUserData();
-    sessionStorage.removeItem('staffPinVerified');
     // Call logout.php if you want server-side logout
     try {
         fetch(`${API_BASE}/api/logout.php`, {

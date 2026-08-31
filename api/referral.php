@@ -118,6 +118,13 @@ function ensureReferralSchema(mysqli $conn): void {
         'student_school' => 'ALTER TABLE referral ADD COLUMN student_school VARCHAR(255) NULL AFTER school_attended',
         'stage' => 'ALTER TABLE referral ADD COLUMN stage INT NOT NULL DEFAULT 1 AFTER student_school',
         'status' => 'ALTER TABLE referral ADD COLUMN status VARCHAR(45) NOT NULL DEFAULT "pending" AFTER stage',
+        // Short human-readable note on what the current stage actually means
+        // for this referral — e.g. "Assessment done" once Stage 2's
+        // completion question is answered Yes, or "For counseling" vs.
+        // "Waiting for assessment proper" depending on whether Stage 3's
+        // student/parent agreement routed it to Stage 4 or Stage 5. The
+        // stage number alone can't tell those two Stage 5 arrivals apart.
+        'stage_note' => 'ALTER TABLE referral ADD COLUMN stage_note VARCHAR(255) NULL AFTER status',
         'date_submitted' => 'ALTER TABLE referral ADD COLUMN date_submitted DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER status',
         'updated_at' => 'ALTER TABLE referral ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER date_submitted',
         // Multiple people (e.g. an offender and a victim in the same incident)
@@ -420,6 +427,7 @@ try {
                 student_school,
                 COALESCE(stage, 1) AS stage,
                 COALESCE(status, 'pending') AS status,
+                stage_note,
                 date_submitted,
                 updated_at
             FROM referral

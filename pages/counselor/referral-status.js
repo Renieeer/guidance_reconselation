@@ -85,11 +85,11 @@ function loadDetailView(referral) {
     document.getElementById('detRefId').textContent = referral.referral_code || referral.id;
     document.getElementById('detStudentName').innerHTML = `${escapeHtml(referral.student_name)} ${referralRoleBadge(referral.referral_role)}`;
     document.getElementById('detStudentGradeSection').textContent = (referral.grade || 'N/A') + ' - ' + (referral.section || 'N/A');
-    document.getElementById('detReason').textContent = referral.referral_reason;
     document.getElementById('detDateSubmitted').textContent = formatDate(referral.date_submitted);
     document.getElementById('detUrgency').textContent = referral.urgency || 'normal';
     document.getElementById('detStatus').innerHTML = createBadge(getStatusLabel(referral.stage));
     document.getElementById('detStage').textContent = referral.stage + '/6';
+    document.getElementById('detStageNote').textContent = referral.stage_note ? ` — ${referral.stage_note}` : '';
 
     // Referral Information
     document.getElementById('detReferralReason').textContent = referral.referral_reason || 'Not provided';
@@ -103,28 +103,43 @@ function loadDetailView(referral) {
     // Family/Contact Information
     document.getElementById('detParent').textContent = referral.parent_guardian || 'Not provided';
     document.getElementById('detContactNum').textContent = referral.parent_contact || 'Not provided';
-    document.getElementById('detContactEmail').textContent = referral.parent_email || 'Not provided';
-    document.getElementById('detFamilyBg').textContent = referral.family_background || 'Not provided';
 
     // Load stages
     const stageContainer = document.getElementById('detailStagesContainer');
     stageContainer.innerHTML = createStageIndicator(referral.stage);
 
-    // Show the Initial Risk Assessment interview form for stage 2
+    // Show the Interview/Background form for stage 1
+    const interviewSection = document.getElementById('interviewFormSection');
+    if (referral.stage === 1) {
+        interviewSection.style.display = 'block';
+        document.getElementById('interviewForm').onsubmit = submitInterviewNotes;
+        loadInterviewHistory(referral.id);
+    } else {
+        interviewSection.style.display = 'none';
+    }
+
+    // Show the Initial Risk Assessment completion gate for stage 2
     const screeningSection = document.getElementById('screeningFormSection');
     if (referral.stage === 2) {
         screeningSection.style.display = 'block';
-        document.getElementById('screeningForm').onsubmit = submitScreeningNotes;
-        loadScreeningHistory(referral.id);
+        document.getElementById('assessmentUploadForm').onsubmit = submitAssessmentUpload;
+        document.getElementById('assessmentCompletedYesBtn').onclick = confirmAssessmentCompleted;
+        document.getElementById('assessmentCompletedNoBtn').onclick = () => {
+            showAlert('No problem — come back once the student has completed the assessment.', 'info');
+        };
+        loadAssessmentFiles(referral.id);
     } else {
         screeningSection.style.display = 'none';
     }
 
-    // Show the Parent Call-up/Consent file upload for stage 3
+    // Show the Parent Call-up/Consent file upload + agreement gate for stage 3
     const consentSection = document.getElementById('consentSection');
     if (referral.stage === 3) {
         consentSection.style.display = 'block';
         document.getElementById('consentUploadForm').onsubmit = submitConsentUpload;
+        document.getElementById('consentStudentAgree').value = '';
+        document.getElementById('consentParentAgree').value = '';
+        document.getElementById('consentDecisionSubmitBtn').onclick = confirmConsentDecision;
         loadConsentFiles(referral.id);
     } else {
         consentSection.style.display = 'none';
@@ -142,10 +157,10 @@ function loadDetailView(referral) {
         acknowledgementSection.style.display = 'none';
     }
 
-    // Stages 1, 4, 5 don't have a dedicated documentation form yet —
-    // say so explicitly instead of leaving a blank gap that reads as broken.
+    // Stages 4, 5 don't have a dedicated documentation form yet — say so
+    // explicitly instead of leaving a blank gap that reads as broken.
     document.getElementById('noStageDocSection').style.display =
-        (referral.stage === 2 || referral.stage === 3 || referral.stage === 6) ? 'none' : 'block';
+        [1, 2, 3, 6].includes(referral.stage) ? 'none' : 'block';
 
     // Load case actions
     loadCaseActions();
@@ -230,29 +245,26 @@ function submitAcknowledgement(e) {
     });
 }
 
-function loadScreeningHistory(referralId) {
-    const container = document.getElementById('screeningHistoryList');
+function loadAssessmentFiles(referralId) {
+    const container = document.getElementById('assessmentFileList');
     if (!container) return;
-    container.innerHTML = '<p class="text-muted">Loading previous screening notes...</p>';
+    container.innerHTML = '<p class="text-muted">Loading uploaded documents...</p>';
 
-    fetch(`../../api/referral-screening.php?referral_id=${referralId}`)
+    fetch(`../../api/referral-assessment.php?referral_id=${referralId}`)
         .then(response => response.json())
         .then(result => {
-            if (!result.success) throw new Error(result.message || 'Failed to load screening notes');
+            if (!result.success) throw new Error(result.message || 'Failed to load assessment documents');
             const rows = result.data || [];
             if (rows.length === 0) {
-                container.innerHTML = '<p class="text-muted">No screening notes recorded yet.</p>';
+                container.innerHTML = '<p class="text-muted">No assessment document uploaded yet.</p>';
                 return;
             }
             container.innerHTML = rows.map(row => `
-                <div style="background:#f9fafb; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <strong>${escapeHtml(row.counselor_name || 'Counselor')}</strong>
-                        <small class="text-muted">${formatDate(row.created_at)}</small>
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f9fafb; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
+                    <div>
+                        <a href="${row.url}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-check"></i> ${escapeHtml(row.fileName)}</a>
+                        <div><small class="text-muted">${((row.fileSize || 0) / 1024).toFixed(1)} KB • Uploaded by ${escapeHtml(row.uploadedBy || 'Unknown')} on ${formatDate(row.uploadedAt)}</small></div>
                     </div>
-                    ${row.risk_level ? `<div><strong>Risk Level:</strong> ${escapeHtml(row.risk_level)}</div>` : ''}
-                    ${row.interview_notes ? `<div><strong>Interview Notes:</strong> ${escapeHtml(row.interview_notes)}</div>` : ''}
-                    ${row.observations ? `<div><strong>Observations:</strong> ${escapeHtml(row.observations)}</div>` : ''}
                 </div>
             `).join('');
         })
@@ -261,15 +273,95 @@ function loadScreeningHistory(referralId) {
         });
 }
 
-function submitScreeningNotes(e) {
+function submitAssessmentUpload(e) {
     e.preventDefault();
 
-    const interviewNotes = document.getElementById('screeningInterview').value.trim();
-    const observations = document.getElementById('screeningObservations').value.trim();
-    const riskLevel = document.getElementById('screeningRiskLevel').value;
+    const fileInput = document.getElementById('assessmentFile');
+    const file = fileInput.files[0];
+    if (!file) {
+        showAlert('Choose a file to upload.', 'error');
+        return;
+    }
 
-    if (!interviewNotes && !observations) {
-        showAlert('Enter interview notes or observations before saving.', 'error');
+    const user = getCurrentUser();
+    const formData = new FormData();
+    formData.append('referral_id', currentReferral.id);
+    formData.append('uploaded_by', user?.name || '');
+    formData.append('file', file);
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading...';
+
+    fetch('../../api/referral-assessment.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) throw new Error(result.message || 'Failed to upload file');
+        showAlert('Assessment document uploaded.', 'success');
+        document.getElementById('assessmentUploadForm').reset();
+        loadAssessmentFiles(currentReferral.id);
+    })
+    .catch(error => {
+        showAlert(error.message || 'Failed to upload file.', 'error');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
+}
+
+// The Stage 2 completion gate — a "Yes" answer is itself the advancement
+// action (no separate "Advance to Next Stage" click needed), same
+// underlying update-referral.php call the generic advanceStage() uses.
+function confirmAssessmentCompleted() {
+    if (!confirm('Confirm the student has completed the assessment? This will move the referral to Stage 3.')) {
+        return;
+    }
+    setReferralStage(currentReferral.stage + 1, 'Assessment done');
+}
+
+// Same api/referral-screening.php table as the Stage 2 screening notes
+// above, just filtered to stage=1 so this list never shows Stage 2's risk
+// assessment entries mixed in (see the stage column added there).
+function loadInterviewHistory(referralId) {
+    const container = document.getElementById('interviewHistoryList');
+    if (!container) return;
+    container.innerHTML = '<p class="text-muted">Loading previous interview notes...</p>';
+
+    fetch(`../../api/referral-screening.php?referral_id=${referralId}&stage=1`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load interview notes');
+            const rows = result.data || [];
+            if (rows.length === 0) {
+                container.innerHTML = '<p class="text-muted">No interview notes recorded yet.</p>';
+                return;
+            }
+            container.innerHTML = rows.map(row => `
+                <div style="background:#f9fafb; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <strong>${escapeHtml(row.counselor_name || 'Counselor')}</strong>
+                        <small class="text-muted">${formatDate(row.created_at)}</small>
+                    </div>
+                    ${row.interview_notes ? `<div>${escapeHtml(row.interview_notes)}</div>` : ''}
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
+        });
+}
+
+function submitInterviewNotes(e) {
+    e.preventDefault();
+
+    const interviewNotes = document.getElementById('interviewNotes').value.trim();
+    if (!interviewNotes) {
+        showAlert('Enter interview / background notes before saving.', 'error');
         return;
     }
 
@@ -287,25 +379,25 @@ function submitScreeningNotes(e) {
             counselor_id: user?.id || '',
             counselor_name: user?.name || '',
             interview_notes: interviewNotes,
-            observations: observations,
-            risk_level: riskLevel
+            stage: 1
         })
     })
     .then(response => response.json())
     .then(result => {
-        if (!result.success) throw new Error(result.message || 'Failed to save screening notes');
-        showAlert('Screening notes saved.', 'success');
-        document.getElementById('screeningForm').reset();
-        loadScreeningHistory(currentReferral.id);
+        if (!result.success) throw new Error(result.message || 'Failed to save interview notes');
+        showAlert('Interview notes saved.', 'success');
+        document.getElementById('interviewForm').reset();
+        loadInterviewHistory(currentReferral.id);
     })
     .catch(error => {
-        showAlert(error.message || 'Failed to save screening notes.', 'error');
+        showAlert(error.message || 'Failed to save interview notes.', 'error');
     })
     .finally(() => {
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
     });
 }
+
 
 function loadConsentFiles(referralId) {
     const container = document.getElementById('consentFileList');
@@ -385,11 +477,17 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+// Stages 2 and 3 advance themselves through their own gate (the Stage 2
+// completion question, the Stage 3 student/parent agreement question)
+// instead of the generic button below — showing that button too would let
+// a counselor skip straight past either gate.
+const GATED_STAGES = [2, 3];
+
 function loadCaseActions() {
     const container = document.getElementById('caseActionsContainer');
     let html = '';
 
-    if (currentReferral.stage < 6) {
+    if (currentReferral.stage < 6 && !GATED_STAGES.includes(currentReferral.stage)) {
         html += `<button class="btn btn-primary" onclick="advanceStage()">Advance to Next Stage</button>`;
     }
 
@@ -402,14 +500,15 @@ function loadCaseActions() {
     container.innerHTML = html;
 }
 
-function advanceStage() {
-    const newStage = currentReferral.stage + 1;
+// stageNote is a short human-readable record of *why* the referral is at
+// the new stage (e.g. "Assessment done", "For counseling") — shown next to
+// "Current Stage" in the Referral Overview. Omitting it clears any existing
+// note, since a note set by a gated stage shouldn't linger after a later,
+// ungated advance has moved past it.
+function setReferralStage(newStage, stageNote) {
     const newStatus = newStage === 6 ? 'completed' : 'in-progress';
 
-    // Update to database
-    const apiUrl = `../../api/update-referral.php`;
-    
-    fetch(apiUrl, {
+    fetch('../../api/update-referral.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -417,23 +516,51 @@ function advanceStage() {
         body: JSON.stringify({
             referral_id: currentReferral.id,
             stage: newStage,
-            status: newStatus
+            status: newStatus,
+            stage_note: stageNote || ''
         })
     })
     .then(response => response.json())
     .then(result => {
         if (result.success) {
             currentReferral = result.referral;
-            showAlert(`Referral advanced to stage ${newStage}!`, 'success');
+            showAlert(`Referral moved to stage ${newStage}.`, 'success');
             loadDetailView(currentReferral);
         } else {
-            showAlert(result.message || 'Error advancing stage', 'error');
+            showAlert(result.message || 'Error updating referral stage', 'error');
         }
     })
     .catch(error => {
-        console.error('Error advancing stage:', error);
-        showAlert('Error advancing stage. Please try again.', 'error');
+        console.error('Error updating referral stage:', error);
+        showAlert('Error updating referral stage. Please try again.', 'error');
     });
+}
+
+function advanceStage() {
+    setReferralStage(currentReferral.stage + 1);
+}
+
+// The Stage 3 gate — student and parent agreement decides whether the
+// referral goes to Stage 4 (both agreed) or is routed to Stage 5 instead
+// (either one disagreed), rather than always moving straight to Stage 4.
+function confirmConsentDecision() {
+    const studentAgree = document.getElementById('consentStudentAgree').value;
+    const parentAgree = document.getElementById('consentParentAgree').value;
+
+    if (!studentAgree || !parentAgree) {
+        showAlert('Please answer both questions before continuing.', 'error');
+        return;
+    }
+
+    const bothAgree = studentAgree === 'yes' && parentAgree === 'yes';
+    const newStage = bothAgree ? 4 : 5;
+    const stageNote = bothAgree ? 'For counseling' : 'Waiting for assessment proper';
+    const message = bothAgree
+        ? 'Both the student and parent agreed — the referral will move to Stage 4. Continue?'
+        : 'Since the student and/or parent did not agree, the referral will move to Stage 5. Continue?';
+
+    if (!confirm(message)) return;
+    setReferralStage(newStage, stageNote);
 }
 
 function closeCase() {
@@ -653,7 +780,8 @@ function setupWalkInStudentSearch() {
                             if (gradeLabel && Array.from(gradeEl.options).some(o => o.value === gradeLabel)) {
                                 gradeEl.value = gradeLabel;
                             }
-                            if (student.age) document.getElementById('newRefAge').value = student.age;
+                            const computedAge = calculateAge(student.date_of_birth || student.DateOfBirth);
+                            document.getElementById('newRefAge').value = computedAge !== '' ? computedAge : (student.age || '');
                             const sexValue = student.sex || student.Sex;
                             if (sexValue) {
                                 const genderMap = { M: 'Male', F: 'Female', Male: 'Male', Female: 'Female' };

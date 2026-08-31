@@ -82,16 +82,17 @@
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="coordinatorGrade">Grade Assignment</label>
-                                    <select id="coordinatorGrade" name="coordinatorGrade">
-                                        <option value="">All grades (no restriction)</option>
-                                        <option value="7,8,9,10">Grades 7-10</option>
-                                        <option value="11,12">Grades 11 &amp; 12</option>
-                                        <option value="7">Grade 7 only</option>
-                                        <option value="8">Grade 8 only</option>
-                                        <option value="9">Grade 9 only</option>
-                                        <option value="10">Grade 10 only</option>
-                                    </select>
+                                    <label>Grade Assignment</label>
+                                    <div class="grade-checkbox-group" id="coordinatorGrade">
+                                        <label class="grade-checkbox grade-checkbox-all"><input type="checkbox" data-select-all><span>All</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="7"><span>7</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="8"><span>8</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="9"><span>9</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="10"><span>10</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="11"><span>11</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="12"><span>12</span></label>
+                                        <span class="grade-checkbox-hint">Leave all unchecked to allow every grade.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -120,15 +121,17 @@
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="counselorGrade">Grade Assignment</label>
-                                    <select id="counselorGrade" name="counselorGrade">
-                                        <option value="">All grades (no restriction)</option>
-                                        <option value="7">Grade 7 only</option>
-                                        <option value="8">Grade 8 only</option>
-                                        <option value="9">Grade 9 only</option>
-                                        <option value="10">Grade 10 only</option>
-                                        <option value="11,12">Grades 11 &amp; 12</option>
-                                    </select>
+                                    <label>Grade Assignment</label>
+                                    <div class="grade-checkbox-group" id="counselorGrade">
+                                        <label class="grade-checkbox grade-checkbox-all"><input type="checkbox" data-select-all><span>All</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="7"><span>7</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="8"><span>8</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="9"><span>9</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="10"><span>10</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="11"><span>11</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="12"><span>12</span></label>
+                                        <span class="grade-checkbox-hint">Leave all unchecked to allow every grade.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -158,16 +161,17 @@
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="combinedGrade">Grade Assignment</label>
-                                    <select id="combinedGrade" name="combinedGrade">
-                                        <option value="11,12">Grades 11 &amp; 12</option>
-                                        <option value="">All grades (no restriction)</option>
-                                        <option value="7,8,9,10">Grades 7-10</option>
-                                        <option value="7">Grade 7 only</option>
-                                        <option value="8">Grade 8 only</option>
-                                        <option value="9">Grade 9 only</option>
-                                        <option value="10">Grade 10 only</option>
-                                    </select>
+                                    <label>Grade Assignment</label>
+                                    <div class="grade-checkbox-group" id="combinedGrade">
+                                        <label class="grade-checkbox grade-checkbox-all"><input type="checkbox" data-select-all><span>All</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="7"><span>7</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="8"><span>8</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="9"><span>9</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="10"><span>10</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="11"><span>11</span></label>
+                                        <label class="grade-checkbox"><input type="checkbox" value="12"><span>12</span></label>
+                                        <span class="grade-checkbox-hint">Leave all unchecked to allow every grade.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

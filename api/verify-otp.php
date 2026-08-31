@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once 'conn.php';
 require_once 'email-verification.php';
+require_once 'teacher-access-config.php';
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
@@ -41,6 +42,15 @@ try {
     }
 
     $result = verify_email_otp($conn, $email, $otp);
+
+    if ($result['success']) {
+        // If this signup came through the coordinator-issued access-code
+        // flow (staff-register.php), both layers have now succeeded — burn
+        // the code so it can't be reused. A no-op for every other OTP
+        // verification (student self-registration, legacy accounts), since
+        // those emails have no matching row here.
+        burn_teacher_access_code_for_email($conn, $email);
+    }
 
     send_json($result['success'] ? 200 : 400, $result);
 } catch (Throwable $e) {

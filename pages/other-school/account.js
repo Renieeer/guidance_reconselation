@@ -6,16 +6,131 @@ let allAccounts = [];
 function initAccountPage() {
     initPage();
     loadSchoolAccounts();
-    
+
     // Setup search
     document.getElementById('searchInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             searchAccounts();
         }
     });
-    
+
     // Setup edit form
     document.getElementById('editAccountForm').addEventListener('submit', saveAccountChanges);
+
+    initIssueCodeModal();
+}
+
+// Coordinator-issued teacher access codes — see api/issue-teacher-access-code.php.
+// The code is emailed straight to the teacher's inbox. It's only shown here
+// as a fallback if that email couldn't be sent (e.g. mail is disabled).
+function initIssueCodeModal() {
+    const openBtn = document.getElementById('openIssueCodeModalBtn');
+    const modal = document.getElementById('issueCodeModal');
+    const form = document.getElementById('issueCodeForm');
+    const copyBtn = document.getElementById('copyIssueCodeBtn');
+
+    if (!openBtn || !modal || !form) {
+        return;
+    }
+
+    openBtn.addEventListener('click', () => {
+        resetIssueCodeModal();
+        modal.classList.add('show');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeIssueCodeModal();
+        }
+    });
+
+    form.addEventListener('submit', issueTeacherAccessCode);
+
+    copyBtn?.addEventListener('click', () => {
+        const codeEl = document.getElementById('issueCodeValue');
+        const code = codeEl ? codeEl.textContent : '';
+        if (!code) return;
+        navigator.clipboard?.writeText(code).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        }).catch(() => {});
+    });
+}
+
+function resetIssueCodeModal() {
+    const form = document.getElementById('issueCodeForm');
+    const errorDiv = document.getElementById('issueCodeError');
+    const resultDiv = document.getElementById('issueCodeResult');
+    if (form) {
+        form.reset();
+        form.style.display = 'block';
+    }
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.classList.remove('show');
+    }
+    if (resultDiv) {
+        resultDiv.style.display = 'none';
+    }
+}
+
+function closeIssueCodeModal() {
+    document.getElementById('issueCodeModal')?.classList.remove('show');
+}
+
+async function issueTeacherAccessCode(e) {
+    e.preventDefault();
+
+    const emailInput = document.getElementById('issueCodeEmail');
+    const errorDiv = document.getElementById('issueCodeError');
+    const submitBtn = document.getElementById('issueCodeSubmitBtn');
+    const email = emailInput.value.trim();
+
+    errorDiv.textContent = '';
+    errorDiv.classList.remove('show');
+
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Generating...';
+
+    try {
+        const response = await fetch('../../api/issue-teacher-access-code.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to generate access code.');
+        }
+
+        document.getElementById('issueCodeForm').style.display = 'none';
+
+        const statusEl = document.getElementById('issueCodeStatus');
+        const fallbackEl = document.getElementById('issueCodeFallback');
+        if (data.emailSent) {
+            statusEl.textContent = `Access code emailed to ${email}.`;
+            fallbackEl.style.display = 'none';
+        } else {
+            statusEl.textContent = "Couldn't email the code — copy it and give it to the teacher directly:";
+            document.getElementById('issueCodeValue').textContent = data.code;
+            fallbackEl.style.display = 'flex';
+        }
+
+        const expiryEl = document.getElementById('issueCodeExpiry');
+        if (expiryEl && data.expiresAt) {
+            const expiryDate = new Date(data.expiresAt.replace(' ', 'T'));
+            expiryEl.textContent = `Expires ${expiryDate.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' })} — single use only.`;
+        }
+        document.getElementById('issueCodeResult').style.display = 'flex';
+    } catch (error) {
+        errorDiv.textContent = error.message || 'Network error. Please try again.';
+        errorDiv.classList.add('show');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
 }
 
 function getCurrentSchool() {

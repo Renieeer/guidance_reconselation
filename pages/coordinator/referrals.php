@@ -30,6 +30,17 @@
                             <button class="btn btn-secondary btn-sm" onclick="backToList()">Back to List</button>
                         </div>
 
+                        <!-- Referral Overview -->
+                        <h3 class="text-primary">Referral Overview</h3>
+                        <div class="form-row-three">
+                            <p><strong>Teacher:</strong> <span id="detailTeacherName"></span></p>
+                            <p><strong>School:</strong> <span id="detailTeacherSchool"></span></p>
+                            <p><strong>Contact Number:</strong> <span id="detailTeacherContact"></span></p>
+                        </div>
+                        <div class="form-row">
+                            <p><strong>Parent/Guardian:</strong> <span id="detailParent"></span></p>
+                            <p><strong>Contact Number:</strong> <span id="detailContactNum"></span></p>
+                        </div>
                         <div class="form-row">
                             <div>
                                 <p><strong>Referral ID:</strong> <span id="detailRefId"></span></p>
@@ -40,11 +51,10 @@
                                 <p><strong>Gender:</strong> <span id="detailGender"></span></p>
                             </div>
                             <div>
-                                <p><strong>Submitted By:</strong> <span id="detailSubmittedBy"></span></p>
                                 <p><strong>Date Submitted:</strong> <span id="detailDateSubmitted"></span></p>
                                 <p><strong>Urgency:</strong> <span id="detailUrgency"></span></p>
                                 <p><strong>Status:</strong> <span id="detailStatus"></span></p>
-                                <p><strong>Current Stage:</strong> <span id="detailStage"></span></p>
+                                <p><strong>Current Stage:</strong> <span id="detailStage"></span><span id="detailStageNote" class="text-muted"></span></p>
                             </div>
                         </div>
 
@@ -58,26 +68,12 @@
 
                         <!-- Referral Reason & Description -->
                         <h3 class="text-primary">Referral Information</h3>
-                        <p><strong>Reason for Referral:</strong> <span id="detailReason"></span></p>
-
-                        <div class="mt-3">
-                            <p><strong>Intervention Attempts:</strong></p>
-                            <p id="detailIntervention" class="bg-light p-3 rounded"></p>
-                        </div>
-
-                        <hr style="margin: 20px 0;">
-
-                        <!-- Family Information -->
-                        <h3 class="text-primary">Family/Contact Information</h3>
                         <div class="form-row">
                             <div>
-                                <p><strong>Parent/Guardian:</strong> <span id="detailParent"></span></p>
-                                <p><strong>Contact Number:</strong> <span id="detailContactNum"></span></p>
+                                <p><strong>Reason for Referral:</strong> <span id="detailReason"></span></p>
                             </div>
                             <div>
-                                <p><strong>Email:</strong> <span id="detailContactEmail"></span></p>
-                                <p><strong>Family Background:</strong></p>
-                                <p id="detailFamilyBg" class="bg-light p-3 rounded"></p>
+                                <p><strong>Initial Actions Taken:</strong> <span id="detailIntervention"></span></p>
                             </div>
                         </div>
 

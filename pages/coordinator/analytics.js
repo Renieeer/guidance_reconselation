@@ -61,30 +61,20 @@ function getReferralApiRole() {
     return REFERRAL_API_ROLE[user && user.role] || 'counselor';
 }
 
-function downloadCSV(name, rows) {
-    const csv = rows.map(r => r.map(c => { const s = String(c ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\r\n');
-    const bom = String.fromCharCode(0xFEFF);
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
-}
-
 function mkChart(canvas, config) { const c = new Chart(canvas.getContext('2d'), config); charts.push(c); return c; }
 const legendRight = { plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 12, font: { size: 12 } } } } };
 const noLegend = { plugins: { legend: { display: false } } };
 
-function panelHeader(key, subtitle, onExport) {
+function panelHeader(key, subtitle, onExportPdf) {
     const m = meta(key);
     const h = el(`<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:22px;">
         <div>
             <h2 class="card-title" style="margin-bottom:6px;">${esc(m.name)} <span class="text-muted" style="font-weight:400; font-size:13px;">Report ${m.code}</span></h2>
             <p class="text-muted" style="margin:0; max-width:64ch;">${esc(subtitle)}</p>
         </div>
-        <button type="button" class="btn btn-primary btn-sm"><i class="bi bi-download"></i> Export CSV</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnExportPdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
     </div>`);
-    $('.btn-primary', h).addEventListener('click', onExport);
+    $('#btnExportPdf', h).addEventListener('click', onExportPdf);
     return h;
 }
 const statCards = cards => `<div class="dashboard-grid" style="margin-bottom:24px;">${cards.map(c => `
@@ -92,7 +82,81 @@ const statCards = cards => `<div class="dashboard-grid" style="margin-bottom:24p
 const chartTile = (id, title, tall) => `<div class="table-container" style="padding:20px;">
     <h4 class="text-primary" style="margin-top:0;">${esc(title)}</h4>
     <div style="position:relative; height:${tall ? 320 : 260}px;"><canvas id="${id}"></canvas></div></div>`;
+// Same card/title framing as chartTile, but for when there's no data to
+// plot yet — an empty Chart.js canvas draws nothing at all (no axes, no
+// "no data" message), which just looks broken rather than "zero".
+const chartTileEmpty = (title, text, tall) => `<div class="table-container" style="padding:20px;">
+    <h4 class="text-primary" style="margin-top:0;">${esc(title)}</h4>
+    <div style="height:${tall ? 320 : 260}px; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--text-light);">${esc(text)}</div></div>`;
 const emptyNote = text => `<p class="text-center text-muted" style="background:white; border:1px dashed var(--border-color); border-radius:8px; padding:40px 20px;">${esc(text)}</p>`;
+
+/* ---- PDF preview: build with jsPDF + autoTable, show in-page before print/download ---- */
+let pdfPreviewUrl = null;
+
+function chartImage(id) {
+    const canvas = document.getElementById(id);
+    const chart = canvas && typeof Chart !== 'undefined' && Chart.getChart(canvas);
+    return chart ? chart.toBase64Image('image/png', 1) : null;
+}
+
+function newPdf() {
+    return new window.jspdf.jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+}
+
+function pdfHeader(doc, title, subtitle) {
+    const school = getUserSchool();
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(18, 58, 107);
+    doc.text(title, 40, 44);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(100, 110, 130);
+    doc.text(school || '', 40, 60);
+    doc.text(subtitle || '', 40, 74);
+    doc.text(`Generated ${new Date().toLocaleString()}`, 40, 88);
+    doc.setDrawColor(220, 224, 232);
+    doc.line(40, 98, doc.internal.pageSize.getWidth() - 40, 98);
+    return 120;
+}
+
+function ensurePdfModal() {
+    if (document.getElementById('pdfPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="pdfPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:980px; width:95%; height:88vh;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-pdf"></i> PDF Preview</h2>
+                <button type="button" class="modal-close" id="pdfPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:0; flex:1; display:flex;">
+                <iframe id="pdfPreviewFrame" title="PDF preview" style="width:100%; height:100%; border:0;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="pdfPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-secondary" id="pdfPrintBtn"><i class="bi bi-printer"></i> Print</button>
+                <button type="button" class="btn btn-primary" id="pdfDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    $('#pdfPreviewCloseX').addEventListener('click', closePdfPreview);
+    $('#pdfPreviewCloseBtn').addEventListener('click', closePdfPreview);
+}
+
+function closePdfPreview() {
+    closeModal('pdfPreviewModal');
+    $('#pdfPreviewFrame').src = 'about:blank';
+    if (pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); pdfPreviewUrl = null; }
+}
+
+function showPdfPreview(doc, filename) {
+    ensurePdfModal();
+    if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    pdfPreviewUrl = doc.output('bloburl');
+    $('#pdfPreviewFrame').src = pdfPreviewUrl;
+    $('#pdfDownloadBtn').onclick = () => doc.save(filename);
+    $('#pdfPrintBtn').onclick = () => {
+        const frame = $('#pdfPreviewFrame');
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    };
+    openModal('pdfPreviewModal');
+}
 
 /* ---- 7.1 / 7.2 appointments ---- */
 function renderAppointments(key) {
@@ -102,15 +166,41 @@ function renderAppointments(key) {
     frag.append(panelHeader(key,
         isOnline ? 'Appointments students booked themselves through the online scheduling system.' : 'Appointments scheduled directly by staff for a student (e.g. a walk-in, or "Appoint Students" on a case).',
         () => {
-            const header = ['Date', 'Time', 'Student', 'Reason', 'Status'];
-            const body = rows.map(r => [r.preferred_date, r.preferred_time, r.student_name, r.reason, r.status]);
-            downloadCSV(`gms_${key}_appointments.csv`, [header, ...body]);
-        }));
+            const doc = newPdf();
+            const st2 = countBy(rows, r => r.status);
+            let y = pdfHeader(doc, `${meta(key).name} — Report ${meta(key).code}`,
+                isOnline ? 'Student self-booked appointments' : 'Staff-scheduled appointments');
 
-    if (rows.length === 0) {
-        frag.append(el(emptyNote(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`)));
-        return frag;
-    }
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
+            doc.text(`Total: ${rows.length}   Pending: ${st2['pending'] || 0}   Approved: ${st2['approved'] || 0}   Rejected: ${st2['rejected'] || 0}`, 40, y);
+            y += 20;
+
+            if (rows.length > 0) {
+                const pageW = doc.internal.pageSize.getWidth();
+                const half = (pageW - 80 - 16) / 2;
+                const imgStatus = chartImage('chStatus');
+                const imgReason = chartImage('chReason');
+                if (imgStatus) doc.addImage(imgStatus, 'PNG', 40, y, half, 150);
+                if (imgReason) doc.addImage(imgReason, 'PNG', 40 + half + 16, y, half, 150);
+                y += 166;
+                const imgTrend = chartImage('chTrend');
+                if (imgTrend) { doc.addImage(imgTrend, 'PNG', 40, y, pageW - 80, 140); y += 156; }
+
+                doc.autoTable({
+                    startY: y,
+                    head: [['Date', 'Time', 'Student', 'Reason', 'Status']],
+                    body: rows.map(r => [r.preferred_date, r.preferred_time, r.student_name, r.reason, r.status]),
+                    styles: { fontSize: 9 },
+                    headStyles: { fillColor: [18, 58, 107] },
+                    margin: { left: 40, right: 40 },
+                });
+            } else {
+                doc.setTextColor(120, 130, 150);
+                doc.text(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`, 40, y + 16);
+            }
+
+            showPdfPreview(doc, `gms_${key}_appointments.pdf`);
+        }));
 
     const st = countBy(rows, r => r.status);
     frag.append(el(statCards([
@@ -124,8 +214,12 @@ function renderAppointments(key) {
         ${chartTile('chStatus', 'Status Breakdown')}${chartTile('chReason', 'By Reason')}</div>`));
     frag.append(el(`<div style="margin-bottom:28px;">${chartTile('chTrend', 'Daily Trend')}</div>`));
 
-    const tr = rows.map(r => `<tr><td>${esc(r.preferred_date)}</td><td>${esc(r.preferred_time)}</td><td>${esc(r.student_name)}</td><td>${esc(r.reason)}</td><td>${badge(r.status)}</td></tr>`).join('');
-    frag.append(el(`<div class="mb-4"><h3 class="text-primary">Appointment Log</h3><div class="table-container"><table><thead><tr><th>Date</th><th>Time</th><th>Student</th><th>Reason</th><th>Status</th></tr></thead><tbody>${tr}</tbody></table></div></div>`));
+    if (rows.length === 0) {
+        frag.append(el(emptyNote(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`)));
+    } else {
+        const tr = rows.map(r => `<tr><td>${esc(r.preferred_date)}</td><td>${esc(r.preferred_time)}</td><td>${esc(r.student_name)}</td><td>${esc(r.reason)}</td><td>${badge(r.status)}</td></tr>`).join('');
+        frag.append(el(`<div class="mb-4"><h3 class="text-primary">Appointment Log</h3><div class="table-container"><table><thead><tr><th>Date</th><th>Time</th><th>Student</th><th>Reason</th><th>Status</th></tr></thead><tbody>${tr}</tbody></table></div></div>`));
+    }
 
     queueMicrotask(() => {
         const sl = Object.keys(st);
@@ -151,16 +245,35 @@ function renderReferrals() {
     frag.append(panelHeader('referrals',
         'Every referral reason on record for your school — the full breakdown, not just the top few.',
         () => {
-            const header = ['Reason', 'Count', '% of total'];
-            const body = reasons.map(r => [r.reason, r.count, total ? ((r.count / total) * 100).toFixed(1) + '%' : '0%']);
-            body.push(['TOTAL', total, '100%']);
-            downloadCSV('gms_referral_distribution.csv', [header, ...body]);
-        }));
+            const doc = newPdf();
+            let y = pdfHeader(doc, 'Referral Distribution — Report 7.3', 'Every referral reason on record for your school');
 
-    if (total === 0) {
-        frag.append(el(emptyNote('No referrals recorded for your school yet.')));
-        return frag;
-    }
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
+            doc.text(`Total referrals: ${total}   Distinct reasons: ${reasons.length}`, 40, y);
+            y += 20;
+
+            if (total > 0) {
+                const pageW = doc.internal.pageSize.getWidth();
+                const imgReasons = chartImage('chReasons');
+                if (imgReasons) { doc.addImage(imgReasons, 'PNG', 40, y, pageW - 80, 170); y += 186; }
+                const imgUrgency = chartImage('chUrgency');
+                if (imgUrgency) { doc.addImage(imgUrgency, 'PNG', 40, y, (pageW - 80) / 2, 140); y += 156; }
+
+                doc.autoTable({
+                    startY: y,
+                    head: [['Reason', 'Count', '% of total']],
+                    body: reasons.map(r => [r.reason, r.count, ((r.count / total) * 100).toFixed(1) + '%']),
+                    styles: { fontSize: 9 },
+                    headStyles: { fillColor: [18, 58, 107] },
+                    margin: { left: 40, right: 40 },
+                });
+            } else {
+                doc.setTextColor(120, 130, 150);
+                doc.text('No referrals recorded for your school yet.', 40, y + 16);
+            }
+
+            showPdfPreview(doc, 'gms_referral_distribution.pdf');
+        }));
 
     frag.append(el(statCards([
         { num: total, lbl: 'Total referrals', icon: 'bi-clipboard-data' },
@@ -172,8 +285,12 @@ function renderReferrals() {
     frag.append(el(`<div style="margin-bottom:20px;">${chartTile('chReasons', 'Referrals by Reason (All)', true)}</div>`));
     frag.append(el(`<div style="max-width:480px; margin-bottom:28px;">${chartTile('chUrgency', 'By Urgency')}</div>`));
 
-    const tr = reasons.map(r => `<tr><td>${esc(r.reason)}</td><td style="text-align:right;">${r.count}</td><td style="text-align:right;">${((r.count / total) * 100).toFixed(1)}%</td></tr>`).join('');
-    frag.append(el(`<div><h3 class="text-primary">Reason Breakdown</h3><div class="table-container"><table><thead><tr><th>Reason</th><th style="text-align:right;">Count</th><th style="text-align:right;">% of total</th></tr></thead><tbody>${tr}</tbody></table></div></div>`));
+    if (total === 0) {
+        frag.append(el(emptyNote('No referrals recorded for your school yet.')));
+    } else {
+        const tr = reasons.map(r => `<tr><td>${esc(r.reason)}</td><td style="text-align:right;">${r.count}</td><td style="text-align:right;">${((r.count / total) * 100).toFixed(1)}%</td></tr>`).join('');
+        frag.append(el(`<div><h3 class="text-primary">Reason Breakdown</h3><div class="table-container"><table><thead><tr><th>Reason</th><th style="text-align:right;">Count</th><th style="text-align:right;">% of total</th></tr></thead><tbody>${tr}</tbody></table></div></div>`));
+    }
 
     queueMicrotask(() => {
         mkChart($('#chReasons'), { type: 'bar', data: { labels: reasons.map(r => r.reason), datasets: [{ data: reasons.map(r => r.count), backgroundColor: reasons.map((_, i) => CHART_CAT[i % CHART_CAT.length]), borderRadius: 5 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, ...noLegend, scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#eaeef3' } }, y: { grid: { display: false } } } } });
@@ -187,7 +304,7 @@ function renderReferrals() {
 /* ---- 7.5 child summary case ---- */
 function renderChild() {
     const frag = document.createDocumentFragment();
-    frag.append(panelHeader('child', 'The complete guidance record for one student — profile, case history, and follow-ups.', exportChildSummary));
+    frag.append(panelHeader('child', 'The complete guidance record for one student — profile, case history, and follow-ups.', exportChildPdf));
 
     if (studentsList.length === 0) {
         frag.append(el(emptyNote('No students on file for your school yet.')));
@@ -240,14 +357,11 @@ function renderChild() {
         </div>
     </div>`));
 
-    if (cases.length === 0 && studentReferrals.length === 0) {
-        frag.append(el(emptyNote('No counseling cases or referrals on record for this student yet.')));
-        return frag;
-    }
-
-    if (cases.length > 0) {
-        frag.append(el(`<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">${chartTile('chCaseStatus', 'Case Status')}${chartTile('chCaseCategory', 'Cases by Category')}</div>`));
-    }
+    const hasCases = cases.length > 0;
+    frag.append(el(`<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">${hasCases
+        ? `${chartTile('chCaseStatus', 'Case Status')}${chartTile('chCaseCategory', 'Cases by Category')}`
+        : `${chartTileEmpty('Case Status', 'No counseling case data yet.')}${chartTileEmpty('Cases by Category', 'No counseling case data yet.')}`
+    }</div>`));
 
     const followUpsByCase = {};
     followUps.forEach(f => { (followUpsByCase[f.case_uid] = followUpsByCase[f.case_uid] || []).push(f); });
@@ -265,7 +379,7 @@ function renderChild() {
         frag.append(el(`<div><h3 class="text-primary">Referral History</h3><div class="table-container"><table><thead><tr><th>Referral ID</th><th>Submitted</th><th>Reason</th><th>Status</th></tr></thead><tbody>${refRows}</tbody></table></div></div>`));
     }
 
-    if (cases.length > 0) {
+    if (hasCases) {
         queueMicrotask(() => {
             const cs = countBy(cases, c => c.status); const csl = Object.keys(cs);
             mkChart($('#chCaseStatus'), { type: 'doughnut', data: { labels: csl, datasets: [{ data: csl.map(k => cs[k]), backgroundColor: csl.map(k => STATUS_CHART_COLOR[k] || CHART_COLORS.navy), borderColor: '#fff', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '58%', ...legendRight } });
@@ -291,22 +405,54 @@ async function loadStudentDetail(studentId) {
     }
 }
 
-function exportChildSummary() {
+function exportChildPdf() {
     const cached = state.student ? studentDetailCache[state.student] : null;
     if (!cached) { showAlert('Select a student first.', 'error'); return; }
     const s = cached.student;
     const cases = cached.data.counseling || [];
-    const rows = [
-        ['CHILD SUMMARY CASE — ' + s.name],
-        ['LRN', s.lrn || ''],
-        ['Grade & Section', gradeLabel(s.grade) + ' · ' + (s.section || '')],
-        ['Sessions', cases.length],
-        ['Referrals', (cached.data.referrals || []).length],
-        [],
-        ['Case ID', 'Date', 'Category', 'Counselor', 'Status'],
-    ];
-    cases.forEach(c => rows.push([c.case_uid, c.case_date, c.category_name || c.case_title || '', c.counselor_name || '', c.status]));
-    downloadCSV(`gms_child_summary_${s.student_id}.csv`, rows);
+    const studentReferrals = cached.data.referrals || [];
+
+    const doc = newPdf();
+    let y = pdfHeader(doc, 'Child Summary Case — Report 7.5', s.name);
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
+    doc.text(`LRN: ${s.lrn || 'N/A'}`, 40, y); y += 16;
+    doc.text(`Grade & Section: ${gradeLabel(s.grade)} · ${s.section || 'N/A'}`, 40, y); y += 16;
+    doc.text(`Sessions: ${cases.length}   Referrals: ${studentReferrals.length}`, 40, y); y += 20;
+
+    if (cases.length > 0) {
+        const pageW = doc.internal.pageSize.getWidth();
+        const half = (pageW - 80 - 16) / 2;
+        const imgStatus = chartImage('chCaseStatus');
+        const imgCategory = chartImage('chCaseCategory');
+        if (imgStatus) doc.addImage(imgStatus, 'PNG', 40, y, half, 150);
+        if (imgCategory) doc.addImage(imgCategory, 'PNG', 40 + half + 16, y, half, 150);
+        y += 166;
+    }
+
+    doc.autoTable({
+        startY: y,
+        head: [['Case ID', 'Date', 'Category', 'Counselor', 'Status']],
+        body: cases.length
+            ? cases.map(c => [c.case_uid, c.case_date || 'N/A', c.category_name || c.case_title || 'N/A', c.counselor_name || 'N/A', c.status])
+            : [['No counseling cases on record.', '', '', '', '']],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [18, 58, 107] },
+        margin: { left: 40, right: 40 },
+    });
+
+    if (studentReferrals.length > 0) {
+        doc.autoTable({
+            startY: doc.lastAutoTable.finalY + 20,
+            head: [['Referral ID', 'Submitted', 'Reason', 'Status']],
+            body: studentReferrals.map(r => [r.referral_code || r.id, r.date_submitted, r.referral_reason, r.status]),
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [18, 58, 107] },
+            margin: { left: 40, right: 40 },
+        });
+    }
+
+    showPdfPreview(doc, `gms_child_summary_${s.student_id}.pdf`);
 }
 
 /* ---- dispatcher + render ---- */

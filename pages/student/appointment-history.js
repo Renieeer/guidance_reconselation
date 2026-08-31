@@ -7,6 +7,9 @@
 // logged-in session, so a student can only ever load their own records.
 
 let shAllRecords = [];   // normalized flat list across all 4 record types
+// Timeline pagination — 'all' page size disables paging entirely.
+let shTimelinePageSize = 20;
+let shTimelinePage = 1;
 
 function esc(value) {
     const div = document.createElement('div');
@@ -78,8 +81,22 @@ function shInit() {
 
     ['shSearchText', 'shTypeFilter', 'shStatusFilter', 'shDateFrom', 'shDateTo'].forEach(id => {
         const el = document.getElementById(id);
-        el.addEventListener('input', shRenderFolders);
-        el.addEventListener('change', shRenderFolders);
+        el.addEventListener('input', () => { shTimelinePage = 1; shRenderFolders(); });
+        el.addEventListener('change', () => { shTimelinePage = 1; shRenderFolders(); });
+    });
+
+    const timelinePageSizeSelect = document.getElementById('shTimelinePageSize');
+    timelinePageSizeSelect.addEventListener('change', () => {
+        shTimelinePageSize = timelinePageSizeSelect.value === 'all' ? Infinity : parseInt(timelinePageSizeSelect.value, 10);
+        shTimelinePage = 1;
+        shRenderFolders();
+    });
+
+    document.getElementById('shTimelinePagination').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-page]');
+        if (!btn || btn.disabled) return;
+        shTimelinePage = btn.getAttribute('data-page') === 'next' ? shTimelinePage + 1 : shTimelinePage - 1;
+        shRenderFolders();
     });
 
     document.getElementById('shClearFilters').addEventListener('click', () => {
@@ -88,6 +105,7 @@ function shInit() {
         document.getElementById('shStatusFilter').value = '';
         document.getElementById('shDateFrom').value = '';
         document.getElementById('shDateTo').value = '';
+        shTimelinePage = 1;
         shRenderFolders();
     });
 
@@ -101,12 +119,22 @@ function shInit() {
             const typeSelect = document.getElementById('shTypeFilter');
             const folder = navTab.getAttribute('data-folder');
             typeSelect.value = typeSelect.value === folder ? '' : folder;
+            shTimelinePage = 1;
             shRenderFolders();
             return;
         }
         const fileRow = e.target.closest('.sh-file-row');
         if (fileRow) {
             fileRow.closest('.sh-file').classList.toggle('open');
+            return;
+        }
+        // Referral threads collapse to just the summary header by default
+        // (see shBuildReferralThreadEntry) — clicking it reveals the full
+        // Day 1/2/3... story underneath. Scoped to .sh-referral-thread only
+        // — counseling case threads keep their existing always-open look.
+        const threadToggle = e.target.closest('.sh-referral-thread-toggle');
+        if (threadToggle) {
+            threadToggle.closest('.sh-referral-thread').classList.toggle('open');
         }
     });
 
@@ -333,42 +361,20 @@ function shTimelineGroupLabel(dateObj) {
 
 const SH_RESOLVED_APPOINTMENT_STATUSES = ['approved', 'declined', 'rejected', 'completed', 'done', 'cancelled', 'canceled'];
 
-/* Builds one timeline entry — same .sh-file/.sh-file-row/.sh-file-detail
+/* Builds one flat timeline entry — same .sh-file/.sh-file-row/.sh-file-detail
    structure the old per-folder cards used, so the existing click-to-expand
-   delegation in shInit() keeps working unchanged. Referral/counseling/
-   follow-up entries attribute to the staff member who acted (teacher_name /
-   counselor_name); appointment requests read as "You" since this is always
-   the logged-in student's own history. */
+   delegation in shInit() keeps working unchanged. Referrals no longer go
+   through here — see shBuildReferralThreadEntry() above, which renders a
+   full Day 1/2/3... story instead of a flat field list. Counseling/
+   follow-up entries attribute to the staff member who acted (counselor_name);
+   appointment requests read as "You" since this is always the logged-in
+   student's own history. */
 function shBuildTimelineEntry(record) {
     let actorLine = '';
     let dateVal = record.date;
     let detailBody = '';
 
-    if (record.type === 'referrals') {
-        const r = record.raw;
-        actorLine = `<strong>${esc(r.teacher_name || 'A teacher')}</strong> submitted a referral — <strong>${esc(r.referral_reason || 'Referral')}</strong>${r.referral_code ? ` <span style="color:var(--text-light);font-weight:400;">(${esc(r.referral_code)})</span>` : ''}`;
-        dateVal = r.date_submitted;
-        detailBody = `
-            <div class="sh-detail-row"><div class="sh-detail-label">Description</div><div class="sh-detail-value">${esc(r.description) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Interventions Tried</div><div class="sh-detail-value">${esc(r.intervention_attempts) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Observed Behaviors</div><div class="sh-detail-value">${esc(r.observed_behaviors) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Referred By</div><div class="sh-detail-value">${esc(r.teacher_name) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Stage</div><div class="sh-detail-value">${esc(r.stage)}/6</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Last Updated</div><div class="sh-detail-value">${esc(shFormatDateTime(r.updated_at))}</div></div>
-            ${(r.screenings || []).length === 0 ? '' : `
-            <div class="sh-subheading">Screening Notes (${r.screenings.length})</div>
-            <div class="sh-mini-list">
-                ${r.screenings.map(s => `
-                    <div class="sh-mini-item">
-                        <div class="sh-mini-item-head"><span>${esc(s.risk_level || 'Risk not set')}</span><span>${esc(shFormatDateTime(s.created_at))}</span></div>
-                        ${s.interview_notes ? `<div><strong>Interview:</strong> ${esc(s.interview_notes)}</div>` : ''}
-                        ${s.observations ? `<div><strong>Observations:</strong> ${esc(s.observations)}</div>` : ''}
-                        <div style="color:var(--text-light);margin-top:2px;">by ${esc(s.counselor_name || 'N/A')}</div>
-                    </div>
-                `).join('')}
-            </div>`}
-        `;
-    } else if (record.type === 'counseling') {
+    if (record.type === 'counseling') {
         const c = record.raw;
         const detail = c.student_detail || {};
         const hasDetail = detail && (detail.scenario_id || detail.action || detail.reason);
@@ -517,11 +523,133 @@ function shBuildCaseThreadEntry(c, followUpsRaw) {
     return { dateObj, html };
 }
 
+/* A referral's full story — submission, and every risk-assessment note
+   logged against it (Stage 2's screenings, one per counselor visit) — as
+   one Day 1/2/3... thread of what actually happened, same pattern as a
+   counseling case's thread above. No synthetic "current stage" summary is
+   appended — a static 6-stage indicator isn't itself an event, and the
+   collapsed row's status pill already covers "where things stand"; new
+   days only appear here once a coordinator/counselor logs a real
+   follow-up or update. Every referral renders this way now, even one with
+   no screenings yet (just a single "Day 1 — Submitted" entry), instead of
+   the old flat field list. */
+function shBuildReferralThreadEntry(r) {
+    const events = [{
+        rawDate: r.date_submitted,
+        label: 'Submitted',
+        by: r.teacher_name || 'A teacher',
+        verb: 'submitted this referral',
+        note: r.referral_reason || 'Referral submitted.',
+        pill: 'SUBMITTED'
+    }];
+
+    // referral_screening now serves two stages (see api/referral-screening.php)
+    // — Stage 1's Interview/Background notes and Stage 2's Risk Assessment
+    // notes are the same table shape, told apart by `stage`.
+    (r.screenings || []).forEach(s => {
+        const isBackground = Number(s.stage) === 1;
+        const parts = [];
+        if (s.risk_level) parts.push(`Risk level: ${s.risk_level}.`);
+        if (s.interview_notes) parts.push(isBackground ? s.interview_notes : `Interview: ${s.interview_notes}`);
+        if (s.observations) parts.push(`Observations: ${s.observations}`);
+        events.push({
+            rawDate: s.created_at,
+            label: isBackground ? 'Interview/Background' : 'Risk Assessment',
+            by: s.counselor_name || 'A counselor',
+            verb: isBackground ? 'logged an interview / background check-up' : 'logged a risk assessment',
+            note: parts.join(' ') || (isBackground ? 'Interview / background check-up recorded.' : 'Risk assessment recorded.'),
+            pill: isBackground ? 'INTERVIEWED' : 'ASSESSED'
+        });
+    });
+
+    events.sort((a, b) => (shParseDate(a.rawDate) || new Date(0)) - (shParseDate(b.rawDate) || new Date(0)));
+
+    // Group events that landed on the same calendar day into one "Day N"
+    // block instead of a new day per event — a referral submitted and
+    // screened the same afternoon is still one day's story, so the day
+    // counter only advances on a real date change, not once per note.
+    const dayKeyOf = (rawDate) => {
+        const d = shParseDate(rawDate);
+        return d ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : String(rawDate || '');
+    };
+    const days = [];
+    events.forEach(ev => {
+        const key = dayKeyOf(ev.rawDate);
+        const current = days[days.length - 1];
+        if (current && current.key === key) {
+            current.events.push(ev);
+        } else {
+            days.push({ key, events: [ev] });
+        }
+    });
+
+    const daysHtml = days.map((day, i) => {
+        const dayNum = i + 1;
+        const headerLabel = [...new Set(day.events.map(ev => ev.label))].join(' + ');
+        const pill = day.events[day.events.length - 1].pill || 'ASSESSED';
+        const notesHtml = day.events.map(ev => `
+            <div class="sh-case-note-row">
+                <span class="sh-case-note-icon"><i class="fas fa-pen"></i></span>
+                <div class="sh-case-note-body">
+                    <div class="sh-case-note-head"><strong>${esc(ev.by)}</strong> ${esc(ev.verb)} &middot; ${esc(shFormatDateTime(ev.rawDate))}</div>
+                    <div class="sh-case-note-text">${esc(ev.note)}</div>
+                </div>
+            </div>`).join('');
+        return `
+        <div class="sh-case-day">
+            <div class="sh-case-day-row">
+                <span class="sh-case-day-badge">${dayNum}</span>
+                <div class="sh-case-day-bar">
+                    <span>Day ${dayNum} — ${esc(headerLabel)}</span>
+                    <span class="sh-case-day-pill">${pill}</span>
+                </div>
+            </div>
+            ${notesHtml}
+        </div>`;
+    }).join('');
+
+    const lastEvent = events[events.length - 1];
+
+    // Collapsed-row summary: date of the last activity, plus either an
+    // activity count (once a counselor has actually logged something) or
+    // "Awaiting counselor" for a referral that's just sitting at Day 1.
+    const dateLabel = shFormatDate(lastEvent.rawDate);
+    const summaryLabel = events.length > 1
+        ? `${days.length} day${days.length === 1 ? '' : 's'} &middot; ${events.length} note${events.length === 1 ? '' : 's'}`
+        : 'Awaiting counselor';
+
+    const html = `
+        <div class="sh-case-thread sh-referral-thread">
+            <div class="sh-case-thread-header sh-referral-thread-toggle">
+                <div class="sh-referral-row-icon"><i class="fas fa-arrow-right"></i></div>
+                <div class="sh-referral-row-main">
+                    <div class="sh-referral-row-eyebrow">Referral</div>
+                    <div class="sh-referral-row-title">${esc(r.referral_reason || 'Referral')}</div>
+                    <div class="sh-referral-row-sub">${r.referral_code ? `Referral #${esc(r.referral_code)} &middot; ` : ''}Referred by ${esc(r.teacher_name || 'a teacher')}</div>
+                </div>
+                <div class="sh-referral-row-meta">
+                    <div class="sh-referral-row-dates">${esc(dateLabel)}</div>
+                    <div class="sh-referral-row-summary">${summaryLabel}</div>
+                </div>
+                <span class="badge ${shStatusBadgeClass(r.status)} sh-case-thread-status">${esc(r.status)}</span>
+                <i class="fas fa-chevron-down sh-referral-thread-chevron"></i>
+            </div>
+            <div class="sh-referral-thread-body">
+                <div class="sh-case-thread-days">${daysHtml}</div>
+            </div>
+        </div>`;
+
+    const dateObj = shParseDate(lastEvent.rawDate) || new Date(0);
+    return { dateObj, html };
+}
+
 function shRenderTimeline(grouped, hasActiveFilters) {
     const body = document.getElementById('shBody-timeline');
+    const paginationEl = document.getElementById('shTimelinePagination');
     const totalCount = grouped.referrals.length + grouped.counseling.length + grouped.follow_ups.length + grouped.appointments.length;
     if (totalCount === 0) {
         body.innerHTML = shEmptyFolderHtml('records', hasActiveFilters);
+        if (paginationEl) paginationEl.innerHTML = '';
         return;
     }
 
@@ -555,8 +683,7 @@ function shRenderTimeline(grouped, hasActiveFilters) {
     });
 
     grouped.referrals.forEach(r => {
-        const entry = shBuildTimelineEntry(r);
-        if (entry) entries.push(entry);
+        entries.push(shBuildReferralThreadEntry(r.raw));
     });
 
     grouped.appointments.forEach(a => {
@@ -566,9 +693,17 @@ function shRenderTimeline(grouped, hasActiveFilters) {
 
     entries.sort((a, b) => b.dateObj - a.dateObj);
 
+    const totalPages = Math.max(1, Math.ceil(entries.length / shTimelinePageSize));
+    if (shTimelinePage > totalPages) shTimelinePage = totalPages;
+    if (shTimelinePage < 1) shTimelinePage = 1;
+
+    const startIdx = shTimelinePageSize === Infinity ? 0 : (shTimelinePage - 1) * shTimelinePageSize;
+    const endIdx = shTimelinePageSize === Infinity ? entries.length : Math.min(startIdx + shTimelinePageSize, entries.length);
+    const pageEntries = entries.slice(startIdx, endIdx);
+
     let html = '';
     let currentGroup = null;
-    entries.forEach(entry => {
+    pageEntries.forEach(entry => {
         const label = shTimelineGroupLabel(entry.dateObj);
         if (label !== currentGroup) {
             if (currentGroup !== null) html += '</div>';
@@ -580,6 +715,45 @@ function shRenderTimeline(grouped, hasActiveFilters) {
     html += '</div>';
 
     body.innerHTML = html;
+
+    if (paginationEl) {
+        if (shTimelinePageSize === Infinity || totalPages <= 1) {
+            paginationEl.innerHTML = '';
+        } else {
+            paginationEl.innerHTML = `
+                <button type="button" class="btn btn-secondary btn-sm" data-page="prev" ${shTimelinePage <= 1 ? 'disabled' : ''}>
+                    <i class="bi bi-chevron-left"></i> Prev
+                </button>
+                <span class="sh-slist-page-info">Showing ${startIdx + 1}&ndash;${endIdx} of ${entries.length} &middot; Page ${shTimelinePage} of ${totalPages}</span>
+                <button type="button" class="btn btn-secondary btn-sm" data-page="next" ${shTimelinePage >= totalPages ? 'disabled' : ''}>
+                    Next <i class="bi bi-chevron-right"></i>
+                </button>`;
+        }
+    }
+    shAnimateTimelineEntries();
+}
+
+// Fades/slides each entry in as it scrolls into view within the timeline's
+// own scrollable panel (see css/student-history.css's #shBody-timeline
+// .sh-in rules — shared with the counselor/other-school versions of this
+// page). Re-run after every re-render since body.innerHTML wipes out any
+// previously-observed nodes.
+function shAnimateTimelineEntries() {
+    const body = document.getElementById('shBody-timeline');
+    const items = body.querySelectorAll('.sh-timeline-item, .sh-case-thread');
+    if (!('IntersectionObserver' in window)) {
+        items.forEach(i => i.classList.add('sh-in'));
+        return;
+    }
+    const io = new IntersectionObserver((observed) => {
+        observed.forEach(e => {
+            if (e.isIntersecting) {
+                e.target.classList.add('sh-in');
+                io.unobserve(e.target);
+            }
+        });
+    }, { root: body, threshold: 0.12 });
+    items.forEach(i => io.observe(i));
 }
 
 document.addEventListener('DOMContentLoaded', shInit);

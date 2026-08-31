@@ -43,8 +43,7 @@
                         <!-- Reason/Description (hidden while counseling is in progress) -->
                         <div id="referralInfoSection" class="mt-4" style="display: none;">
                             <p><strong>Reason:</strong> <span id="refReason"></span></p>
-                            <p><strong>Description:</strong></p>
-                            <p id="refDescription" class="bg-light p-2 rounded"></p>
+                            <p><strong>Description:</strong> <span id="refDescription"></span></p>
                         </div>
                     </div>
 

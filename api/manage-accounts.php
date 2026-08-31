@@ -29,15 +29,16 @@ try {
             send_json(400, ['success' => false, 'message' => 'School is required']);
         }
 
-        $sql = "SELECT 
+        $sql = "SELECT
                     AccountID AS id,
                     First_name,
                     Last_name,
                     email,
                     Type,
                     school_attended,
+                    Grade,
                     created_at
-                FROM users_tables 
+                FROM users_tables
                 WHERE school_attended = ?";
         
         $types = 's';

@@ -8,6 +8,24 @@
     <link rel="stylesheet" href="../../css/student-history.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        /* Folder-card picker was pure duplication of the Record Type
+           dropdown already in the filter bar above it (the counselor/
+           other-school twins of this page later got the same treatment —
+           see project_student_history_timeline memory). Hidden rather than
+           removed from the DOM — student-history.js still updates
+           #shCount-* on every render regardless of visibility.
+           grid-template-columns (not display — JS sets that inline via
+           style.display='grid', which would win over a display override
+           here) is collapsed to one column so the content panel takes the
+           full width instead of leaving an empty 300px gap on the left. */
+        #shFolderNav {
+            display: none;
+        }
+        #shFolderGrid.sh-folder-layout {
+            grid-template-columns: 1fr;
+        }
+    </style>
 </head>
 <body>
     <div class="main-wrapper">
@@ -65,6 +83,15 @@
                             <label>To</label>
                             <input type="date" id="shDateTo">
                         </div>
+                        <div class="sh-filter-field">
+                            <label>Show</label>
+                            <select id="shTimelinePageSize">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="30">30</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
                         <div class="sh-filter-actions">
                             <button class="btn btn-secondary btn-sm" id="shClearFilters" type="button">Clear</button>
                         </div>
@@ -117,6 +144,7 @@
                             <div class="sh-folder-content-title" id="shActiveFolderTitle">Recent History</div>
                         </div>
                         <div class="sh-folder-body active" id="shBody-timeline"></div>
+                        <div id="shTimelinePagination" class="sh-slist-pagination"></div>
                     </div>
                 </div>
 

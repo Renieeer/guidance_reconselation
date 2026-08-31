@@ -1,5 +1,24 @@
 // Utility functions
 
+// Age in whole years as of today, from a birth date string — shared by
+// every referral form (teacher's, counselor's and other-school's walk-in
+// forms) so a student's age is always computed from their date of birth
+// rather than typed in. Returns '' if the date is missing/unparseable
+// rather than guessing.
+function calculateAge(dob) {
+    if (!dob) return '';
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) return '';
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age >= 0 ? String(age) : '';
+}
+
 // Save to localStorage (mock database)
 function saveData(key, data) {
     localStorage.setItem(key, JSON.stringify(data));

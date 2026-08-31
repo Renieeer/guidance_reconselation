@@ -25,6 +25,39 @@ function is_mail_enabled(): bool
     return !empty($config['enabled']);
 }
 
+// A student's detailed profile (student_table) is only created when they
+// fill out the Student Information form, so an account that never gets that
+// far has no student_table row and is invisible to every staff-facing
+// student list (they all query FROM student_table). Give every new student
+// account a minimal stub row right away — student-information.js resolves
+// its StudentId from the logged-in AccountID, so this row is the one that
+// form's save-student.php UPDATEs later rather than duplicating.
+function create_student_stub(mysqli $conn, int $accountId, string $firstName, string $lastName, string $email): void
+{
+    $checkStmt = $conn->prepare('SELECT StudentId FROM student_table WHERE AccountID = ?');
+    $checkStmt->bind_param('i', $accountId);
+    $checkStmt->execute();
+    $exists = $checkStmt->get_result()->fetch_assoc();
+    $checkStmt->close();
+    if ($exists) {
+        return;
+    }
+
+    $studentId = (string)$accountId;
+    $insertStmt = $conn->prepare('
+        INSERT INTO student_table (StudentId, AccountID, FirstName, LastName, EmailAccount)
+        VALUES (?, ?, ?, ?, ?)
+    ');
+    $insertStmt->bind_param('sisss', $studentId, $accountId, $firstName, $lastName, $email);
+    try {
+        $insertStmt->execute();
+    } catch (mysqli_sql_exception $e) {
+        // Duplicate StudentId race (e.g. concurrent requests) — the row
+        // already exists, which is the outcome we wanted anyway.
+    }
+    $insertStmt->close();
+}
+
 function ensure_email_verification_schema(mysqli $conn): void
 {
     static $checked = false;
@@ -248,7 +281,12 @@ function verify_email_otp(mysqli $conn, string $email, string $code): array
         } catch (mysqli_sql_exception $e) {
             $created = false;
         }
+        $newAccountId = $insertStmt->insert_id;
         $insertStmt->close();
+
+        if ($created && $pending['role'] === 'student') {
+            create_student_stub($conn, (int)$newAccountId, $pending['first_name'], $pending['last_name'], $email);
+        }
 
         $deletePendingStmt = $conn->prepare("DELETE FROM pending_registrations WHERE email = ?");
         $deletePendingStmt->bind_param('s', $email);

@@ -90,7 +90,7 @@
                 </div>
 
                 <p class="text-muted" style="text-align:center; margin-top: 16px; font-size: 13px;">
-                    Teacher, Counselor, or Coordinator? <a href="staff-login.php" class="auth-link">Go to Staff Login</a>
+                    Teacher? <a href="staff-login.php" class="auth-link">Go to Staff Login</a>
                 </p>
             </div>
         </div>

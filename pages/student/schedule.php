@@ -79,7 +79,7 @@
                                 <div class="form-group" style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1e293b;">Preferred Date</label>
                                     <input type="date" id="appointmentDateInput" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px;">
-                                    <small style="color: #64748b; display: block; margin-top: 5px;">Select a date without scheduled events</small>
+                                    <small style="color: #64748b; display: block; margin-top: 5px;">Times already blocked by a scheduled event or another student's appointment will be greyed out below</small>
                                 </div>
                                 <div class="form-group" style="margin-bottom: 15px;">
                                     <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #1e293b;">Preferred Time</label>

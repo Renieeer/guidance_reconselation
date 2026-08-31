@@ -75,6 +75,7 @@ function populateReferralForm(referral) {
         student_id: '.person-student-id',
         grade: '.person-grade',
         gender: '.person-gender',
+        age: '.person-age',
         referral_role: '.person-role',
         parent_guardian: '.person-parent-name',
         parent_contact: '.person-parent-contact'
@@ -149,7 +150,7 @@ function createPersonCard() {
                 </select>
             </div>
             <div class="referral-person-body">
-                <div class="form-row-three">
+                <div class="form-row-three referral-person-row-with-age">
                     <div class="form-field">
                         <label>Name of Student:</label>
                         <input type="text" class="person-name" required>
@@ -179,6 +180,10 @@ function createPersonCard() {
                             <option value="Female">Female</option>
                             <option value="Other">Other</option>
                         </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Age:</label>
+                        <input type="text" class="person-age" readonly placeholder="Auto-filled from student record" title="Calculated automatically from the student's date of birth — not manually editable">
                     </div>
                 </div>
                 <div class="form-row-two">
@@ -351,6 +356,7 @@ function collectPeopleFromForm() {
             student_id: card.querySelector('.person-student-id').value || null,
             grade: grade,
             gender: card.querySelector('.person-gender').value,
+            age: card.querySelector('.person-age').value || '',
             referral_role: card.querySelector('.person-role').value || null,
             parent_guardian: card.querySelector('.person-parent-name').value.trim(),
             parent_contact: card.querySelector('.person-parent-contact').value.trim()
@@ -562,6 +568,17 @@ function populateStudentFromSearch(card, student) {
     if (genderEl && sexValue) {
         const genderMap = { 'M': 'Male', 'F': 'Female', 'Male': 'Male', 'Female': 'Female' };
         genderEl.value = genderMap[sexValue] || sexValue;
+    }
+
+    // Age — always computed from the student's date of birth as of today,
+    // never typed in (the field is readonly). Falls back to whatever Age
+    // value is already on file for the student if no usable birth date
+    // came back with the search result.
+    const ageEl = card.querySelector('.person-age');
+    if (ageEl) {
+        const dob = student.date_of_birth || student.DateOfBirth;
+        const computedAge = calculateAge(dob);
+        ageEl.value = computedAge !== '' ? computedAge : (student.age || student.Age || '');
     }
 }
 
