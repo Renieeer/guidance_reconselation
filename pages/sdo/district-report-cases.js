@@ -209,7 +209,8 @@ function setupEventListeners() {
         document.getElementById('caseModal').classList.remove('show');
     });
 
-    document.getElementById('exportBtn').addEventListener('click', exportReport);
+    document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
+    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
 
     setupPeriodFilter();
 
@@ -257,27 +258,89 @@ function setupPeriodFilter() {
     });
 }
 
-// Export report function
-function exportReport() {
-    let csvContent = `Category of Cases,${ALL_REPORT_GRADES.map(g => `Grade ${g}`).join(',')},Totals\n`;
+// Shared table shape used by both the PDF and Excel exporters
+function buildExportTable() {
+    const header = ['Category of Cases', ...ALL_REPORT_GRADES.map(g => `Grade ${g}`), 'Totals'];
+    const body = [];
+    const sectionHeaderRows = [];
 
     displayRows.forEach(row => {
-        if (row.type === 'header') return;
+        if (row.type === 'header') {
+            sectionHeaderRows.push(body.length);
+            body.push([row.label, ...ALL_REPORT_GRADES.map(() => ''), '']);
+            return;
+        }
         const totals = rowTotals(row);
         const gradeTotals = ALL_REPORT_GRADES.map(g => totals[g] || 0);
         const total = gradeTotals.reduce((sum, n) => sum + n, 0);
-        csvContent += `"${row.label}",${gradeTotals.join(',')},${total}\n`;
+        body.push([row.label, ...gradeTotals, total]);
     });
 
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-    element.setAttribute('download', `${currentDistrict.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}.csv`);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    return { header, body, sectionHeaderRows };
+}
 
-    showAlert('success', 'Report exported successfully!');
+function exportFileBaseName() {
+    return `${currentDistrict.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}`;
+}
+
+// Export report as an Excel workbook (.xlsx)
+function exportToExcel() {
+    if (typeof XLSX === 'undefined') {
+        showAlert('error', 'Excel export library failed to load.');
+        return;
+    }
+
+    const { header, body } = buildExportTable();
+    const worksheet = XLSX.utils.aoa_to_sheet([
+        [`District Report Cases - ${currentDistrict}`],
+        [`Period: ${PERIOD_LABELS[currentPeriod]}`],
+        [],
+        header,
+        ...body
+    ]);
+    worksheet['!cols'] = [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
+    XLSX.writeFile(workbook, `${exportFileBaseName()}.xlsx`);
+
+    showAlert('success', 'Excel report exported successfully!');
+}
+
+// Export report as a PDF document
+function exportToPDF() {
+    if (typeof window.jspdf === 'undefined') {
+        showAlert('error', 'PDF export library failed to load.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const { header, body, sectionHeaderRows } = buildExportTable();
+
+    doc.setFontSize(14);
+    doc.text(`District Report Cases - ${currentDistrict}`, 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Period: ${PERIOD_LABELS[currentPeriod]}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+
+    doc.autoTable({
+        head: [header],
+        body,
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 },
+        didParseCell: (data) => {
+            if (data.section === 'body' && sectionHeaderRows.includes(data.row.index)) {
+                data.cell.styles.fillColor = [226, 232, 240];
+                data.cell.styles.fontStyle = 'bold';
+            }
+        }
+    });
+
+    doc.save(`${exportFileBaseName()}.pdf`);
+    showAlert('success', 'PDF report exported successfully!');
 }
 
 // Initialize page
