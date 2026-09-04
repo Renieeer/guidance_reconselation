@@ -283,6 +283,95 @@ function exportFileBaseName() {
     return `${currentDistrict.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}`;
 }
 
+/* ---- Export preview modals — same "view before you download" flow as
+   the analytics.js report exports. ---- */
+let pdfPreviewUrl = null;
+
+function ensurePdfModal() {
+    if (document.getElementById('pdfPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="pdfPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:980px; width:95%; height:88vh;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-pdf"></i> PDF Preview</h2>
+                <button type="button" class="modal-close" id="pdfPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:0; flex:1; display:flex;">
+                <iframe id="pdfPreviewFrame" title="PDF preview" style="width:100%; height:100%; border:0;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="pdfPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-secondary" id="pdfPrintBtn"><i class="bi bi-printer"></i> Print</button>
+                <button type="button" class="btn btn-primary" id="pdfDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('pdfPreviewCloseX').addEventListener('click', closePdfPreview);
+    document.getElementById('pdfPreviewCloseBtn').addEventListener('click', closePdfPreview);
+}
+
+function closePdfPreview() {
+    closeModal('pdfPreviewModal');
+    document.getElementById('pdfPreviewFrame').src = 'about:blank';
+    if (pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); pdfPreviewUrl = null; }
+}
+
+function showPdfPreview(doc, filename) {
+    ensurePdfModal();
+    if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    pdfPreviewUrl = doc.output('bloburl');
+    document.getElementById('pdfPreviewFrame').src = pdfPreviewUrl;
+    document.getElementById('pdfDownloadBtn').onclick = () => doc.save(filename);
+    document.getElementById('pdfPrintBtn').onclick = () => {
+        const frame = document.getElementById('pdfPreviewFrame');
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    };
+    openModal('pdfPreviewModal');
+}
+
+function ensureExcelModal() {
+    if (document.getElementById('excelPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="excelPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:900px; width:95%; height:82vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-excel"></i> <span id="excelPreviewTitle">Excel Preview</span></h2>
+                <button type="button" class="modal-close" id="excelPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="flex:1; overflow:auto;">
+                <div class="table-container"><table><tbody id="excelPreviewTbody"></tbody></table></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="excelPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-success" id="excelDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('excelPreviewCloseX').addEventListener('click', () => closeModal('excelPreviewModal'));
+    document.getElementById('excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
+}
+
+// aoa (array-of-arrays) is the exact same shape that gets written to the
+// worksheet, so what's previewed is what's downloaded. Row 0 is the report
+// title (shown in the modal header, not as a table row); a blank row (`[]`)
+// anywhere after that marks the row right after it as a column-header row
+// (rendered as <th>) — matches the title / period / blank / head / body
+// shape this file's aoa is always built in.
+function showExcelPreview(filename, aoa, colWidths, onDownload) {
+    ensureExcelModal();
+    document.getElementById('excelPreviewTitle').textContent = String((aoa[0] && aoa[0][0]) || 'Excel Preview');
+
+    let afterBlank = false;
+    document.getElementById('excelPreviewTbody').innerHTML = aoa.slice(1).map(row => {
+        if (row.length === 0) { afterBlank = true; return '<tr><td style="height:10px; border:none; padding:0;"></td></tr>'; }
+        const cellTag = afterBlank ? 'th' : 'td';
+        afterBlank = false;
+        return `<tr>${row.map(cell => `<${cellTag}>${escapeHtml(cell == null ? '' : cell)}</${cellTag}>`).join('')}</tr>`;
+    }).join('');
+
+    document.getElementById('excelDownloadBtn').onclick = onDownload;
+    openModal('excelPreviewModal');
+}
+
 // Export report as an Excel workbook (.xlsx)
 function exportToExcel() {
     if (typeof XLSX === 'undefined') {
@@ -290,21 +379,25 @@ function exportToExcel() {
         return;
     }
 
+    const filename = `${exportFileBaseName()}.xlsx`;
     const { header, body } = buildExportTable();
-    const worksheet = XLSX.utils.aoa_to_sheet([
+    const aoa = [
         [`District Report Cases - ${currentDistrict}`],
         [`Period: ${PERIOD_LABELS[currentPeriod]}`],
         [],
         header,
         ...body
-    ]);
-    worksheet['!cols'] = [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }];
+    ];
+    const colWidths = [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }];
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
-    XLSX.writeFile(workbook, `${exportFileBaseName()}.xlsx`);
-
-    showAlert('success', 'Excel report exported successfully!');
+    showExcelPreview(filename, aoa, colWidths, () => {
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!cols'] = colWidths;
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
+        XLSX.writeFile(workbook, filename);
+        showAlert('success', 'Excel report exported successfully!');
+    });
 }
 
 // Export report as a PDF document
@@ -339,8 +432,7 @@ function exportToPDF() {
         }
     });
 
-    doc.save(`${exportFileBaseName()}.pdf`);
-    showAlert('success', 'PDF report exported successfully!');
+    showPdfPreview(doc, `${exportFileBaseName()}.pdf`);
 }
 
 // Initialize page

@@ -16,6 +16,16 @@ const ACKNOWLEDGEMENT_CHECKLIST_ITEMS = [
     { key: 'under_monitoring', label: 'Under Monitoring' }
 ];
 
+// Stage 5 (Intervention) activity checklist — shared with the teacher
+// -facing read-only view the same way ACKNOWLEDGEMENT_CHECKLIST_ITEMS is.
+const INTERVENTION_ACTIVITY_ITEMS = [
+    { key: 'psychoeducation', label: 'Psychoeducation' },
+    { key: 'mindfulness_relaxation', label: 'Mindfulness and Relaxation Activity' },
+    { key: 'psychosocial', label: 'Psychosocial Activity' },
+    { key: 'pfa', label: 'PFA (Psychological First Aid) Activity' },
+    { key: 'art_expressive', label: 'Art Expressive / Art Activity' }
+];
+
 function loadReferralStatus() {
     initPage();
     
@@ -145,6 +155,17 @@ function loadDetailView(referral) {
         consentSection.style.display = 'none';
     }
 
+    // Show the intervention activity checklist for stage 5
+    const interventionSection = document.getElementById('interventionFormSection');
+    if (referral.stage === 5) {
+        interventionSection.style.display = 'block';
+        renderInterventionChecklist();
+        document.getElementById('interventionForm').onsubmit = submitIntervention;
+        loadIntervention(referral.id);
+    } else {
+        interventionSection.style.display = 'none';
+    }
+
     // Show the case-closing acknowledgement form for stage 6 — filled out
     // here by the counselor, then shown read-only to the referring teacher.
     const acknowledgementSection = document.getElementById('acknowledgementFormSection');
@@ -157,13 +178,86 @@ function loadDetailView(referral) {
         acknowledgementSection.style.display = 'none';
     }
 
-    // Stages 4, 5 don't have a dedicated documentation form yet — say so
+    // Stage 4 doesn't have a dedicated documentation form yet — say so
     // explicitly instead of leaving a blank gap that reads as broken.
     document.getElementById('noStageDocSection').style.display =
-        [1, 2, 3, 6].includes(referral.stage) ? 'none' : 'block';
+        [1, 2, 3, 5, 6].includes(referral.stage) ? 'none' : 'block';
 
     // Load case actions
     loadCaseActions();
+}
+
+function renderInterventionChecklist() {
+    const container = document.getElementById('interventionChecklist');
+    container.innerHTML = INTERVENTION_ACTIVITY_ITEMS.map(item => `
+        <label class="referral-checklist-item">
+            <input type="checkbox" name="interventionChecklist" value="${item.key}">
+            <span>${escapeHtml(item.label)}</span>
+        </label>
+    `).join('');
+}
+
+function loadIntervention(referralId) {
+    fetch(`../../api/referral-intervention.php?referral_id=${referralId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load intervention activities');
+
+            document.getElementById('interventionForm').reset();
+            const data = result.data;
+            if (!data) return;
+
+            document.getElementById('interventionNotes').value = data.notes || '';
+
+            const checklist = data.checklist || {};
+            document.querySelectorAll('#interventionChecklist input[type="checkbox"]').forEach(cb => {
+                cb.checked = Boolean(checklist[cb.value]);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading intervention activities:', error);
+        });
+}
+
+function submitIntervention(e) {
+    e.preventDefault();
+
+    const user = getCurrentUser();
+    const notes = document.getElementById('interventionNotes').value.trim();
+
+    const checklist = {};
+    document.querySelectorAll('#interventionChecklist input[type="checkbox"]').forEach(cb => {
+        checklist[cb.value] = cb.checked;
+    });
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    fetch('../../api/referral-intervention.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || '',
+            checklist: checklist,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) throw new Error(result.message || 'Failed to save intervention activities');
+        showAlert('Intervention activities saved.', 'success');
+    })
+    .catch(error => {
+        showAlert(error.message || 'Failed to save intervention activities.', 'error');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
 }
 
 function renderAcknowledgementChecklist() {
@@ -174,6 +268,20 @@ function renderAcknowledgementChecklist() {
             <span>${escapeHtml(item.label)}</span>
         </label>
     `).join('');
+
+    // The case status is one state at a time — checking one option locks
+    // the rest until it's unchecked again.
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => syncAckChecklistExclusivity(container));
+    });
+}
+
+function syncAckChecklistExclusivity(container) {
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+    const checkedBox = Array.from(checkboxes).find(cb => cb.checked);
+    checkboxes.forEach(cb => {
+        cb.disabled = Boolean(checkedBox) && cb !== checkedBox;
+    });
 }
 
 function loadAcknowledgement(referralId) {
@@ -183,6 +291,7 @@ function loadAcknowledgement(referralId) {
             if (!result.success) throw new Error(result.message || 'Failed to load acknowledgement');
 
             document.getElementById('acknowledgementForm').reset();
+            syncAckChecklistExclusivity(document.getElementById('ackChecklist'));
             const data = result.data;
             if (!data) return;
 
@@ -194,6 +303,7 @@ function loadAcknowledgement(referralId) {
             document.querySelectorAll('#ackChecklist input[type="checkbox"]').forEach(cb => {
                 cb.checked = Boolean(checklist[cb.value]);
             });
+            syncAckChecklistExclusivity(document.getElementById('ackChecklist'));
         })
         .catch(error => {
             console.error('Error loading acknowledgement:', error);

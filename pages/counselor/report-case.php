@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Report Cases - Guidance Management System</title>
-    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/style.css?v=<?php echo filemtime(__DIR__ . '/../../css/style.css'); ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body>
@@ -25,15 +25,83 @@
             <div class="page-content">
                 <!-- Action Buttons -->
                 <div class="card mb-5">
-                    <div style="display: flex; gap: 16px; align-items: center;">
+                    <div style="display: flex; gap: 16px; align-items: center; justify-content: flex-end;">
                         <button class="btn btn-danger" id="exportPdfBtn"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
                         <button class="btn btn-success" id="exportExcelBtn"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
                         <button class="btn btn-secondary" id="filterBtn" style="background: #e2e8f0; color: #0f172a;"><i class="bi bi-funnel"></i> Filter</button>
                     </div>
                 </div>
 
+                <!-- Filter Panel -->
+                <div class="card mb-5" id="filterPanel" style="display: none;">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;">
+                        <div class="form-group">
+                            <label for="filterPeriod"><i class="bi bi-calendar3"></i> Period</label>
+                            <select id="filterPeriod">
+                                <option value="all">All time</option>
+                                <option value="weekly">This week</option>
+                                <option value="monthly">This month</option>
+                                <option value="annually">This year</option>
+                                <option value="custom">Custom range</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="filterStartGroup" style="display: none;">
+                            <label for="filterStart">From</label>
+                            <input type="date" id="filterStart">
+                        </div>
+                        <div class="form-group" id="filterEndGroup" style="display: none;">
+                            <label for="filterEnd">To</label>
+                            <input type="date" id="filterEnd">
+                        </div>
+                        <div class="form-group">
+                            <label for="filterCategory"><i class="bi bi-tag"></i> Case Category</label>
+                            <select id="filterCategory">
+                                <option value="">All categories</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filterGrade"><i class="bi bi-mortarboard"></i> Grade</label>
+                            <select id="filterGrade">
+                                <option value="">All grades</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filterGender">Gender</label>
+                            <select id="filterGender">
+                                <option value="">All genders</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filterStatus">Status</label>
+                            <select id="filterStatus">
+                                <option value="">All statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label for="filterSearch"><i class="bi bi-search"></i> Search</label>
+                        <input type="text" id="filterSearch" placeholder="Search by student name, case title, category, or notes...">
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 8px;">
+                        <button type="button" class="btn btn-primary" id="applyFiltersBtn"><i class="bi bi-search"></i> Search</button>
+                        <button type="button" class="btn btn-secondary" id="clearFiltersBtn">Clear Filters</button>
+                    </div>
+                </div>
+
+                <!-- Filtered Results (Google-style results list) -->
+                <div id="filterResultsView" style="display: none;">
+                    <p class="text-muted" id="filterResultsSummary" style="margin-bottom: 16px;"></p>
+                    <div id="filterResultsList"></div>
+                </div>
+
                 <!-- Report Cases Table -->
-                <div class="table-container">
+                <div class="table-container" id="reportTableView">
                     <table id="reportCasesTable">
                         <thead>
                             <tr>

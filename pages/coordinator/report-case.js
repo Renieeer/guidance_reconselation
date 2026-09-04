@@ -44,8 +44,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     await loadReportData();
     buildCasesTable();
+    populateFilterOptions();
     setupEventListeners();
 });
+
+function esc(value) {
+    const div = document.createElement('div');
+    div.textContent = value === null || value === undefined ? '' : String(value);
+    return div.innerHTML;
+}
 
 async function loadReportData() {
     try {
@@ -191,6 +198,173 @@ function showCaseDetails(rowIndex) {
     modal.style.display = 'flex';
 }
 
+// ---- Filter panel + searchable case list ----
+// Every filter (period, category, grade, gender, status, free-text search)
+// is applied server-side by api/case-report.php?action=list, which returns
+// one row per real logged case — unlike the pivot table above, which only
+// ever shows aggregated counts and can't answer "which cases".
+let filteredCases = [];
+
+function populateFilterOptions() {
+    const categorySelect = document.getElementById('filterCategory');
+    sections.forEach(section => {
+        const group = document.createElement('optgroup');
+        group.label = `${section.sectionCode}. ${section.sectionName}`;
+        section.categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.categoryId;
+            opt.textContent = cat.categoryName;
+            group.appendChild(opt);
+        });
+        const uncategorized = document.createElement('option');
+        uncategorized.value = `section-${section.sectionId}-uncategorized`;
+        uncategorized.textContent = 'Uncategorized';
+        group.appendChild(uncategorized);
+        categorySelect.appendChild(group);
+    });
+
+    const gradeSelect = document.getElementById('filterGrade');
+    visibleGrades.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = String(g);
+        opt.textContent = `Grade ${g}`;
+        gradeSelect.appendChild(opt);
+    });
+}
+
+function toggleFilterPanel() {
+    const panel = document.getElementById('filterPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function updateCustomRangeVisibility() {
+    const isCustom = document.getElementById('filterPeriod').value === 'custom';
+    document.getElementById('filterStartGroup').style.display = isCustom ? 'block' : 'none';
+    document.getElementById('filterEndGroup').style.display = isCustom ? 'block' : 'none';
+}
+
+async function applyFilters() {
+    const params = new URLSearchParams({
+        action: 'list',
+        school: currentSchool,
+        grade_scope: getCurrentGradeScope(),
+        period: document.getElementById('filterPeriod').value,
+        start: document.getElementById('filterStart').value,
+        end: document.getElementById('filterEnd').value,
+        category: document.getElementById('filterCategory').value,
+        grade: document.getElementById('filterGrade').value,
+        gender: document.getElementById('filterGender').value,
+        status: document.getElementById('filterStatus').value,
+        search: document.getElementById('filterSearch').value.trim()
+    });
+
+    const resultsView = document.getElementById('filterResultsView');
+    const summary = document.getElementById('filterResultsSummary');
+    const list = document.getElementById('filterResultsList');
+
+    document.getElementById('reportTableView').style.display = 'none';
+    resultsView.style.display = 'block';
+    summary.textContent = 'Searching...';
+    list.innerHTML = '';
+
+    try {
+        const response = await fetch(`../../api/case-report.php?${params.toString()}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load cases');
+
+        filteredCases = data.data || [];
+        renderFilterResults();
+    } catch (error) {
+        console.error('Error loading filtered cases:', error);
+        summary.textContent = 'Could not load cases.';
+    }
+}
+
+function renderFilterResults() {
+    const summary = document.getElementById('filterResultsSummary');
+    const list = document.getElementById('filterResultsList');
+
+    summary.textContent = filteredCases.length === 0
+        ? 'No cases match these filters.'
+        : `${filteredCases.length} case${filteredCases.length === 1 ? '' : 's'} found`;
+
+    if (filteredCases.length === 0) {
+        list.innerHTML = `<p class="text-muted" style="background:white; border:1px dashed var(--border-color); border-radius:8px; padding:30px; text-align:center;">Try widening the period or clearing a filter.</p>`;
+        return;
+    }
+
+    list.innerHTML = filteredCases.map((row, index) => {
+        const dateLabel = row.caseDate
+            ? new Date(`${row.caseDate}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'No date on file';
+        const gradeLabel = row.grade ? `Grade ${row.grade}` : 'Grade N/A';
+        const snippet = row.summary || row.caseTitle || 'No additional notes on file.';
+        return `
+        <div class="case-result-item" data-index="${index}">
+            <div class="case-result-title">${esc(row.studentName)} <span class="case-result-dash">&mdash;</span> ${esc(row.categoryName)}</div>
+            <div class="case-result-meta">
+                <span>${esc(gradeLabel)}</span> &middot;
+                <span>${esc(row.gender || 'N/A')}</span> &middot;
+                ${badgeForCaseStatus(row.status)} &middot;
+                <span>${esc(dateLabel)}</span> &middot;
+                <span>${esc(row.counselorName || 'Unknown counselor')}</span>
+            </div>
+            <div class="case-result-snippet">${esc(snippet)}</div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.case-result-item').forEach(item => {
+        item.addEventListener('click', () => showFilteredCaseDetails(parseInt(item.getAttribute('data-index'), 10)));
+    });
+}
+
+function badgeForCaseStatus(status) {
+    const normalized = String(status || '').toLowerCase();
+    const mapped = ['completed', 'resolved', 'done', 'closed'].includes(normalized) ? 'completed'
+        : ['rejected', 'cancelled', 'canceled'].includes(normalized) ? 'rejected'
+        : ['in-progress', 'in progress', 'ongoing'].includes(normalized) ? 'in-progress'
+        : 'pending';
+    return createBadge(mapped);
+}
+
+function showFilteredCaseDetails(index) {
+    const row = filteredCases[index];
+    if (!row) return;
+
+    document.getElementById('caseId').value = row.caseUid || `CASE-${row.id}`;
+    document.getElementById('caseCategory').value = row.categoryName || 'Uncategorized';
+    document.getElementById('caseGrade').value = `${row.grade ? `Grade ${row.grade}` : 'N/A'} • ${row.gender || 'N/A'}`;
+    document.getElementById('caseStatus').value = row.status || 'pending';
+    document.getElementById('caseDate').value = row.caseDate
+        ? new Date(`${row.caseDate}T00:00:00`).toLocaleDateString()
+        : 'N/A';
+    document.getElementById('caseNotes').value = [
+        `Student: ${row.studentName || 'Unknown'}`,
+        `Counselor: ${row.counselorName || 'Unknown'}`,
+        row.caseTitle ? `Title: ${row.caseTitle}` : '',
+        '',
+        row.summary || 'No additional notes on file.'
+    ].filter(Boolean).join('\n');
+
+    document.getElementById('caseModal').style.display = 'flex';
+}
+
+function clearFilters() {
+    document.getElementById('filterPeriod').value = 'all';
+    document.getElementById('filterStart').value = '';
+    document.getElementById('filterEnd').value = '';
+    document.getElementById('filterCategory').value = '';
+    document.getElementById('filterGrade').value = '';
+    document.getElementById('filterGender').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterSearch').value = '';
+    updateCustomRangeVisibility();
+
+    document.getElementById('filterResultsView').style.display = 'none';
+    document.getElementById('reportTableView').style.display = '';
+    filteredCases = [];
+}
+
 function setupEventListeners() {
     // Modal controls
     document.getElementById('closeModal').addEventListener('click', () => {
@@ -219,9 +393,16 @@ function setupEventListeners() {
     document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
     document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
 
-    // Filter button
-    document.getElementById('filterBtn').addEventListener('click', () => {
-        alert('Filter functionality to be implemented');
+    // Filter panel
+    document.getElementById('filterBtn').addEventListener('click', toggleFilterPanel);
+    document.getElementById('filterPeriod').addEventListener('change', updateCustomRangeVisibility);
+    document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+    document.getElementById('filterSearch').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyFilters();
+        }
     });
 
     // Close modals on outside click
@@ -324,6 +505,88 @@ function exportFileBaseName() {
     return `coordinator-cases-${(currentSchool || 'school').replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`;
 }
 
+/* ---- Export preview modals — same "view before you download" flow as
+   the analytics.js report exports, adapted here since the grade header
+   uses merged cells (Excel) / rowSpan+colSpan (PDF) that a flat
+   array-of-arrays preview can't represent faithfully. The live
+   #reportCasesTable already renders that exact structure (only the
+   visibleGrades columns, same header grouping), so it's cloned straight
+   into the Excel preview instead of re-deriving it. ---- */
+let pdfPreviewUrl = null;
+
+function ensurePdfModal() {
+    if (document.getElementById('pdfPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="pdfPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:980px; width:95%; height:88vh;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-pdf"></i> PDF Preview</h2>
+                <button type="button" class="modal-close" id="pdfPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:0; flex:1; display:flex;">
+                <iframe id="pdfPreviewFrame" title="PDF preview" style="width:100%; height:100%; border:0;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="pdfPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-secondary" id="pdfPrintBtn"><i class="bi bi-printer"></i> Print</button>
+                <button type="button" class="btn btn-primary" id="pdfDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('pdfPreviewCloseX').addEventListener('click', closePdfPreview);
+    document.getElementById('pdfPreviewCloseBtn').addEventListener('click', closePdfPreview);
+}
+
+function closePdfPreview() {
+    closeModal('pdfPreviewModal');
+    document.getElementById('pdfPreviewFrame').src = 'about:blank';
+    if (pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); pdfPreviewUrl = null; }
+}
+
+function showPdfPreview(doc, filename) {
+    ensurePdfModal();
+    if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    pdfPreviewUrl = doc.output('bloburl');
+    document.getElementById('pdfPreviewFrame').src = pdfPreviewUrl;
+    document.getElementById('pdfDownloadBtn').onclick = () => doc.save(filename);
+    document.getElementById('pdfPrintBtn').onclick = () => {
+        const frame = document.getElementById('pdfPreviewFrame');
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    };
+    openModal('pdfPreviewModal');
+}
+
+function ensureExcelModal() {
+    if (document.getElementById('excelPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="excelPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:1100px; width:95%; height:82vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-excel"></i> Excel Preview</h2>
+                <button type="button" class="modal-close" id="excelPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="flex:1; overflow:auto;" id="excelPreviewBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="excelPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-success" id="excelDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('excelPreviewCloseX').addEventListener('click', () => closeModal('excelPreviewModal'));
+    document.getElementById('excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
+}
+
+function showExcelPreview(filename, tableEl, onDownload) {
+    ensureExcelModal();
+    const body = document.getElementById('excelPreviewBody');
+    body.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-container';
+    wrapper.appendChild(tableEl);
+    body.appendChild(wrapper);
+    document.getElementById('excelDownloadBtn').onclick = onDownload;
+    openModal('excelPreviewModal');
+}
+
 // Export report as an Excel workbook (.xlsx)
 function exportToExcel() {
     if (typeof XLSX === 'undefined') {
@@ -331,33 +594,38 @@ function exportToExcel() {
         return;
     }
 
-    const { body } = buildExportTable();
-    const { excelRow1, excelRow2 } = buildGradeHeaderRows();
-    const titleRows = [
-        [`Coordinator Report Cases - ${currentSchool || 'School'}`],
-        [`Generated: ${new Date().toLocaleDateString()}`],
-        []
-    ];
-    const worksheet = XLSX.utils.aoa_to_sheet([...titleRows, excelRow1, excelRow2, ...body]);
+    const filename = `${exportFileBaseName()}.xlsx`;
+    const previewTable = document.getElementById('reportCasesTable').cloneNode(true);
+    previewTable.removeAttribute('id');
 
-    const headerRowIndex = titleRows.length;
-    const lastCol = 1 + visibleGrades.length * 3;
-    const merges = [
-        { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } },
-        { s: { r: headerRowIndex, c: lastCol }, e: { r: headerRowIndex + 1, c: lastCol } }
-    ];
-    visibleGrades.forEach((_, i) => {
-        const startCol = 1 + i * 3;
-        merges.push({ s: { r: headerRowIndex, c: startCol }, e: { r: headerRowIndex, c: startCol + 2 } });
+    showExcelPreview(filename, previewTable, () => {
+        const { body } = buildExportTable();
+        const { excelRow1, excelRow2 } = buildGradeHeaderRows();
+        const titleRows = [
+            [`Coordinator Report Cases - ${currentSchool || 'School'}`],
+            [`Generated: ${new Date().toLocaleDateString()}`],
+            []
+        ];
+        const worksheet = XLSX.utils.aoa_to_sheet([...titleRows, excelRow1, excelRow2, ...body]);
+
+        const headerRowIndex = titleRows.length;
+        const lastCol = 1 + visibleGrades.length * 3;
+        const merges = [
+            { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } },
+            { s: { r: headerRowIndex, c: lastCol }, e: { r: headerRowIndex + 1, c: lastCol } }
+        ];
+        visibleGrades.forEach((_, i) => {
+            const startCol = 1 + i * 3;
+            merges.push({ s: { r: headerRowIndex, c: startCol }, e: { r: headerRowIndex, c: startCol + 2 } });
+        });
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 34 }, ...visibleGrades.flatMap(() => [{ wch: 8 }, { wch: 8 }, { wch: 8 }]), { wch: 14 }];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
+        XLSX.writeFile(workbook, filename);
+        showNotification('Excel report exported successfully!');
     });
-    worksheet['!merges'] = merges;
-    worksheet['!cols'] = [{ wch: 34 }, ...visibleGrades.flatMap(() => [{ wch: 8 }, { wch: 8 }, { wch: 8 }]), { wch: 14 }];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
-    XLSX.writeFile(workbook, `${exportFileBaseName()}.xlsx`);
-
-    showNotification('Excel report exported successfully!');
 }
 
 // Export report as a PDF document
@@ -397,8 +665,7 @@ function exportToPDF() {
         }
     });
 
-    doc.save(`${exportFileBaseName()}.pdf`);
-    showNotification('PDF report exported successfully!');
+    showPdfPreview(doc, `${exportFileBaseName()}.pdf`);
 }
 
 function showNotification(message) {

@@ -1,79 +1,17 @@
-// Case Categories matching SDO system
-const caseCategories = [
-    'A. CAT',
-    'Misbehavior / Truancy / Absenteeism / Unwarranted Group',
-    'Smoking',
-    'Drinking',
-    'Drug Abuse',
-    'Carrying Deadly Weapons',
-    'Total A: CAT',
-    'B. FAMILY: ADULTS',
-    'Non-displaced',
-    'Deprivation',
-    'Family Conflict',
-    'Suicide Completed',
-    'Situational / MENTAL HEALTH',
-    'Total B: MENTAL HEALTH',
-    'C. BULLYING',
-    'Physical',
-    'Verbal',
-    'Emotional',
-    'Cyber',
-    'Total C: BULLYING',
-    'D. LGBTQIA ISSUES',
-    'Underachievement',
-    'Abuse/Neglect (Academic Performance)',
-    'Conflict In Adapting to Environment',
-    'Early Marriage',
-    'Learning Disability',
-    'Transfers or Changing Schools',
-    'Total D: FAMILY RELATED',
-    'E. Family-Related',
-    'Family Problems',
-    'Use of Illegal Drugs',
-    'All Sorts of Alcohol/Drinks/Cannabis',
-    'Overall TOTAL'
-];
+// Report Cases — real case-category x grade x gender counts, sourced from
+// api/case-report.php (which aggregates the counselor's actual logged cases
+// in counselor_case_scenarios). Categories/sections match the real
+// case_category/section tables used by the counselor's case workflow.
 
-const REPORT_GRADE_MAX = { 7: 5, 8: 5, 9: 6, 10: 6, 11: 5, 12: 4 };
-
-// Generate sample case data (male/female per grade)
-function generateCaseData() {
-    const data = {};
-    caseCategories.forEach(category => {
-        data[category] = {};
-        ALL_REPORT_GRADES.forEach(grade => {
-            const total = Math.floor(Math.random() * REPORT_GRADE_MAX[grade]);
-            const male = Math.floor(Math.random() * (total + 1));
-            data[category][grade] = { m: male, f: total - male };
-        });
-    });
-    return data;
-}
-
-// All cases data organized by category and grade with gender breakdown.
-// Generated once per browser and cached in localStorage so the demo
-// numbers stay stable across reloads instead of reshuffling every visit.
-let allCasesData = {};
-
-function loadOrGenerateAllCasesData() {
-    const stored = localStorage.getItem('otherschool_base_cases_data');
-    const parsed = stored ? JSON.parse(stored) : null;
-    const isCurrentShape = parsed?.default?.['A. CAT']?.['7']?.m !== undefined;
-
-    if (parsed && isCurrentShape) {
-        allCasesData = parsed;
-    } else {
-        allCasesData = { default: generateCaseData() };
-        localStorage.setItem('otherschool_base_cases_data', JSON.stringify(allCasesData));
-    }
-}
-
-let casesData = {};
-
-// Grades this account is allowed to see (e.g. a counselor scoped to
-// Grade 7 only, or all six if unassigned/no restriction).
 const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
+
+let currentSchool = '';
+let sections = [];
+let counts = {};
+let displayRows = [];
+
+// Grades this account is allowed to see (e.g. a coordinator scoped to
+// Grades 7-10, or all six if unassigned/no restriction).
 let visibleGrades = ALL_REPORT_GRADES;
 
 function computeVisibleGrades() {
@@ -82,8 +20,9 @@ function computeVisibleGrades() {
 }
 
 // Remove the header column-groups for any grade outside this account's
-// scope. Removed (not just hidden) so the remaining header/body columns
-// stay aligned once buildCasesTable() only emits cells for visibleGrades.
+// scope (e.g. a Grade 7-10 coordinator never sees Grade 11/12 columns).
+// Removed (not just hidden) so the remaining header/body columns stay
+// aligned once buildCasesTable() only emits cells for visibleGrades.
 function applyGradeColumnVisibility() {
     document.querySelectorAll('#reportCasesTable .grade-col').forEach(el => {
         const grade = parseInt(el.getAttribute('data-grade'), 10);
@@ -94,97 +33,336 @@ function applyGradeColumnVisibility() {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    checkAuth();
-    setUserInfo();
+document.addEventListener('DOMContentLoaded', async function() {
+    initPage();
+
+    const user = getCurrentUser();
+    currentSchool = (user && user.school_attended) || '';
+
     visibleGrades = computeVisibleGrades();
     applyGradeColumnVisibility();
-    loadOrGenerateAllCasesData();
-    loadCasesFromStorage();
+
+    await loadReportData();
     buildCasesTable();
+    populateFilterOptions();
     setupEventListeners();
 });
 
-function loadCasesFromStorage() {
-    const stored = localStorage.getItem(`otherschool_cases_default`);
-    if (stored) {
-        const newCases = JSON.parse(stored);
-        // Merge stored cases into the data
-        Object.keys(newCases).forEach(category => {
-            Object.keys(newCases[category]).forEach(grade => {
-                if (!allCasesData["default"][category]) {
-                    allCasesData["default"][category] = { "7": 0, "8": 0, "9": 0, "10": 0, "11": 0, "12": 0 };
-                }
-                allCasesData["default"][category][grade] = (allCasesData["default"][category][grade] || 0) + newCases[category][grade];
-            });
-        });
+function esc(value) {
+    const div = document.createElement('div');
+    div.textContent = value === null || value === undefined ? '' : String(value);
+    return div.innerHTML;
+}
+
+async function loadReportData() {
+    try {
+        const gradeScope = getCurrentGradeScope();
+        const url = `../../api/case-report.php?action=categories&school=${encodeURIComponent(currentSchool)}&grade_scope=${encodeURIComponent(gradeScope)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load case report');
+        }
+
+        sections = data.sections || [];
+        counts = data.counts || {};
+    } catch (error) {
+        console.error('Error loading case report:', error);
+        sections = [];
+        counts = {};
     }
-    casesData = JSON.parse(JSON.stringify(allCasesData["default"] || {}));
+}
+
+function gradeCell(bucketKey, grade) {
+    const bucket = counts[bucketKey];
+    return (bucket && bucket[String(grade)]) || { m: 0, f: 0 };
+}
+
+// Flattens sections/categories/counts into one render-and-export-ready list:
+// a header row per section, a row per real category, an "Uncategorized" row
+// per section (cases whose category hasn't been chosen yet), a subtotal row
+// per section, and a final grand-total row.
+function buildDisplayRows() {
+    const rows = [];
+    const grandTotal = {};
+    visibleGrades.forEach(g => { grandTotal[g] = { m: 0, f: 0 }; });
+
+    sections.forEach(section => {
+        rows.push({ type: 'header', label: `${section.sectionCode}. ${section.sectionName}` });
+
+        const sectionTotal = {};
+        visibleGrades.forEach(g => { sectionTotal[g] = { m: 0, f: 0 }; });
+
+        const addToTotals = (bucketKey) => {
+            visibleGrades.forEach(g => {
+                const cell = gradeCell(bucketKey, g);
+                sectionTotal[g].m += cell.m;
+                sectionTotal[g].f += cell.f;
+                grandTotal[g].m += cell.m;
+                grandTotal[g].f += cell.f;
+            });
+        };
+
+        section.categories.forEach(cat => {
+            rows.push({ type: 'category', label: cat.categoryName, bucketKey: cat.categoryId });
+            addToTotals(cat.categoryId);
+        });
+
+        const uncategorizedKey = `section-${section.sectionId}-uncategorized`;
+        rows.push({ type: 'category', label: 'Uncategorized', bucketKey: uncategorizedKey });
+        addToTotals(uncategorizedKey);
+
+        rows.push({ type: 'subtotal', label: `Total ${section.sectionCode}: ${section.sectionName}`, totals: sectionTotal });
+    });
+
+    rows.push({ type: 'subtotal', label: 'Overall Total', totals: grandTotal });
+    return rows;
+}
+
+function rowTotals(row) {
+    if (row.type === 'subtotal') {
+        return row.totals;
+    }
+    const totals = {};
+    visibleGrades.forEach(g => { totals[g] = gradeCell(row.bucketKey, g); });
+    return totals;
 }
 
 function buildCasesTable() {
     const tbody = document.getElementById('casesTableBody');
     tbody.innerHTML = '';
 
-    caseCategories.forEach(category => {
-        if (!casesData[category]) {
-            casesData[category] = {
-                "7": {m: 0, f: 0}, "8": {m: 0, f: 0}, "9": {m: 0, f: 0}, 
-                "10": {m: 0, f: 0}, "11": {m: 0, f: 0}, "12": {m: 0, f: 0}
-            };
+    displayRows = buildDisplayRows();
+
+    displayRows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+
+        if (row.type === 'header') {
+            const colCount = 1 + visibleGrades.length * 3;
+            tr.innerHTML = `<td colspan="${colCount}" style="font-weight: 700; background: #e2e8f0;">${row.label}</td>`;
+            tbody.appendChild(tr);
+            return;
         }
 
-        const row = document.createElement('tr');
-        row.style.cursor = 'pointer';
-
-        // Highlight subtotal/overall rows the same way the SDO district
-        // report does, so the grouped category headings stand out.
-        if (category.includes('Total')) {
-            row.style.fontWeight = '700';
-            row.style.backgroundColor = '#f1f5f9';
+        if (row.type === 'subtotal') {
+            tr.style.fontWeight = '700';
+            tr.style.backgroundColor = '#f1f5f9';
         }
 
-        const gradeData = casesData[category];
+        const totals = rowTotals(row);
+        let html = `<td style="font-weight: 500;">${row.label}</td>`;
 
-        let htmlContent = `<td style="font-weight: 500;">${category}</td>`;
-
-        visibleGrades.forEach(i => {
-            const m = gradeData[i]?.m || 0;
-            const f = gradeData[i]?.f || 0;
-            const total = m + f;
-            htmlContent += `<td class="text-center" style="font-size: 0.9em;">${m}</td><td class="text-center" style="font-size: 0.9em;">${f}</td><td class="text-center">${total > 0 ? `<span class="badge badge-in-progress">${total}</span>` : '0'}</td>`;
+        visibleGrades.forEach(g => {
+            const cell = totals[g] || { m: 0, f: 0 };
+            const total = cell.m + cell.f;
+            html += `<td class="text-center" style="font-size: 0.9em;">${cell.m}</td><td class="text-center" style="font-size: 0.9em;">${cell.f}</td><td class="text-center">${total > 0 ? `<span class="badge badge-in-progress">${total}</span>` : '0'}</td>`;
         });
 
-        row.innerHTML = htmlContent;
+        tr.innerHTML = html;
 
-        row.addEventListener('click', () => showCaseDetails(category));
-        tbody.appendChild(row);
+        if (row.type === 'category') {
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', () => showCaseDetails(index));
+        }
+
+        tbody.appendChild(tr);
     });
 }
 
-function showCaseDetails(category) {
+function showCaseDetails(rowIndex) {
+    const row = displayRows[rowIndex];
+    if (!row) return;
+
     const modal = document.getElementById('caseModal');
-    const gradeData = casesData[category];
+    const totals = rowTotals(row);
     let total = 0;
-    visibleGrades.forEach(i => {
-        total += (gradeData[i]?.m || 0) + (gradeData[i]?.f || 0);
+    visibleGrades.forEach(g => {
+        total += (totals[g]?.m || 0) + (totals[g]?.f || 0);
     });
 
-    document.getElementById('caseId').value = `CASE-COU-${Date.now()}`;
-    document.getElementById('caseCategory').value = category;
+    document.getElementById('caseId').value = `CASE-${(currentSchool || 'SCHOOL').toUpperCase().replace(/\s+/g, '-')}-${row.bucketKey || 'ROW'}`;
+    document.getElementById('caseCategory').value = row.label;
     document.getElementById('caseGrade').value = `Grades ${visibleGrades[0]}-${visibleGrades[visibleGrades.length - 1]}`;
     document.getElementById('caseStatus').value = 'Active';
     document.getElementById('caseDate').value = new Date().toLocaleDateString();
 
     let notes = `Total Cases: ${total}\n\n`;
     visibleGrades.forEach(grade => {
-        const m = gradeData[grade]?.m || 0;
-        const f = gradeData[grade]?.f || 0;
+        const m = totals[grade]?.m || 0;
+        const f = totals[grade]?.f || 0;
         notes += `Grade ${grade}: ${m + f} (M: ${m} / F: ${f})\n`;
     });
     document.getElementById('caseNotes').value = notes;
 
     modal.style.display = 'flex';
+}
+
+// ---- Filter panel + searchable case list ----
+// Every filter (period, category, grade, gender, status, free-text search)
+// is applied server-side by api/case-report.php?action=list, which returns
+// one row per real logged case — unlike the pivot table above, which only
+// ever shows aggregated counts and can't answer "which cases".
+let filteredCases = [];
+
+function populateFilterOptions() {
+    const categorySelect = document.getElementById('filterCategory');
+    sections.forEach(section => {
+        const group = document.createElement('optgroup');
+        group.label = `${section.sectionCode}. ${section.sectionName}`;
+        section.categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.categoryId;
+            opt.textContent = cat.categoryName;
+            group.appendChild(opt);
+        });
+        const uncategorized = document.createElement('option');
+        uncategorized.value = `section-${section.sectionId}-uncategorized`;
+        uncategorized.textContent = 'Uncategorized';
+        group.appendChild(uncategorized);
+        categorySelect.appendChild(group);
+    });
+
+    const gradeSelect = document.getElementById('filterGrade');
+    visibleGrades.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = String(g);
+        opt.textContent = `Grade ${g}`;
+        gradeSelect.appendChild(opt);
+    });
+}
+
+function toggleFilterPanel() {
+    const panel = document.getElementById('filterPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function updateCustomRangeVisibility() {
+    const isCustom = document.getElementById('filterPeriod').value === 'custom';
+    document.getElementById('filterStartGroup').style.display = isCustom ? 'block' : 'none';
+    document.getElementById('filterEndGroup').style.display = isCustom ? 'block' : 'none';
+}
+
+async function applyFilters() {
+    const params = new URLSearchParams({
+        action: 'list',
+        school: currentSchool,
+        grade_scope: getCurrentGradeScope(),
+        period: document.getElementById('filterPeriod').value,
+        start: document.getElementById('filterStart').value,
+        end: document.getElementById('filterEnd').value,
+        category: document.getElementById('filterCategory').value,
+        grade: document.getElementById('filterGrade').value,
+        gender: document.getElementById('filterGender').value,
+        status: document.getElementById('filterStatus').value,
+        search: document.getElementById('filterSearch').value.trim()
+    });
+
+    const resultsView = document.getElementById('filterResultsView');
+    const summary = document.getElementById('filterResultsSummary');
+    const list = document.getElementById('filterResultsList');
+
+    document.getElementById('reportTableView').style.display = 'none';
+    resultsView.style.display = 'block';
+    summary.textContent = 'Searching...';
+    list.innerHTML = '';
+
+    try {
+        const response = await fetch(`../../api/case-report.php?${params.toString()}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load cases');
+
+        filteredCases = data.data || [];
+        renderFilterResults();
+    } catch (error) {
+        console.error('Error loading filtered cases:', error);
+        summary.textContent = 'Could not load cases.';
+    }
+}
+
+function renderFilterResults() {
+    const summary = document.getElementById('filterResultsSummary');
+    const list = document.getElementById('filterResultsList');
+
+    summary.textContent = filteredCases.length === 0
+        ? 'No cases match these filters.'
+        : `${filteredCases.length} case${filteredCases.length === 1 ? '' : 's'} found`;
+
+    if (filteredCases.length === 0) {
+        list.innerHTML = `<p class="text-muted" style="background:white; border:1px dashed var(--border-color); border-radius:8px; padding:30px; text-align:center;">Try widening the period or clearing a filter.</p>`;
+        return;
+    }
+
+    list.innerHTML = filteredCases.map((row, index) => {
+        const dateLabel = row.caseDate
+            ? new Date(`${row.caseDate}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'No date on file';
+        const gradeLabel = row.grade ? `Grade ${row.grade}` : 'Grade N/A';
+        const snippet = row.summary || row.caseTitle || 'No additional notes on file.';
+        return `
+        <div class="case-result-item" data-index="${index}">
+            <div class="case-result-title">${esc(row.studentName)} <span class="case-result-dash">&mdash;</span> ${esc(row.categoryName)}</div>
+            <div class="case-result-meta">
+                <span>${esc(gradeLabel)}</span> &middot;
+                <span>${esc(row.gender || 'N/A')}</span> &middot;
+                ${badgeForCaseStatus(row.status)} &middot;
+                <span>${esc(dateLabel)}</span> &middot;
+                <span>${esc(row.counselorName || 'Unknown counselor')}</span>
+            </div>
+            <div class="case-result-snippet">${esc(snippet)}</div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.case-result-item').forEach(item => {
+        item.addEventListener('click', () => showFilteredCaseDetails(parseInt(item.getAttribute('data-index'), 10)));
+    });
+}
+
+function badgeForCaseStatus(status) {
+    const normalized = String(status || '').toLowerCase();
+    const mapped = ['completed', 'resolved', 'done', 'closed'].includes(normalized) ? 'completed'
+        : ['rejected', 'cancelled', 'canceled'].includes(normalized) ? 'rejected'
+        : ['in-progress', 'in progress', 'ongoing'].includes(normalized) ? 'in-progress'
+        : 'pending';
+    return createBadge(mapped);
+}
+
+function showFilteredCaseDetails(index) {
+    const row = filteredCases[index];
+    if (!row) return;
+
+    document.getElementById('caseId').value = row.caseUid || `CASE-${row.id}`;
+    document.getElementById('caseCategory').value = row.categoryName || 'Uncategorized';
+    document.getElementById('caseGrade').value = `${row.grade ? `Grade ${row.grade}` : 'N/A'} • ${row.gender || 'N/A'}`;
+    document.getElementById('caseStatus').value = row.status || 'pending';
+    document.getElementById('caseDate').value = row.caseDate
+        ? new Date(`${row.caseDate}T00:00:00`).toLocaleDateString()
+        : 'N/A';
+    document.getElementById('caseNotes').value = [
+        `Student: ${row.studentName || 'Unknown'}`,
+        `Counselor: ${row.counselorName || 'Unknown'}`,
+        row.caseTitle ? `Title: ${row.caseTitle}` : '',
+        '',
+        row.summary || 'No additional notes on file.'
+    ].filter(Boolean).join('\n');
+
+    document.getElementById('caseModal').style.display = 'flex';
+}
+
+function clearFilters() {
+    document.getElementById('filterPeriod').value = 'all';
+    document.getElementById('filterStart').value = '';
+    document.getElementById('filterEnd').value = '';
+    document.getElementById('filterCategory').value = '';
+    document.getElementById('filterGrade').value = '';
+    document.getElementById('filterGender').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterSearch').value = '';
+    updateCustomRangeVisibility();
+
+    document.getElementById('filterResultsView').style.display = 'none';
+    document.getElementById('reportTableView').style.display = '';
+    filteredCases = [];
 }
 
 function setupEventListeners() {
@@ -211,12 +389,20 @@ function setupEventListeners() {
         submitNewCase();
     });
 
-    // Export button
-    document.getElementById('exportBtn').addEventListener('click', exportReport);
+    // Export buttons
+    document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
+    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
 
-    // Filter button
-    document.getElementById('filterBtn').addEventListener('click', () => {
-        alert('Filter functionality to be implemented');
+    // Filter panel
+    document.getElementById('filterBtn').addEventListener('click', toggleFilterPanel);
+    document.getElementById('filterPeriod').addEventListener('change', updateCustomRangeVisibility);
+    document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+    document.getElementById('filterSearch').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyFilters();
+        }
     });
 
     // Close modals on outside click
@@ -228,6 +414,10 @@ function setupEventListeners() {
     });
 }
 
+// This quick-add form is a local note only — it doesn't have a real
+// section/category selection (see the actual case workflow in
+// pages/counselor/counseling.php for that), so it can't safely bump the
+// real per-category counts above without corrupting them with a fake type.
 function submitNewCase() {
     const title = document.getElementById('caseTitle').value;
     const type = document.getElementById('caseType').value;
@@ -239,57 +429,243 @@ function submitNewCase() {
         return;
     }
 
-    // Store the new case
-    const newCase = {
-        id: `CASE-COU-${Date.now()}`,
-        title: title,
-        type: type,
-        description: description,
-        severity: severity,
+    const newNote = {
+        id: `NOTE-${(currentSchool || 'SCHOOL').toUpperCase().replace(/\s+/g, '-')}-${Date.now()}`,
+        title,
+        type,
+        description,
+        severity,
         date: new Date().toLocaleDateString(),
         status: 'Active'
     };
 
-    let casesList = JSON.parse(localStorage.getItem(`otherschool_cases_list_default`) || '[]');
-    casesList.push(newCase);
-    localStorage.setItem(`otherschool_cases_list_default`, JSON.stringify(casesList));
+    const storageKey = `coordinator_quick_notes_${currentSchool}`;
+    const notes = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    notes.push(newNote);
+    localStorage.setItem(storageKey, JSON.stringify(notes));
 
-    // Update the table data
-    if (!casesData[type]) {
-        casesData[type] = { "7": 0, "8": 0, "9": 0, "10": 0, "11": 0, "12": 0 };
-    }
-    casesData[type]["7"]++;
-
-    buildCasesTable();
     document.getElementById('caseReportForm').reset();
     document.getElementById('newCaseModal').style.display = 'none';
-    
-    showNotification('Case report submitted successfully!');
+
+    showNotification('Note saved. To log a real case with a category, use Case Management.');
 }
 
-function exportReport() {
-    const header = ['Category of Cases', ...visibleGrades.map(g => `Grade ${g}`), 'Totals'];
-    let csv = header.join(',') + '\n';
+// Two-row grade header (Grade N spanning Male/Female/Total) shared by both
+// exporters, mirroring the on-page table instead of a single row like
+// "Grade 7 - M" — those truncate to identical-looking "Grade 7 -" labels
+// once Excel/PDF column width is narrower than the full text.
+function buildGradeHeaderRows() {
+    const pdfHead = [
+        [
+            { content: 'Category of Cases', rowSpan: 2, styles: { valign: 'middle' } },
+            ...visibleGrades.map(g => ({ content: `Grade ${g}`, colSpan: 3, styles: { halign: 'center' } })),
+            { content: 'Overall Total', rowSpan: 2, styles: { valign: 'middle' } }
+        ],
+        visibleGrades.flatMap(() => ['Male', 'Female', 'Total'])
+    ];
+    const excelRow1 = ['Category of Cases', ...visibleGrades.flatMap(g => [`Grade ${g}`, '', '']), 'Overall Total'];
+    const excelRow2 = ['', ...visibleGrades.flatMap(() => ['Male', 'Female', 'Total']), ''];
+    return { pdfHead, excelRow1, excelRow2 };
+}
 
-    caseCategories.forEach(category => {
-        if (casesData[category]) {
-            const gradeData = casesData[category];
-            const gradeTotals = visibleGrades.map(g => (gradeData[g]?.m || 0) + (gradeData[g]?.f || 0));
-            const total = gradeTotals.reduce((sum, n) => sum + n, 0);
+// Shared table shape used by both the PDF and Excel exporters
+function buildExportTable() {
+    const body = [];
+    const sectionHeaderRows = [];
+    const subtotalRows = [];
 
-            csv += `"${category}",${gradeTotals.join(',')},${total}\n`;
+    displayRows.forEach(row => {
+        if (row.type === 'header') {
+            sectionHeaderRows.push(body.length);
+            body.push([row.label, ...visibleGrades.flatMap(() => ['', '', '']), '']);
+            return;
+        }
+
+        const totals = rowTotals(row);
+        const rowCells = [row.label];
+        let overallTotal = 0;
+        visibleGrades.forEach(g => {
+            const cell = totals[g] || { m: 0, f: 0 };
+            const total = cell.m + cell.f;
+            overallTotal += total;
+            rowCells.push(cell.m, cell.f, total);
+        });
+        rowCells.push(overallTotal);
+
+        if (row.type === 'subtotal') {
+            subtotalRows.push(body.length);
+        }
+        body.push(rowCells);
+    });
+
+    return { body, sectionHeaderRows, subtotalRows };
+}
+
+function exportFileBaseName() {
+    return `coordinator-cases-${(currentSchool || 'school').replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`;
+}
+
+/* ---- Export preview modals — same "view before you download" flow as
+   the analytics.js report exports, adapted here since the grade header
+   uses merged cells (Excel) / rowSpan+colSpan (PDF) that a flat
+   array-of-arrays preview can't represent faithfully. The live
+   #reportCasesTable already renders that exact structure (only the
+   visibleGrades columns, same header grouping), so it's cloned straight
+   into the Excel preview instead of re-deriving it. ---- */
+let pdfPreviewUrl = null;
+
+function ensurePdfModal() {
+    if (document.getElementById('pdfPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="pdfPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:980px; width:95%; height:88vh;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-pdf"></i> PDF Preview</h2>
+                <button type="button" class="modal-close" id="pdfPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:0; flex:1; display:flex;">
+                <iframe id="pdfPreviewFrame" title="PDF preview" style="width:100%; height:100%; border:0;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="pdfPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-secondary" id="pdfPrintBtn"><i class="bi bi-printer"></i> Print</button>
+                <button type="button" class="btn btn-primary" id="pdfDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('pdfPreviewCloseX').addEventListener('click', closePdfPreview);
+    document.getElementById('pdfPreviewCloseBtn').addEventListener('click', closePdfPreview);
+}
+
+function closePdfPreview() {
+    closeModal('pdfPreviewModal');
+    document.getElementById('pdfPreviewFrame').src = 'about:blank';
+    if (pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); pdfPreviewUrl = null; }
+}
+
+function showPdfPreview(doc, filename) {
+    ensurePdfModal();
+    if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    pdfPreviewUrl = doc.output('bloburl');
+    document.getElementById('pdfPreviewFrame').src = pdfPreviewUrl;
+    document.getElementById('pdfDownloadBtn').onclick = () => doc.save(filename);
+    document.getElementById('pdfPrintBtn').onclick = () => {
+        const frame = document.getElementById('pdfPreviewFrame');
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    };
+    openModal('pdfPreviewModal');
+}
+
+function ensureExcelModal() {
+    if (document.getElementById('excelPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="excelPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:1100px; width:95%; height:82vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-excel"></i> Excel Preview</h2>
+                <button type="button" class="modal-close" id="excelPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="flex:1; overflow:auto;" id="excelPreviewBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="excelPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-success" id="excelDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('excelPreviewCloseX').addEventListener('click', () => closeModal('excelPreviewModal'));
+    document.getElementById('excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
+}
+
+function showExcelPreview(filename, tableEl, onDownload) {
+    ensureExcelModal();
+    const body = document.getElementById('excelPreviewBody');
+    body.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-container';
+    wrapper.appendChild(tableEl);
+    body.appendChild(wrapper);
+    document.getElementById('excelDownloadBtn').onclick = onDownload;
+    openModal('excelPreviewModal');
+}
+
+// Export report as an Excel workbook (.xlsx)
+function exportToExcel() {
+    if (typeof XLSX === 'undefined') {
+        showNotification('Excel export library failed to load.');
+        return;
+    }
+
+    const filename = `${exportFileBaseName()}.xlsx`;
+    const previewTable = document.getElementById('reportCasesTable').cloneNode(true);
+    previewTable.removeAttribute('id');
+
+    showExcelPreview(filename, previewTable, () => {
+        const { body } = buildExportTable();
+        const { excelRow1, excelRow2 } = buildGradeHeaderRows();
+        const titleRows = [
+            [`Coordinator Report Cases - ${currentSchool || 'School'}`],
+            [`Generated: ${new Date().toLocaleDateString()}`],
+            []
+        ];
+        const worksheet = XLSX.utils.aoa_to_sheet([...titleRows, excelRow1, excelRow2, ...body]);
+
+        const headerRowIndex = titleRows.length;
+        const lastCol = 1 + visibleGrades.length * 3;
+        const merges = [
+            { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } },
+            { s: { r: headerRowIndex, c: lastCol }, e: { r: headerRowIndex + 1, c: lastCol } }
+        ];
+        visibleGrades.forEach((_, i) => {
+            const startCol = 1 + i * 3;
+            merges.push({ s: { r: headerRowIndex, c: startCol }, e: { r: headerRowIndex, c: startCol + 2 } });
+        });
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 34 }, ...visibleGrades.flatMap(() => [{ wch: 8 }, { wch: 8 }, { wch: 8 }]), { wch: 14 }];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
+        XLSX.writeFile(workbook, filename);
+        showNotification('Excel report exported successfully!');
+    });
+}
+
+// Export report as a PDF document
+function exportToPDF() {
+    if (typeof window.jspdf === 'undefined') {
+        showNotification('PDF export library failed to load.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const { body, sectionHeaderRows, subtotalRows } = buildExportTable();
+    const { pdfHead } = buildGradeHeaderRows();
+
+    doc.setFontSize(14);
+    doc.text(`Coordinator Report Cases - ${currentSchool || 'School'}`, 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+
+    doc.autoTable({
+        head: pdfHead,
+        body,
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
+        styles: { fontSize: 7, cellPadding: 2 },
+        didParseCell: (data) => {
+            if (data.section !== 'body') return;
+            if (sectionHeaderRows.includes(data.row.index)) {
+                data.cell.styles.fillColor = [226, 232, 240];
+                data.cell.styles.fontStyle = 'bold';
+            } else if (subtotalRows.includes(data.row.index)) {
+                data.cell.styles.fillColor = [241, 245, 249];
+                data.cell.styles.fontStyle = 'bold';
+            }
         }
     });
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `counselor-cases-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    showPdfPreview(doc, `${exportFileBaseName()}.pdf`);
 }
 
 function showNotification(message) {
@@ -308,10 +684,9 @@ function showNotification(message) {
         animation: slideIn 0.3s ease-out;
     `;
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
         notification.style.animation = 'slideOut 0.3s ease-out';
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
-

@@ -93,6 +93,7 @@ if (table_exists($conn, 'referral')) {
                     'parent_contact' => $row['parent_contact'] ?? '',
                     'urgency' => $row['urgency'] ?? 'normal',
                     'stage' => (int)($row['stage'] ?? 1),
+                    'stage_note' => $row['stage_note'] ?? '',
                     'status' => $row['status'] ?? 'pending',
                     'teacher_name' => $row['teacher_name'] ?? '',
                     'grade' => $row['Grade'] ?? '',

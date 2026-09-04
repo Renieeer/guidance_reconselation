@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Referral Status - Guidance Management System</title>
-    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/style.css?v=<?php echo filemtime(__DIR__ . '/../../css/style.css'); ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body>
@@ -164,6 +164,26 @@
                             </button>
                         </div>
 
+                        <!-- Intervention Activities (Stage 5) -->
+                        <div id="interventionFormSection" style="display: none;">
+                            <h3 class="text-primary">Intervention (Stage 5)</h3>
+                            <p class="text-muted" style="margin-top:-6px;">Check off which intervention activities were carried out for this student.</p>
+
+                            <form id="interventionForm">
+                                <div class="form-group">
+                                    <label>Activities Conducted</label>
+                                    <div id="interventionChecklist" class="referral-checklist"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="interventionNotes">Additional Notes (optional)</label>
+                                    <textarea id="interventionNotes" name="interventionNotes" placeholder="Any additional details about the intervention..." rows="3"></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-success">Save Intervention</button>
+                            </form>
+                        </div>
+
                         <!-- Case Closing Acknowledgement (Stage 6) -->
                         <div id="acknowledgementFormSection" style="display: none;">
                             <h3 class="text-primary">Case Closing Acknowledgement (Stage 6)</h3>
@@ -194,7 +214,7 @@
                             </form>
                         </div>
 
-                        <!-- Stages 1, 4, 5 have no dedicated documentation form yet -->
+                        <!-- Stage 4 doesn't have a dedicated documentation form yet -->
                         <div id="noStageDocSection" style="display: none;">
                             <p class="text-muted">No additional documentation is required at this stage.</p>
                         </div>

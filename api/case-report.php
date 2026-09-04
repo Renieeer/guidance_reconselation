@@ -256,6 +256,164 @@ if ($action === 'categories') {
     ]);
 }
 
+/* ── INDIVIDUAL CASE LIST (filterable, "search results" style) ──
+   Same real source as 'categories' (counselor_case_scenarios joined against
+   student_table for authoritative grade/sex) but returns one row per case
+   instead of pre-aggregated counts, so the frontend can filter by any
+   combination of period/category/grade/gender/status/free-text search and
+   render a list of matching cases instead of the pivot table. */
+if ($action === 'list') {
+    $school = trim((string)($_GET['school'] ?? ''));
+    $district = trim((string)($_GET['district'] ?? ''));
+    $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
+
+    $period = trim((string)($_GET['period'] ?? 'all'));
+    $rangeStart = trim((string)($_GET['start'] ?? ''));
+    $rangeEnd = trim((string)($_GET['end'] ?? ''));
+    [$dateSql, $dateTypes, $dateValues] = case_date_condition($period, $rangeStart, $rangeEnd);
+
+    $categoryFilter = trim((string)($_GET['category'] ?? ''));
+    $gradeFilter = trim((string)($_GET['grade'] ?? ''));
+    $genderFilter = trim((string)($_GET['gender'] ?? ''));
+    $statusFilter = trim((string)($_GET['status'] ?? ''));
+    $search = strtolower(trim((string)($_GET['search'] ?? '')));
+
+    $schoolNames = [];
+    if ($school !== '') {
+        $schoolNames = [$school];
+    } elseif ($district !== '') {
+        $schoolNames = schools_in_district($conn, $district);
+    }
+
+    $rows = [];
+
+    if (table_exists($conn, 'counselor_case_scenarios') && !empty($schoolNames)) {
+        $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
+        $types = str_repeat('s', count($schoolNames));
+        $stmt = $conn->prepare("
+            SELECT id, case_uid, counselor_name, section_id, section_name, category_id, category_name,
+                   case_title, case_date, case_summary, status, students_json
+            FROM counselor_case_scenarios
+            WHERE school_attended IN ($placeholders)$dateSql
+            ORDER BY case_date DESC, id DESC
+        ");
+
+        if ($stmt) {
+            $bindTypes = $types . $dateTypes;
+            $bindValues = array_merge($schoolNames, $dateValues);
+            $stmt->bind_param($bindTypes, ...$bindValues);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $caseRows = [];
+            $studentIds = [];
+            while ($row = $result->fetch_assoc()) {
+                $students = json_decode((string)$row['students_json'], true) ?: [];
+                $primary = null;
+                foreach ($students as $s) {
+                    $role = trim((string)($s['role'] ?? ''));
+                    if ($role === '' || $role === 'Primary student') {
+                        $primary = $s;
+                        break;
+                    }
+                }
+                if (!$primary && !empty($students)) {
+                    $primary = $students[0];
+                }
+                $sid = $primary ? trim((string)($primary['id'] ?? '')) : '';
+                if ($sid !== '') {
+                    $studentIds[$sid] = true;
+                }
+
+                $caseRows[] = [
+                    'id' => (int)$row['id'],
+                    'caseUid' => $row['case_uid'],
+                    'counselorName' => $row['counselor_name'],
+                    'sectionId' => (string)$row['section_id'],
+                    'sectionName' => $row['section_name'],
+                    'categoryId' => trim((string)($row['category_id'] ?? '')),
+                    'categoryName' => $row['category_name'] ?: 'Uncategorized',
+                    'caseTitle' => $row['case_title'],
+                    'caseDate' => $row['case_date'],
+                    'summary' => $row['case_summary'],
+                    'status' => $row['status'] ?: 'pending',
+                    'studentId' => $sid,
+                    'studentName' => $primary['name'] ?? 'Unknown student'
+                ];
+            }
+            $stmt->close();
+
+            $studentInfo = [];
+            if (!empty($studentIds)) {
+                $idList = array_keys($studentIds);
+                $idPlaceholders = implode(',', array_fill(0, count($idList), '?'));
+                $idTypes = str_repeat('s', count($idList));
+                $studentStmt = $conn->prepare("SELECT StudentId, Grade, Sex FROM student_table WHERE StudentId IN ($idPlaceholders)");
+                if ($studentStmt) {
+                    $studentStmt->bind_param($idTypes, ...$idList);
+                    $studentStmt->execute();
+                    $studentResult = $studentStmt->get_result();
+                    while ($srow = $studentResult->fetch_assoc()) {
+                        $studentInfo[$srow['StudentId']] = [
+                            'grade' => normalize_grade_number($srow['Grade']),
+                            'sex' => (string)($srow['Sex'] ?? '')
+                        ];
+                    }
+                    $studentStmt->close();
+                }
+            }
+
+            foreach ($caseRows as $case) {
+                $info = $case['studentId'] !== '' ? ($studentInfo[$case['studentId']] ?? null) : null;
+                $grade = $info['grade'] ?? null;
+                $sex = $info['sex'] ?? '';
+
+                if (!empty($gradeScope) && ($grade === null || !in_array($grade, $gradeScope, true))) {
+                    continue;
+                }
+                if ($gradeFilter !== '' && (string)$grade !== $gradeFilter) {
+                    continue;
+                }
+                if ($genderFilter !== '' && $sex !== $genderFilter) {
+                    continue;
+                }
+                if ($categoryFilter !== '') {
+                    $bucketKey = $case['categoryId'] !== '' ? $case['categoryId'] : ('section-' . $case['sectionId'] . '-uncategorized');
+                    if ($bucketKey !== $categoryFilter) {
+                        continue;
+                    }
+                }
+                if ($statusFilter !== '' && strcasecmp((string)$case['status'], $statusFilter) !== 0) {
+                    continue;
+                }
+                if ($search !== '') {
+                    $haystack = strtolower($case['studentName'] . ' ' . $case['caseTitle'] . ' ' . $case['categoryName'] . ' ' . $case['sectionName'] . ' ' . $case['summary'] . ' ' . $case['caseUid']);
+                    if (strpos($haystack, $search) === false) {
+                        continue;
+                    }
+                }
+
+                $rows[] = [
+                    'id' => $case['id'],
+                    'caseUid' => $case['caseUid'],
+                    'studentName' => $case['studentName'],
+                    'grade' => $grade,
+                    'gender' => $sex,
+                    'sectionName' => $case['sectionName'],
+                    'categoryName' => $case['categoryName'],
+                    'caseTitle' => $case['caseTitle'],
+                    'caseDate' => $case['caseDate'],
+                    'summary' => $case['summary'],
+                    'status' => $case['status'],
+                    'counselorName' => $case['counselorName']
+                ];
+            }
+        }
+    }
+
+    send_json(200, ['success' => true, 'data' => $rows]);
+}
+
 /* ── DISTINCT DISTRICT LIST ── (for building district selector buttons) */
 if ($action === 'districts') {
     $result = $conn->query("SELECT DISTINCT district FROM schools WHERE is_active = 1 AND district IS NOT NULL AND district <> '' ORDER BY district ASC");

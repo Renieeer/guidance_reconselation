@@ -618,6 +618,15 @@ function shBuildReferralThreadEntry(r) {
         ? `${days.length} day${days.length === 1 ? '' : 's'} &middot; ${events.length} note${events.length === 1 ? '' : 's'}`
         : 'Awaiting counselor';
 
+    const urgencyLabel = r.urgency ? String(r.urgency).charAt(0).toUpperCase() + String(r.urgency).slice(1) : '';
+    const stageLabel = `Stage ${r.stage || 1}/6${r.stage_note ? ` — ${r.stage_note}` : ''}`;
+    const subParts = [
+        r.referral_code ? `Referral #${esc(r.referral_code)}` : '',
+        `Referred by ${esc(r.teacher_name || 'a teacher')}`,
+        urgencyLabel ? `Urgency: ${esc(urgencyLabel)}` : '',
+        esc(stageLabel)
+    ].filter(Boolean).join(' &middot; ');
+
     const html = `
         <div class="sh-case-thread sh-referral-thread">
             <div class="sh-case-thread-header sh-referral-thread-toggle">
@@ -625,7 +634,7 @@ function shBuildReferralThreadEntry(r) {
                 <div class="sh-referral-row-main">
                     <div class="sh-referral-row-eyebrow">Referral</div>
                     <div class="sh-referral-row-title">${esc(r.referral_reason || 'Referral')}</div>
-                    <div class="sh-referral-row-sub">${r.referral_code ? `Referral #${esc(r.referral_code)} &middot; ` : ''}Referred by ${esc(r.teacher_name || 'a teacher')}</div>
+                    <div class="sh-referral-row-sub">${subParts}</div>
                 </div>
                 <div class="sh-referral-row-meta">
                     <div class="sh-referral-row-dates">${esc(dateLabel)}</div>

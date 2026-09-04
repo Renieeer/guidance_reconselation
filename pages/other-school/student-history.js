@@ -844,10 +844,14 @@ function shBuildReferralThreadEntry(r) {
 
     const gradeSection = [r.grade, r.section].filter(Boolean).join(' / ');
     const parentInfo = r.parent_guardian ? `${r.parent_guardian}${r.parent_contact ? ' (' + r.parent_contact + ')' : ''}` : '';
+    const urgencyLabel = r.urgency ? String(r.urgency).charAt(0).toUpperCase() + String(r.urgency).slice(1) : '';
+    const stageLabel = `Stage ${r.stage || 1}/6${r.stage_note ? ` — ${r.stage_note}` : ''}`;
     const subParts = [
         `Referral #${r.referral_code ? esc(r.referral_code) : '—'}`,
         `Referred by ${esc(r.teacher_name || 'a teacher')}`,
         gradeSection ? esc(gradeSection) : '',
+        urgencyLabel ? `Urgency: ${esc(urgencyLabel)}` : '',
+        esc(stageLabel),
         parentInfo ? `Parent: ${esc(parentInfo)}` : ''
     ].filter(Boolean).join(' &middot; ');
 

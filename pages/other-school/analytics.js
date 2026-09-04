@@ -61,23 +61,78 @@ function getReferralApiRole() {
     return REFERRAL_API_ROLE[user && user.role] || 'counselor';
 }
 
-// Generic tabular Excel export shared by the 7.1/7.2/7.3 reports' "Export
-// Excel" button (sits alongside the existing "Export PDF" preview flow).
-// 7.5's exportChildSummaryExcel() builds its own since it mixes a text
-// summary block with a table.
-function downloadExcel(filename, title, head, body) {
+// Excel export for the "Export Excel" button on every report — shows a
+// preview modal first (same "look before you download" flow as the
+// existing PDF export's showPdfPreview()) instead of writing the file
+// straight away.
+function writeExcelFile(filename, aoa, colWidths) {
     if (typeof XLSX === 'undefined') { showAlert('Excel export library failed to load.', 'error'); return; }
-    const worksheet = XLSX.utils.aoa_to_sheet([
+    const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+    if (colWidths) worksheet['!cols'] = colWidths;
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
+    XLSX.writeFile(workbook, filename);
+}
+
+function ensureExcelModal() {
+    if (document.getElementById('excelPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="excelPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:900px; width:95%; height:82vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-excel"></i> <span id="excelPreviewTitle">Excel Preview</span></h2>
+                <button type="button" class="modal-close" id="excelPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="flex:1; overflow:auto;">
+                <div class="table-container"><table><tbody id="excelPreviewTbody"></tbody></table></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="excelPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-success" id="excelDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    $('#excelPreviewCloseX').addEventListener('click', () => closeModal('excelPreviewModal'));
+    $('#excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
+}
+
+// aoa (array-of-arrays) is the exact same shape that gets written to the
+// worksheet, so what's previewed is what's downloaded. Row 0 is the report
+// title (shown in the modal header, not as a table row); a blank row (`[]`)
+// anywhere after that marks the row right after it as a column-header row
+// (rendered as <th>), matching how every export here builds its aoa
+// (title / generated-date / blank / head / ...body).
+function showExcelPreview(filename, aoa, colWidths) {
+    ensureExcelModal();
+    $('#excelPreviewTitle').textContent = String((aoa[0] && aoa[0][0]) || 'Excel Preview');
+
+    let afterBlank = false;
+    $('#excelPreviewTbody').innerHTML = aoa.slice(1).map(row => {
+        if (row.length === 0) { afterBlank = true; return '<tr><td style="height:10px; border:none; padding:0;"></td></tr>'; }
+        const cellTag = afterBlank ? 'th' : 'td';
+        afterBlank = false;
+        return `<tr>${row.map(cell => `<${cellTag}>${esc(cell == null ? '' : cell)}</${cellTag}>`).join('')}</tr>`;
+    }).join('');
+
+    $('#excelDownloadBtn').onclick = () => writeExcelFile(filename, aoa, colWidths);
+    openModal('excelPreviewModal');
+}
+
+function buildExcelAoa(title, head, body) {
+    return [
         [title],
         [`Generated: ${new Date().toLocaleDateString()}`],
         [],
         head,
         ...body
-    ]);
-    worksheet['!cols'] = head.map(h => ({ wch: Math.max(12, String(h).length + 2) }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
-    XLSX.writeFile(workbook, filename);
+    ];
+}
+
+// Convenience wrapper for the simple title+head+body shape shared by the
+// 7.1/7.2/7.3 reports. 7.5's exportChildSummaryExcel() builds its own aoa
+// (it mixes a text summary block with a table) and calls showExcelPreview()
+// directly.
+function previewExcel(filename, title, head, body) {
+    showExcelPreview(filename, buildExcelAoa(title, head, body), head.map(h => ({ wch: Math.max(12, String(h).length + 2) })));
 }
 
 function mkChart(canvas, config) { const c = new Chart(canvas.getContext('2d'), config); charts.push(c); return c; }
@@ -92,8 +147,8 @@ function panelHeader(key, subtitle, onExportPdf, onExportExcel) {
             <p class="text-muted" style="margin:0; max-width:64ch;">${esc(subtitle)}</p>
         </div>
         <div style="display:flex; gap:10px;">
-            <button type="button" class="btn btn-primary btn-sm" id="btnExportPdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
-            <button type="button" class="btn btn-success btn-sm" id="btnExportExcel"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+            <button type="button" class="btn btn-primary" id="btnExportPdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+            <button type="button" class="btn btn-success" id="btnExportExcel"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
         </div>
     </div>`);
     $('#btnExportPdf', h).addEventListener('click', onExportPdf);
@@ -227,7 +282,7 @@ function renderAppointments(key) {
 
             showPdfPreview(doc, `gms_${key}_appointments.pdf`);
         },
-        () => downloadExcel(`gms_${key}_appointments.xlsx`, exportTitle, exportHeader, exportBody())));
+        () => previewExcel(`gms_${key}_appointments.xlsx`, exportTitle, exportHeader, exportBody())));
 
     const st = countBy(rows, r => r.status);
     frag.append(el(statCards([
@@ -308,7 +363,7 @@ function renderReferrals() {
 
             showPdfPreview(doc, 'gms_referral_distribution.pdf');
         },
-        () => downloadExcel('gms_referral_distribution.xlsx', referralsExportTitle, referralsExportHeader, referralsExportBody())));
+        () => previewExcel('gms_referral_distribution.xlsx', referralsExportTitle, referralsExportHeader, referralsExportBody())));
 
     frag.append(el(statCards([
         { num: total, lbl: 'Total referrals', icon: 'bi-clipboard-data' },
@@ -346,20 +401,56 @@ function renderChild() {
         return frag;
     }
 
+    const currentPick = studentsList.find(s => String(s.id) === String(state.student));
+    const currentPickName = currentPick ? `${currentPick.first_name || ''} ${currentPick.last_name || ''}`.trim() : '';
+
     const picker = el(`<div class="form-group" style="max-width:420px;">
-        <label for="rdStudentPick">Select a student</label>
-        <select id="rdStudentPick" style="padding:8px; border:1px solid var(--border-color); border-radius:4px; width:100%;"><option value="">Select a student…</option></select>
+        <label for="rdStudentSearch">Select a student</label>
+        <input type="text" id="rdStudentSearch" placeholder="Search by student name…" autocomplete="off"
+            style="padding:10px 12px; border:1px solid var(--border-color); border-radius:8px; width:100%; font-size:14px;"
+            value="${esc(currentPickName)}">
+        <div class="person-search-status" id="rdSearchStatus"></div>
+        <div class="person-suggestion-box">
+            <div class="person-suggestion-list" id="rdSuggestionList"></div>
+        </div>
     </div>`);
-    const sel = $('select', picker);
-    studentsList.forEach(s => {
-        const name = `${s.first_name || ''} ${s.last_name || ''}`.trim();
-        const o = document.createElement('option');
-        o.value = s.id;
-        o.textContent = `${name} — ${s.grade_name || 'N/A'}`;
-        if (String(s.id) === String(state.student)) o.selected = true;
-        sel.append(o);
+
+    const searchInput = $('#rdStudentSearch', picker);
+    const suggestionList = $('#rdSuggestionList', picker);
+    const statusEl = $('#rdSearchStatus', picker);
+
+    function renderSuggestions(term) {
+        const q = term.trim().toLowerCase();
+        if (!q) { suggestionList.innerHTML = ''; statusEl.textContent = ''; return; }
+
+        const matches = studentsList.filter(s => `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase().includes(q)).slice(0, 8);
+
+        if (matches.length === 0) {
+            suggestionList.innerHTML = '';
+            statusEl.textContent = 'No matching student found.';
+            return;
+        }
+        statusEl.textContent = `${matches.length} match${matches.length > 1 ? 'es' : ''}`;
+        suggestionList.innerHTML = matches.map(s => `<div class="suggestion-item" data-id="${esc(s.id)}">
+            <div class="suggestion-item-name">${esc(`${s.first_name || ''} ${s.last_name || ''}`.trim())}</div>
+            <div class="suggestion-item-grade">${esc(s.grade_name || 'N/A')}</div>
+        </div>`).join('');
+    }
+
+    searchInput.addEventListener('input', () => renderSuggestions(searchInput.value));
+    searchInput.addEventListener('focus', () => { if (searchInput.value.trim()) renderSuggestions(searchInput.value); });
+    // mousedown (not click) so it fires before the input's blur clears the list.
+    suggestionList.addEventListener('mousedown', e => {
+        const item = e.target.closest('.suggestion-item');
+        if (!item) return;
+        e.preventDefault();
+        state.student = item.getAttribute('data-id');
+        render();
     });
-    sel.addEventListener('change', e => { state.student = e.target.value || null; render(); });
+    searchInput.addEventListener('blur', () => {
+        setTimeout(() => { suggestionList.innerHTML = ''; statusEl.textContent = ''; }, 200);
+    });
+
     frag.append(picker);
 
     if (!state.student) {
@@ -379,18 +470,20 @@ function renderChild() {
     const studentReferrals = cached.data.referrals || [];
     const followUps = cached.data.follow_ups || [];
 
-    frag.append(el(`<div class="form-row mb-4" style="margin-top:16px;">
+    const initials = (s.name || '').split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'S';
+    frag.append(el(`<div class="table-container" style="margin-top:16px; margin-bottom:24px; padding:22px 24px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+        <div class="stat-icon" style="width:56px; height:56px; font-size:17px; font-weight:700;">${esc(initials)}</div>
         <div>
-            <p><strong>Learner:</strong> ${esc(s.name)}</p>
-            <p><strong>LRN:</strong> ${esc(s.lrn || 'N/A')}</p>
-            <p><strong>Grade &amp; Section:</strong> ${esc(gradeLabel(s.grade))} · ${esc(s.section || 'N/A')}</p>
-        </div>
-        <div>
-            <p><strong>Sessions:</strong> ${cases.length}</p>
-            <p><strong>Referrals:</strong> ${studentReferrals.length}</p>
-            <p><strong>Follow-ups:</strong> ${followUps.length}</p>
+            <h3 style="margin:0 0 4px; color:var(--primary-color); font-size:19px;">${esc(s.name)}</h3>
+            <p class="text-muted" style="margin:0; font-size:13.5px;">LRN: ${esc(s.lrn || 'N/A')} &middot; ${esc(gradeLabel(s.grade))} &middot; ${esc(s.section || 'N/A')}</p>
         </div>
     </div>`));
+
+    frag.append(el(statCards([
+        { num: cases.length, lbl: 'Counseling Sessions', icon: 'bi-chat-square-text' },
+        { num: studentReferrals.length, lbl: 'Referrals', icon: 'bi-clipboard-data' },
+        { num: followUps.length, lbl: 'Follow-ups', icon: 'bi-calendar-check' },
+    ])));
 
     const hasCases = cases.length > 0;
     frag.append(el(`<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">${hasCases
@@ -407,12 +500,15 @@ function renderChild() {
         return `<tr><td><span style="${cidStyle}">${esc(c.case_uid)}</span></td><td>${esc(c.case_date || 'N/A')}</td><td>${esc(c.category_name || c.case_title || 'N/A')}</td><td>${esc(c.counselor_name || 'N/A')}</td><td>${badge(c.status)}</td></tr>${fus}`;
     }).join('');
 
-    frag.append(el(`<div class="mb-4"><h3 class="text-primary">Case History &amp; Follow-ups</h3><div class="table-container"><table><thead><tr><th>Case / Follow-up ID</th><th>Opened / Date</th><th>Category / Note</th><th>Counselor</th><th>Status</th></tr></thead><tbody>${caseRows || '<tr><td colspan="5" class="text-center text-muted" style="padding:30px;">No counseling cases on record.</td></tr>'}</tbody></table></div></div>`));
+    const caseHistoryHtml = `<h3 class="text-primary">Case History &amp; Follow-ups</h3><div class="table-container"><table><thead><tr><th>Case / Follow-up ID</th><th>Opened / Date</th><th>Category / Note</th><th>Counselor</th><th>Status</th></tr></thead><tbody>${caseRows || '<tr><td colspan="5" class="text-center text-muted" style="padding:30px;">No counseling cases on record.</td></tr>'}</tbody></table></div>`;
 
-    if (studentReferrals.length > 0) {
-        const refRows = studentReferrals.map(r => `<tr><td>${esc(r.referral_code || r.id)}</td><td>${esc(r.date_submitted)}</td><td>${esc(r.referral_reason)}</td><td>${badge(r.status)}</td></tr>`).join('');
-        frag.append(el(`<div><h3 class="text-primary">Referral History</h3><div class="table-container"><table><thead><tr><th>Referral ID</th><th>Submitted</th><th>Reason</th><th>Status</th></tr></thead><tbody>${refRows}</tbody></table></div></div>`));
-    }
+    const refRows = studentReferrals.map(r => `<tr><td>${esc(r.referral_code || r.id)}</td><td>${esc(r.date_submitted)}</td><td>${esc(r.referral_reason)}</td><td>${badge(r.status)}</td></tr>`).join('');
+    const referralHistoryHtml = `<h3 class="text-primary">Referral History</h3><div class="table-container"><table><thead><tr><th>Referral ID</th><th>Submitted</th><th>Reason</th><th>Status</th></tr></thead><tbody>${refRows || '<tr><td colspan="4" class="text-center text-muted" style="padding:30px;">No referrals on record.</td></tr>'}</tbody></table></div>`;
+
+    frag.append(el(`<div class="mb-4" style="display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start;">
+        <div>${caseHistoryHtml}</div>
+        <div style="border-left:1px solid var(--border-color); padding-left:24px;">${referralHistoryHtml}</div>
+    </div>`));
 
     if (hasCases) {
         queueMicrotask(() => {
@@ -493,13 +589,12 @@ function exportChildPdf() {
 function exportChildSummaryExcel() {
     const cached = state.student ? studentDetailCache[state.student] : null;
     if (!cached) { showAlert('Select a student first.', 'error'); return; }
-    if (typeof XLSX === 'undefined') { showAlert('Excel export library failed to load.', 'error'); return; }
 
     const s = cached.student;
     const cases = cached.data.counseling || [];
     const referralCount = (cached.data.referrals || []).length;
 
-    const worksheet = XLSX.utils.aoa_to_sheet([
+    const aoa = [
         [`Child Summary Case — ${s.name}`],
         ['LRN', s.lrn || 'N/A'],
         ['Grade & Section', `${gradeLabel(s.grade)} · ${s.section || 'N/A'}`],
@@ -508,12 +603,10 @@ function exportChildSummaryExcel() {
         [],
         ['Case ID', 'Date', 'Category', 'Counselor', 'Status'],
         ...cases.map(c => [c.case_uid, c.case_date, c.category_name || c.case_title || '', c.counselor_name || '', c.status])
-    ]);
-    worksheet['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 12 }];
+    ];
+    const colWidths = [{ wch: 16 }, { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 12 }];
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Child Summary');
-    XLSX.writeFile(workbook, `gms_child_summary_${s.student_id}.xlsx`);
+    showExcelPreview(`gms_child_summary_${s.student_id}.xlsx`, aoa, colWidths);
 }
 
 /* ---- dispatcher + render ---- */
