@@ -496,9 +496,11 @@ function buildSchoolBreakdownExportRows() {
     return { body, totals };
 }
 
-// Export report as an Excel workbook (.xlsx) — one sheet per school (the
-// gender-distribution report this page is built around) and one sheet with
-// the existing category x grade breakdown for the selected district/school.
+// Export report as an Excel workbook (.xlsx). "All Districts" only makes
+// sense as the "Cases by School" gender-distribution sheet — there's no
+// single district's category x grade breakdown to include alongside it, so
+// that sheet is skipped entirely in that case. A single district instead
+// gets just its category x grade sheet (no "Cases by School" sheet).
 function exportToExcel() {
     if (typeof XLSX === 'undefined') {
         showAlert('error', 'Excel export library failed to load.');
@@ -508,21 +510,8 @@ function exportToExcel() {
     const filename = `${exportFileBaseName()}.xlsx`;
     const districtTitle = districtLabel(currentDistrict);
 
-    const { header, body } = buildExportTable();
-    const categoryAoa = [
-        [`District Report Cases - ${districtTitle}`],
-        [`Period: ${PERIOD_LABELS[currentPeriod]}`],
-        [],
-        header,
-        ...body
-    ];
+    let sheets;
 
-    const sheets = [
-        { name: 'Report Cases', aoa: categoryAoa, colWidths: [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }] }
-    ];
-
-    // "Cases by School" only applies to "All Districts" — a single district
-    // is already just that one district's category/grade sheet above.
     if (currentDistrict === ALL_DISTRICTS) {
         const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows();
         const schoolAoa = [
@@ -533,7 +522,21 @@ function exportToExcel() {
             ...schoolBody,
             ['Overall Total', schoolTotals.total, schoolTotals.male, schoolTotals.female]
         ];
-        sheets.unshift({ name: 'Cases by School', aoa: schoolAoa, colWidths: [{ wch: 34 }, { wch: 12 }, { wch: 10 }, { wch: 10 }] });
+        sheets = [
+            { name: 'Cases by School', aoa: schoolAoa, colWidths: [{ wch: 34 }, { wch: 12 }, { wch: 10 }, { wch: 10 }] }
+        ];
+    } else {
+        const { header, body } = buildExportTable();
+        const categoryAoa = [
+            [`District Report Cases - ${districtTitle}`],
+            [`Period: ${PERIOD_LABELS[currentPeriod]}`],
+            [],
+            header,
+            ...body
+        ];
+        sheets = [
+            { name: 'Report Cases', aoa: categoryAoa, colWidths: [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }] }
+        ];
     }
 
     showExcelPreview(filename, sheets, () => {
@@ -548,9 +551,11 @@ function exportToExcel() {
     });
 }
 
-// Export report as a PDF document — a "Cases by School" page (the
-// gender-distribution report this page is built around) followed by the
-// existing category x grade breakdown for the selected district/school.
+// Export report as a PDF document. "All Districts" only makes sense as the
+// "Cases by School" gender-distribution report — there's no single
+// district's category x grade breakdown to show alongside it, so that page
+// is skipped entirely in that case. A single district instead gets just its
+// category x grade breakdown (no "Cases by School" page).
 function exportToPDF() {
     if (typeof window.jspdf === 'undefined') {
         showAlert('error', 'PDF export library failed to load.');
@@ -561,8 +566,6 @@ function exportToPDF() {
     const doc = new jsPDF({ orientation: 'landscape' });
     const districtTitle = districtLabel(currentDistrict);
 
-    // "Cases by School" only applies to "All Districts" — a single district
-    // is already just that one district's category/grade page below.
     if (currentDistrict === ALL_DISTRICTS) {
         doc.setFontSize(14);
         doc.text(`Cases by School - ${districtTitle}`, 14, 15);
@@ -588,7 +591,8 @@ function exportToPDF() {
             styles: { fontSize: 9, cellPadding: 3 }
         });
 
-        doc.addPage();
+        showPdfPreview(doc, `${exportFileBaseName()}.pdf`);
+        return;
     }
 
     const { header, body, sectionHeaderRows } = buildExportTable();
