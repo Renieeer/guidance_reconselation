@@ -1000,6 +1000,7 @@ CREATE TABLE `users_tables` (
   `Grade` varchar(45) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `email_verified` tinyint(1) NOT NULL DEFAULT '1',
+  `profile_image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`AccountID`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `unique_email` (`email`),
@@ -1015,9 +1016,63 @@ CREATE TABLE `users_tables` (
 
 LOCK TABLES `users_tables` WRITE;
 /*!40000 ALTER TABLE `users_tables` DISABLE KEYS */;
-INSERT INTO `users_tables` VALUES (6,'$2y$10$cgzMmm9k9SLJc1.82bHD/uRRUKaxKBWtNv.0Lb/MjjTllTJn3zhzS','Admin','User','admin','admin@school.com','SDO Office','2026-04-27 03:42:16','2026-04-27 04:15:42',NULL,1,1),(18,'$2y$10$sh/hqmwCY.P2bbeCbLH.Nev3C5tUxXAGr.h71FObk380x1uhdufua','steve','job','student','stevejob@gmail.com','Oriental Mindoro National High School','2026-06-12 05:57:09','2026-06-12 05:57:09',NULL,1,1),(19,'$2y$10$BhebRCQ1GX3jw55ElEiAC.UDSoLFdbeqxsVblhln4vbylRoPXzlK.','kasandra','andal','coordinator','andalcas@gmail.com','Oriental Mindoro National High School','2026-06-12 06:05:19','2026-07-09 16:21:08','7,8,9,10',1,1),(20,'$2y$10$4KG00gc0AE6i82gaD22Qv.PM2PeyLcKkSakuzbS6qdCo/CQOUWzsm','trisha','sepeda','counselor','trishasepeda@gmail.com','Oriental Mindoro National High School','2026-06-12 06:18:56','2026-07-19 16:10:32','7',1,1),(21,'$2y$10$..XAt0c7raYrw26pf5lvb.tlheURCpM2qp6XDBOtxAR9tNClEKAcW','pollenjoy','de chavez','teacher','dechavez@gmail.com','Oriental Mindoro National High School','2026-06-12 06:20:49','2026-06-12 06:20:49',NULL,1,1),(22,'$2y$10$PCyYleht0ShfuNoHcPUuCecylYFOETFBGFIUouLd3mX.kZ4/lAYJC','jonas','jonas','student','cantos@gmail.com','Oriental Mindoro National High School','2026-06-15 03:52:38','2026-06-15 03:52:38',NULL,1,1),(41,'$2y$10$SYdn3PkHi.QrLBJb.7.BJudFNkWBPydQjeso41NXnyYc/AvevOcE2','pollen','cheves','student','lioshiren@gmail.com','Parang National High School','2026-08-01 08:59:43','2026-08-01 09:00:14',NULL,1,1),(44,'$2y$10$a5OY0FxCwu5yxzaHtyCdD.x13Y9YxoY.6.OZxjzcdZkR9KDiaiJna','pollenjoy','de chaves','student','pollenejoydechavez681@gmail.com','Parang National High School','2026-08-01 09:27:30','2026-08-01 09:27:30',NULL,1,0),(45,'$2y$10$gHD8tIUGHecPjcLh3Uo4YutSMAw7wsSREepJK2lON.QdGT9p6OhHm','reneir','manongsong','student','reneirmanongsong1@gmail.com','Parang National High School','2026-08-01 09:30:51','2026-08-01 09:31:20',NULL,1,1);
+INSERT INTO `users_tables` (`AccountID`, `Password`, `First_name`, `Last_name`, `Type`, `email`, `school_attended`, `created_at`, `updated_at`, `Grade`, `is_active`, `email_verified`) VALUES (6,'$2y$10$cgzMmm9k9SLJc1.82bHD/uRRUKaxKBWtNv.0Lb/MjjTllTJn3zhzS','Admin','User','admin','admin@school.com','SDO Office','2026-04-27 03:42:16','2026-04-27 04:15:42',NULL,1,1),(18,'$2y$10$sh/hqmwCY.P2bbeCbLH.Nev3C5tUxXAGr.h71FObk380x1uhdufua','steve','job','student','stevejob@gmail.com','Oriental Mindoro National High School','2026-06-12 05:57:09','2026-06-12 05:57:09',NULL,1,1),(19,'$2y$10$BhebRCQ1GX3jw55ElEiAC.UDSoLFdbeqxsVblhln4vbylRoPXzlK.','kasandra','andal','coordinator','andalcas@gmail.com','Oriental Mindoro National High School','2026-06-12 06:05:19','2026-07-09 16:21:08','7,8,9,10',1,1),(20,'$2y$10$4KG00gc0AE6i82gaD22Qv.PM2PeyLcKkSakuzbS6qdCo/CQOUWzsm','trisha','sepeda','counselor','trishasepeda@gmail.com','Oriental Mindoro National High School','2026-06-12 06:18:56','2026-07-19 16:10:32','7',1,1),(21,'$2y$10$..XAt0c7raYrw26pf5lvb.tlheURCpM2qp6XDBOtxAR9tNClEKAcW','pollenjoy','de chavez','teacher','dechavez@gmail.com','Oriental Mindoro National High School','2026-06-12 06:20:49','2026-06-12 06:20:49',NULL,1,1),(22,'$2y$10$PCyYleht0ShfuNoHcPUuCecylYFOETFBGFIUouLd3mX.kZ4/lAYJC','jonas','jonas','student','cantos@gmail.com','Oriental Mindoro National High School','2026-06-15 03:52:38','2026-06-15 03:52:38',NULL,1,1),(41,'$2y$10$SYdn3PkHi.QrLBJb.7.BJudFNkWBPydQjeso41NXnyYc/AvevOcE2','pollen','cheves','student','lioshiren@gmail.com','Parang National High School','2026-08-01 08:59:43','2026-08-01 09:00:14',NULL,1,1),(44,'$2y$10$a5OY0FxCwu5yxzaHtyCdD.x13Y9YxoY.6.OZxjzcdZkR9KDiaiJna','pollenjoy','de chaves','student','pollenejoydechavez681@gmail.com','Parang National High School','2026-08-01 09:27:30','2026-08-01 09:27:30',NULL,1,0);
 /*!40000 ALTER TABLE `users_tables` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Refresh data for table `users_tables` (upsert: inserts new accounts,
+-- updates existing ones by AccountID with the current values below).
+-- Middle_name is intentionally dropped from the source data — it belongs
+-- to `student_table`, not `users_tables`.
+--
+
+INSERT INTO `users_tables`
+    (AccountID, Password, Grade, First_name, Last_name, Type, email, school_attended, is_active, created_at, updated_at, email_verified, profile_image)
+VALUES
+    (12,'$2y$10$hzE99.D3iIpIzk.6HyZVJO55VTqKOXLJ91qEiHAb2nZa/VPffuCry',NULL,'Demo','SDO','sdo','sdo@gmail.com','SDO Office',1,'2026-08-04 02:30:13','2026-08-04 03:02:33',1,NULL),
+    (18,'$2y$10$zVWKTA4gmO0uj3vwueZTZerzmDC5vJFyPUY9DkT86w37CcDskhtvy',NULL,'Andal','Anda','coordinator','andal.anda@gmail.com','Oriental Mindoro National High School',1,'2026-08-29 10:02:32','2026-08-29 11:00:54',1,NULL),
+    (19,'$2y$10$zVWKTA4gmO0uj3vwueZTZerzmDC5vJFyPUY9DkT86w37CcDskhtvy',NULL,'Trisha','sepeda','counselor','trisha@gmail.com','Oriental Mindoro National High School',1,'2026-08-29 10:02:32','2026-08-29 14:25:17',1,NULL),
+    -- AccountID 41 must be applied before 21: 41's old row still holds the
+    -- email 'lioshiren@gmail.com' that 21 claims below, and the unique
+    -- email constraint is checked as each row in this VALUES list is
+    -- applied — so 41 has to vacate it first.
+    (41,'$2y$10$IM5.0feg4ZCGsqfxhWPbCu1AwM8e89dzT.nXMtnFv6m4QNw3GxglO','9','Daniel James','Espino','student','daniel.james.espino@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (21,'$2y$10$XvE0TuKWOCQXO2ClveqUueqyaA7gK.Ao6xA2xrbiBY.lDlQrcc5TW',NULL,'Pollene Joy','De chaves','teacher','lioshiren@gmail.com','Oriental Mindoro National High School',1,'2026-08-29 11:01:24','2026-08-29 11:01:24',1,NULL),
+    (22,'$2y$10$2T1xaL5Nt19zwQcz77I2ounXMrQpOGQH9.plvnZPzJbASyagNupqi',NULL,'ren','manongsong','student','reneirmanongsong1@gmail.com','Oriental Mindoro National High School',1,'2026-08-29 11:03:14','2026-08-29 11:03:14',1,NULL),
+    (24,'$2y$10$DRITZ0KO/vg5j5kqkW9RM.iF3p5CB10RbZCNOXk5cOju1Xe3UQnk2','10','Andrea','Villanueva','student','andrea.villanueva@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:48:41','2026-08-30 02:48:41',1,NULL),
+    (25,'$2y$10$c3HTEkMrcOp8kohzOs1P8OrtXdWMBOuChwiiJUn.1UmB8EEdqt0Ee','10','Juan Carlos','Reyes','student','juan.carlos.reyes@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:57:25',1,NULL),
+    (26,'$2y$10$2r04yx8ajmlYLtagF8PYue8Ei52kHi8GirHgG3Pd13SPQXr7.dhPK','9','Maria Isabel','Cruz','student','maria.isabel.cruz@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:59:12',1,NULL),
+    (27,'$2y$10$V5SRi5xczWkBwjm/0lbnXeRms9GPQYsORwx1biHejogLncw7NWyGK','11','Miguel Angelo','Garcia','student','miguel.angelo.garcia@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:59:12',1,NULL),
+    (28,'$2y$10$ILwsx1Up/RhzvRnmJJwHeOuEKXCrIKYegG.dRswQL5AQ0a/4E5V0y','10','Sofia Nicole','Ramos','student','sofia.nicole.ramos@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:59:12',1,NULL),
+    (29,'$2y$10$zc9yvtocm9G5we4lMdsAeepaejIzakKnvicEBPy2xUSP9kQ7QAZ1O','8','Carlos Miguel','Mendoza','student','carlos.miguel.mendoza@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:59:12',1,NULL),
+    (30,'$2y$10$1tZpNFnGFnK55YTD1upJ0.xTQ7t2RPuokmPoivmWbNBPdP8ReQtUm','11','Isabella Marie','Rivera','student','isabella.marie.rivera@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:59:12',1,NULL),
+    (31,'$2y$10$QQBOAW9p0TBj6yRKB7g75Ol3ArtONC5dCxOWEkBwDgn1o6VqwBknu','9','Rafael Antonio','Dela Cruz','student','rafael.antonio.dela cruz@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:59:12',1,NULL),
+    (32,'$2y$10$nA56r26GpWhRy3MxmpQ6F.unGPBDAJhBU051hCMBEB/kfzqPMvYf6','7','Angela Faith','Pascual','student','angela.faith.pascual@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:59:12',1,NULL),
+    (33,'$2y$10$loT6TxpCuCELLIWixtaUOOHKqeIQB2dtdLAxPmCfm3PW9o48T6QDa','10','Gabriel Luis','Aguilar','student','gabriel.luis.aguilar@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:25','2026-08-30 02:59:12',1,NULL),
+    (34,'$2y$10$.Ayc7vbuyvfTPKuV5sNuNeBUlJ4EVUrVgJN/2ANOnJNIB/fwl6wxG','12','Camille Rose','Navarro','student','camille.rose.navarro@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (35,'$2y$10$h7WwvJadnW6x2kav98QxkuE2RTlW3RolA.EC6ZF1HyMKiKTVEyViq','8','Antonio Jose','Panganiban','student','antonio.jose.panganiban@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (36,'$2y$10$F.M65.vnL0gAJWsbPVzeZuh5.213gpazfawV0H7CmEvqUGL52WaxC','9','Patricia Anne','Santiago','student','patricia.anne.santiago@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (37,'$2y$10$BuhBBGvH4DdVcfr2t3wtmeItaic9zvoXc0Mwjjwe6.mH3iaCa5i8S','11','Emmanuel','Manalo','student','emmanuel.manalo@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (38,'$2y$10$IAXSA8r5wRXeUfoIcVQvoOeU0N3Z0aHbJpkhJgz.83Q7nMpJADhSS','10','Kristine Joy','Valdez','student','kristine.joy.valdez@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (39,'$2y$10$ggrMJdRN6W3AwxYFfWwvHOF0DfJ9wGK.qQJ.wLyfFSeRTIPEkB4CC','7','Joshua Kim','Trinidad','student','joshua.kim.trinidad@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (40,'$2y$10$rcIYFVtDkrapHvrsoxB56efVXwE8Tiwwm/KbwnwYaejBSmdFUhiza','12','Faith Marie','Serrano','student','faith.marie.serrano@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (42,'$2y$10$la26cRKFDYQbdJrP/HONHu5ln3muiCrZBL1852TvM2SJ0tK8CxWf6','8','Grace Anne','Roque','student','grace.anne.roque@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (43,'$2y$10$SEka0n/D/gdE94N9gbr0yOw8V8UjjQGcrUvYCDsZ1V2p8iK3plsZK','11','Christian Paul','Ignacio','student','christian.paul.ignacio@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL),
+    (44,'$2y$10$e78K/YojhvbytO4gFsXHoOEXbH8bLXjP0/xkq8c6hSTwISzc8rwLW','10','Bianca Mae','Corpuz','student','bianca.mae.corpuz@gmail.com','Oriental Mindoro National High School',1,'2026-08-30 02:57:26','2026-08-30 02:59:12',1,NULL)
+ON DUPLICATE KEY UPDATE
+    Password = VALUES(Password),
+    Grade = VALUES(Grade),
+    First_name = VALUES(First_name),
+    Last_name = VALUES(Last_name),
+    Type = VALUES(Type),
+    email = VALUES(email),
+    school_attended = VALUES(school_attended),
+    is_active = VALUES(is_active),
+    created_at = VALUES(created_at),
+    updated_at = VALUES(updated_at),
+    email_verified = VALUES(email_verified),
+    profile_image = VALUES(profile_image);
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

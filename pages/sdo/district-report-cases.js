@@ -7,14 +7,32 @@
 
 const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
 
+// Sentinel for the "All Districts" selection — every active school, with no
+// need to pick a district or school individually. Kept distinct from any
+// real district name (sent to the API as district=all).
+const ALL_DISTRICTS = '__ALL_DISTRICTS__';
+function districtLabel(district) {
+    return district === ALL_DISTRICTS ? 'All Districts' : district;
+}
+function districtParam(district) {
+    return district === ALL_DISTRICTS ? 'all' : district;
+}
+
 let districtList = ['Unassigned'];
-let currentDistrict = 'Unassigned';
+let currentDistrict = ALL_DISTRICTS;
 let sections = [];
 let counts = {};
 let displayRows = [];
+let schoolBreakdown = [];
 let currentPeriod = 'all';
 let customStart = '';
 let customEnd = '';
+
+// Bumped on every district/period/range change so a slower, now-stale
+// fetch (e.g. clicking two districts in quick succession) can detect it's
+// no longer current and skip overwriting sections/counts/schoolBreakdown
+// with the wrong district's data after a newer selection already rendered.
+let reportRequestId = 0;
 
 const PERIOD_LABELS = { all: 'All Time', weekly: 'Weekly', monthly: 'Monthly', annually: 'Annually', custom: 'Custom Range' };
 
@@ -28,7 +46,9 @@ async function loadDistrictList() {
         console.error('Error loading district list:', error);
         districtList = [];
     }
-    currentDistrict = districtList[0] || 'Unassigned';
+    // Default to "All Districts" — every school is visible without having
+    // to pick a district first.
+    currentDistrict = ALL_DISTRICTS;
 }
 
 function renderDistrictButtons() {
@@ -44,8 +64,10 @@ function renderDistrictButtons() {
         return;
     }
 
-    container.innerHTML = districtList.map((district, i) => `
-        <button class="district-btn ${district === currentDistrict ? 'active' : ''}" style="--i:${i}" data-district="${escapeHtml(district)}">${escapeHtml(district)}</button>
+    const buttons = [ALL_DISTRICTS, ...districtList];
+
+    container.innerHTML = buttons.map((district, i) => `
+        <button class="district-btn ${district === currentDistrict ? 'active' : ''}" style="--i:${i}" data-district="${escapeHtml(district)}">${escapeHtml(districtLabel(district))}</button>
     `).join('');
 
     container.querySelectorAll('.district-btn').forEach(btn => {
@@ -53,15 +75,27 @@ function renderDistrictButtons() {
             container.querySelectorAll('.district-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentDistrict = this.getAttribute('data-district');
-            await loadReportData();
-            renderCasesTable();
+            await refreshReports();
         });
     });
 }
 
+// Re-fetches both reports for whatever district/period/range is currently
+// selected and re-renders them. Bumps reportRequestId first so that if the
+// user changes the selection again before this fetch finishes, this older
+// request's response gets dropped instead of overwriting the newer one's
+// (and thus correct) data — see loadReportData()/loadSchoolBreakdown().
+async function refreshReports() {
+    reportRequestId++;
+    await Promise.all([loadReportData(), loadSchoolBreakdown()]);
+    renderCasesTable();
+    renderSchoolBreakdown();
+}
+
 async function loadReportData() {
+    const requestId = reportRequestId;
     try {
-        const params = new URLSearchParams({ action: 'categories', district: currentDistrict, period: currentPeriod });
+        const params = new URLSearchParams({ action: 'categories', district: districtParam(currentDistrict), period: currentPeriod });
         if (currentPeriod === 'custom' && customStart && customEnd) {
             params.set('start', customStart);
             params.set('end', customEnd);
@@ -69,6 +103,7 @@ async function loadReportData() {
         const url = `../../api/case-report.php?${params.toString()}`;
         const response = await fetch(url);
         const data = await response.json();
+        if (requestId !== reportRequestId) return; // superseded by a newer selection
 
         if (!data.success) {
             throw new Error(data.message || 'Failed to load district case report');
@@ -77,10 +112,80 @@ async function loadReportData() {
         sections = data.sections || [];
         counts = data.counts || {};
     } catch (error) {
+        if (requestId !== reportRequestId) return;
         console.error('Error loading district case report:', error);
         sections = [];
         counts = {};
     }
+}
+
+// One row per school (name, total cases, Male/Female split) — only
+// fetched for "All Districts"; a single district's category/grade table
+// below already covers that one district on its own.
+async function loadSchoolBreakdown() {
+    if (currentDistrict !== ALL_DISTRICTS) {
+        schoolBreakdown = [];
+        return;
+    }
+    const requestId = reportRequestId;
+    try {
+        const params = new URLSearchParams({ action: 'school_breakdown', district: districtParam(currentDistrict), period: currentPeriod });
+        if (currentPeriod === 'custom' && customStart && customEnd) {
+            params.set('start', customStart);
+            params.set('end', customEnd);
+        }
+        const url = `../../api/case-report.php?${params.toString()}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (requestId !== reportRequestId) return; // superseded by a newer selection
+
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load per-school case report');
+        }
+
+        schoolBreakdown = data.schools || [];
+    } catch (error) {
+        if (requestId !== reportRequestId) return;
+        console.error('Error loading per-school case report:', error);
+        schoolBreakdown = [];
+    }
+}
+
+function renderSchoolBreakdown() {
+    const section = document.getElementById('schoolBreakdownSection');
+    if (section) section.hidden = currentDistrict !== ALL_DISTRICTS;
+
+    const tbody = document.getElementById('schoolBreakdownBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (currentDistrict !== ALL_DISTRICTS) return;
+
+    if (schoolBreakdown.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted" style="padding: 24px;">No schools found.</td></tr>`;
+        return;
+    }
+
+    const totals = schoolBreakdown.reduce((acc, s) => {
+        acc.total += s.total; acc.male += s.male; acc.female += s.female;
+        return acc;
+    }, { total: 0, male: 0, female: 0 });
+
+    tbody.innerHTML = schoolBreakdown.map((s, i) => `
+        <tr style="--i:${i}">
+            <td><strong>${escapeHtml(s.school)}</strong></td>
+            <td class="text-center">${s.total > 0 ? `<span class="badge badge-in-progress">${s.total}</span>` : '0'}</td>
+            <td class="text-center">${s.male}</td>
+            <td class="text-center">${s.female}</td>
+        </tr>
+    `).join('') + `
+        <tr style="font-weight: 700; background: #f1f5f9;">
+            <td>Overall Total</td>
+            <td class="text-center"><strong style="color: #3b82f6; font-size: 16px;">${totals.total}</strong></td>
+            <td class="text-center">${totals.male}</td>
+            <td class="text-center">${totals.female}</td>
+        </tr>
+    `;
 }
 
 function gradeCell(bucketKey, grade) {
@@ -189,7 +294,7 @@ function showCaseDetails(rowIndex) {
 
     const totals = rowTotals(row);
 
-    document.getElementById('caseId').value = `DIST-${currentDistrict.toUpperCase().replace(/\s+/g, '-')}-${row.bucketKey || 'ROW'}`;
+    document.getElementById('caseId').value = `DIST-${districtLabel(currentDistrict).toUpperCase().replace(/\s+/g, '-')}-${row.bucketKey || 'ROW'}`;
     document.getElementById('caseCategory').value = row.label;
     document.getElementById('caseGrade').value = 'All Grades (7-12)';
     document.getElementById('caseStatus').value = 'Active';
@@ -233,8 +338,7 @@ function setupPeriodFilter() {
                 if (!customStart || !customEnd) return;
             }
 
-            await loadReportData();
-            renderCasesTable();
+            await refreshReports();
         });
     });
 
@@ -253,8 +357,7 @@ function setupPeriodFilter() {
 
         customStart = start;
         customEnd = end;
-        await loadReportData();
-        renderCasesTable();
+        await refreshReports();
     });
 }
 
@@ -280,7 +383,7 @@ function buildExportTable() {
 }
 
 function exportFileBaseName() {
-    return `${currentDistrict.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}`;
+    return `${districtLabel(currentDistrict).replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}`;
 }
 
 /* ---- Export preview modals — same "view before you download" flow as
@@ -350,29 +453,52 @@ function ensureExcelModal() {
     document.getElementById('excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
 }
 
-// aoa (array-of-arrays) is the exact same shape that gets written to the
-// worksheet, so what's previewed is what's downloaded. Row 0 is the report
-// title (shown in the modal header, not as a table row); a blank row (`[]`)
-// anywhere after that marks the row right after it as a column-header row
-// (rendered as <th>) — matches the title / period / blank / head / body
-// shape this file's aoa is always built in.
-function showExcelPreview(filename, aoa, colWidths, onDownload) {
+// Each sheet's aoa (array-of-arrays) is the exact same shape that gets
+// written to its worksheet, so what's previewed is what's downloaded. Row 0
+// of an aoa is that sheet's title (shown as a section heading, not a table
+// row); a blank row (`[]`) anywhere after that marks the row right after it
+// as a column-header row (rendered as <th>) — matches the title / period /
+// blank / head / body shape every aoa here is built in. Multiple sheets are
+// stacked in one scrollable preview, each under its own heading.
+function showExcelPreview(filename, sheets, onDownload) {
     ensureExcelModal();
-    document.getElementById('excelPreviewTitle').textContent = String((aoa[0] && aoa[0][0]) || 'Excel Preview');
+    document.getElementById('excelPreviewTitle').textContent = sheets.length === 1
+        ? String((sheets[0].aoa[0] && sheets[0].aoa[0][0]) || 'Excel Preview')
+        : 'Excel Preview';
 
-    let afterBlank = false;
-    document.getElementById('excelPreviewTbody').innerHTML = aoa.slice(1).map(row => {
-        if (row.length === 0) { afterBlank = true; return '<tr><td style="height:10px; border:none; padding:0;"></td></tr>'; }
-        const cellTag = afterBlank ? 'th' : 'td';
-        afterBlank = false;
-        return `<tr>${row.map(cell => `<${cellTag}>${escapeHtml(cell == null ? '' : cell)}</${cellTag}>`).join('')}</tr>`;
+    document.getElementById('excelPreviewTbody').innerHTML = sheets.map((sheet, sheetIndex) => {
+        const title = String((sheet.aoa[0] && sheet.aoa[0][0]) || sheet.name);
+        const heading = `<tr><td colspan="20" style="border:none; padding:${sheetIndex === 0 ? '0' : '24px'} 0 8px; font-weight:700; font-size:15px;">${escapeHtml(title)}</td></tr>`;
+
+        let afterBlank = false;
+        const body = sheet.aoa.slice(1).map(row => {
+            if (row.length === 0) { afterBlank = true; return '<tr><td style="height:10px; border:none; padding:0;"></td></tr>'; }
+            const cellTag = afterBlank ? 'th' : 'td';
+            afterBlank = false;
+            return `<tr>${row.map(cell => `<${cellTag}>${escapeHtml(cell == null ? '' : cell)}</${cellTag}>`).join('')}</tr>`;
+        }).join('');
+
+        return heading + body;
     }).join('');
 
     document.getElementById('excelDownloadBtn').onclick = onDownload;
     openModal('excelPreviewModal');
 }
 
-// Export report as an Excel workbook (.xlsx)
+// Cases-by-school aoa shared by the Excel and PDF exporters' first table.
+function buildSchoolBreakdownExportRows() {
+    const totals = schoolBreakdown.reduce((acc, s) => {
+        acc.total += s.total; acc.male += s.male; acc.female += s.female;
+        return acc;
+    }, { total: 0, male: 0, female: 0 });
+
+    const body = schoolBreakdown.map(s => [s.school, s.total, s.male, s.female]);
+    return { body, totals };
+}
+
+// Export report as an Excel workbook (.xlsx) — one sheet per school (the
+// gender-distribution report this page is built around) and one sheet with
+// the existing category x grade breakdown for the selected district/school.
 function exportToExcel() {
     if (typeof XLSX === 'undefined') {
         showAlert('error', 'Excel export library failed to load.');
@@ -380,27 +506,51 @@ function exportToExcel() {
     }
 
     const filename = `${exportFileBaseName()}.xlsx`;
+    const districtTitle = districtLabel(currentDistrict);
+
     const { header, body } = buildExportTable();
-    const aoa = [
-        [`District Report Cases - ${currentDistrict}`],
+    const categoryAoa = [
+        [`District Report Cases - ${districtTitle}`],
         [`Period: ${PERIOD_LABELS[currentPeriod]}`],
         [],
         header,
         ...body
     ];
-    const colWidths = [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }];
 
-    showExcelPreview(filename, aoa, colWidths, () => {
-        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-        worksheet['!cols'] = colWidths;
+    const sheets = [
+        { name: 'Report Cases', aoa: categoryAoa, colWidths: [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }] }
+    ];
+
+    // "Cases by School" only applies to "All Districts" — a single district
+    // is already just that one district's category/grade sheet above.
+    if (currentDistrict === ALL_DISTRICTS) {
+        const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows();
+        const schoolAoa = [
+            [`Cases by School - ${districtTitle}`],
+            [`Period: ${PERIOD_LABELS[currentPeriod]}`],
+            [],
+            ['School', 'Total Cases', 'Male', 'Female'],
+            ...schoolBody,
+            ['Overall Total', schoolTotals.total, schoolTotals.male, schoolTotals.female]
+        ];
+        sheets.unshift({ name: 'Cases by School', aoa: schoolAoa, colWidths: [{ wch: 34 }, { wch: 12 }, { wch: 10 }, { wch: 10 }] });
+    }
+
+    showExcelPreview(filename, sheets, () => {
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
+        sheets.forEach(sheet => {
+            const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
+            worksheet['!cols'] = sheet.colWidths;
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+        });
         XLSX.writeFile(workbook, filename);
         showAlert('success', 'Excel report exported successfully!');
     });
 }
 
-// Export report as a PDF document
+// Export report as a PDF document — a "Cases by School" page (the
+// gender-distribution report this page is built around) followed by the
+// existing category x grade breakdown for the selected district/school.
 function exportToPDF() {
     if (typeof window.jspdf === 'undefined') {
         showAlert('error', 'PDF export library failed to load.');
@@ -409,10 +559,42 @@ function exportToPDF() {
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
+    const districtTitle = districtLabel(currentDistrict);
+
+    // "Cases by School" only applies to "All Districts" — a single district
+    // is already just that one district's category/grade page below.
+    if (currentDistrict === ALL_DISTRICTS) {
+        doc.setFontSize(14);
+        doc.text(`Cases by School - ${districtTitle}`, 14, 15);
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Period: ${PERIOD_LABELS[currentPeriod]}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+
+        const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows();
+        doc.autoTable({
+            head: [['School', 'Total Cases', 'Male', 'Female']],
+            body: [
+                ...schoolBody,
+                [
+                    { content: 'Overall Total', styles: { fontStyle: 'bold' } },
+                    { content: String(schoolTotals.total), styles: { fontStyle: 'bold' } },
+                    { content: String(schoolTotals.male), styles: { fontStyle: 'bold' } },
+                    { content: String(schoolTotals.female), styles: { fontStyle: 'bold' } }
+                ]
+            ],
+            startY: 26,
+            theme: 'grid',
+            headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 9, cellPadding: 3 }
+        });
+
+        doc.addPage();
+    }
+
     const { header, body, sectionHeaderRows } = buildExportTable();
 
     doc.setFontSize(14);
-    doc.text(`District Report Cases - ${currentDistrict}`, 14, 15);
+    doc.text(`District Report Cases - ${districtTitle}`, 14, 15);
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Period: ${PERIOD_LABELS[currentPeriod]}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
@@ -442,8 +624,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadDistrictList();
     renderDistrictButtons();
-    await loadReportData();
-    renderCasesTable();
+    await refreshReports();
     setupEventListeners();
 });
 

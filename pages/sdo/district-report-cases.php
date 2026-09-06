@@ -61,6 +61,28 @@
                     </div>
                 </div>
 
+                <!-- Cases by School (one row per school, with gender distribution) —
+                     only shown for the "All Districts" selection; a single district
+                     is already just that one district's category/grade table below. -->
+                <div class="table-container mb-5" id="schoolBreakdownSection" hidden>
+                    <div class="card-header">
+                        <div class="card-title">Cases by School</div>
+                    </div>
+                    <table id="schoolBreakdownTable">
+                        <thead>
+                            <tr>
+                                <th>School</th>
+                                <th>Total Cases</th>
+                                <th>Male</th>
+                                <th>Female</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schoolBreakdownBody">
+                            <!-- Data will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+
                 <!-- Report Cases Table -->
                 <div class="table-container">
                     <table id="reportCasesTable">
