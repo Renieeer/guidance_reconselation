@@ -647,4 +647,78 @@ if ($action === 'district_summary') {
     send_json(200, ['success' => true, 'districts' => array_values($districts)]);
 }
 
+/* ── PERSONAL-SOCIAL CONCERNS, PER DISTRICT ──
+   Backs the "Division Monthly Monitoring Report of Learners' Personal-Social
+   Concerns" export. Counts real cases (same "one count per primary student"
+   rule as 'categories'/'school_breakdown') per case_category, bucketed by
+   the case's school's district — plus a '__ALL__' bucket for the
+   division-wide ("Secondary") total column. The frontend maps only the
+   categoryIds it can confidently match onto the official form's issue rows
+   (see DMMR_SECTIONS in district-report-cases.js); everything else on that
+   form has no equivalent category here and always renders as 0. */
+if ($action === 'personal_social_concerns') {
+    $period = trim((string)($_GET['period'] ?? 'all'));
+    $rangeStart = trim((string)($_GET['start'] ?? ''));
+    $rangeEnd = trim((string)($_GET['end'] ?? ''));
+    [$dateSql, $dateTypes, $dateValues] = case_date_condition($period, $rangeStart, $rangeEnd);
+
+    $schoolDistrict = [];
+    $result = $conn->query("SELECT school_name, COALESCE(NULLIF(district, ''), 'Unassigned') AS district FROM schools WHERE is_active = 1");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $schoolDistrict[$row['school_name']] = $row['district'];
+        }
+    }
+
+    $districts = array_values(array_unique(array_values($schoolDistrict)));
+    sort($districts);
+
+    // categoryId => count, per district, plus '__ALL__' for the division total.
+    $counts = ['__ALL__' => []];
+    foreach ($districts as $d) {
+        $counts[$d] = [];
+    }
+
+    if (table_exists($conn, 'counselor_case_scenarios')) {
+        $stmt = $conn->prepare("SELECT school_attended, category_id, students_json FROM counselor_case_scenarios WHERE 1=1$dateSql");
+        if ($stmt) {
+            if ($dateTypes !== '') {
+                $stmt->bind_param($dateTypes, ...$dateValues);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            while ($row = $result->fetch_assoc()) {
+                $district = $schoolDistrict[$row['school_attended']] ?? null;
+                if ($district === null) {
+                    continue; // school not active / not in schools table — skip
+                }
+
+                $categoryId = trim((string)$row['category_id']);
+                if ($categoryId === '') {
+                    continue;
+                }
+
+                $students = json_decode((string)$row['students_json'], true) ?: [];
+                $primaryCount = 0;
+                foreach ($students as $s) {
+                    $role = trim((string)($s['role'] ?? ''));
+                    if ($role === '' || $role === 'Primary student') {
+                        $primaryCount++;
+                    }
+                }
+                if ($primaryCount === 0) {
+                    continue;
+                }
+
+                $counts[$district][$categoryId] = ($counts[$district][$categoryId] ?? 0) + $primaryCount;
+                $counts['__ALL__'][$categoryId] = ($counts['__ALL__'][$categoryId] ?? 0) + $primaryCount;
+            }
+            $stmt->close();
+        }
+    }
+
+    send_json(200, ['success' => true, 'districts' => $districts, 'counts' => $counts]);
+}
+
 send_json(400, ['success' => false, 'message' => 'Unknown action.']);

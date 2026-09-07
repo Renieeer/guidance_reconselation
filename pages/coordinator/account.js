@@ -425,5 +425,111 @@ function saveAccountChanges(e) {
     });
 }
 
+function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+}
+
+function ensureExcelModal() {
+    if (document.getElementById('excelPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="excelPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:900px; width:95%; height:82vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-excel"></i> <span id="excelPreviewTitle">Excel Preview</span></h2>
+                <button type="button" class="modal-close" id="excelPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="flex:1; overflow:auto;">
+                <div class="table-container"><table><tbody id="excelPreviewTbody"></tbody></table></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="excelPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-success" id="excelDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('excelPreviewCloseX').addEventListener('click', () => closeModal('excelPreviewModal'));
+    document.getElementById('excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
+}
+
+// sheet.aoa (array-of-arrays) is the exact same shape written to the
+// worksheet, so what's previewed is what's downloaded. Row 0 is the sheet
+// title (shown as a heading, not a table row); a blank row (`[]`) marks the
+// row right after it as the column-header row (rendered as <th>).
+function showExcelPreview(filename, sheets, onDownload) {
+    ensureExcelModal();
+    document.getElementById('excelPreviewTitle').textContent = sheets.length === 1
+        ? String((sheets[0].aoa[0] && sheets[0].aoa[0][0]) || 'Excel Preview')
+        : 'Excel Preview';
+
+    document.getElementById('excelPreviewTbody').innerHTML = sheets.map((sheet, sheetIndex) => {
+        const title = String((sheet.aoa[0] && sheet.aoa[0][0]) || sheet.name);
+        const heading = `<tr><td colspan="20" style="border:none; padding:${sheetIndex === 0 ? '0' : '24px'} 0 8px; font-weight:700; font-size:15px;">${escapeHtml(title)}</td></tr>`;
+
+        let afterBlank = false;
+        const body = sheet.aoa.slice(1).map(row => {
+            if (row.length === 0) { afterBlank = true; return '<tr><td style="height:10px; border:none; padding:0;"></td></tr>'; }
+            const cellTag = afterBlank ? 'th' : 'td';
+            afterBlank = false;
+            return `<tr>${row.map(cell => `<${cellTag}>${escapeHtml(cell == null ? '' : cell)}</${cellTag}>`).join('')}</tr>`;
+        }).join('');
+
+        return heading + body;
+    }).join('');
+
+    document.getElementById('excelDownloadBtn').onclick = onDownload;
+    openModal('excelPreviewModal');
+}
+
+// Exports student accounts (Type === 'student') from whatever is currently
+// loaded/filtered — respects the grade filter but not pagination, so it
+// covers every matching student, not just the visible page. Age comes from
+// student_table (joined in api/manage-accounts.php) and is blank for
+// accounts that never filled out a student profile. Shows a preview modal
+// (title "Student Account" above the table) before the file is downloaded.
+function exportStudentAccountsToExcel() {
+    if (typeof XLSX === 'undefined') {
+        showAlert('Excel export library failed to load.', 'error');
+        return;
+    }
+
+    const scoped = currentGradeFilter
+        ? allAccounts.filter(a => gradeScopeToList(a.Grade).includes(parseInt(currentGradeFilter, 10)))
+        : allAccounts;
+    const students = scoped.filter(a => String(a.Type || '').toLowerCase() === 'student');
+
+    if (students.length === 0) {
+        showAlert('No student accounts to export', 'error');
+        return;
+    }
+
+    const aoa = [
+        ['Student Account'],
+        [],
+        ['First Name', 'Last Name', 'Grade', 'Age', 'Email'],
+        ...students.map(s => [s.First_name, s.Last_name, gradeScopeLabel(s.Grade) || '', s.Age || '', s.email])
+    ];
+
+    const school = getCurrentSchool();
+    const schoolSlug = school ? school.replace(/[^a-z0-9]+/gi, '_') : 'Export';
+    const filename = `Student_Accounts_${schoolSlug}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    const sheets = [
+        { name: 'Student Accounts', aoa, colWidths: [{ wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 8 }, { wch: 30 }] }
+    ];
+
+    showExcelPreview(filename, sheets, () => {
+        const workbook = XLSX.utils.book_new();
+        sheets.forEach(sheet => {
+            const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
+            worksheet['!cols'] = sheet.colWidths;
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+        });
+        XLSX.writeFile(workbook, filename);
+        showAlert('Excel report exported successfully!', 'success');
+        closeModal('excelPreviewModal');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', initAccountPage);
 

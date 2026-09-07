@@ -151,6 +151,65 @@ async function loadSchoolBreakdown() {
     }
 }
 
+// Param-driven counterparts of loadReportData/loadSchoolBreakdown above —
+// fetch and return data without touching the on-screen globals (sections/
+// counts/schoolBreakdown) or re-rendering anything. Used by the export
+// panel so generating a report for an arbitrary month/year never changes
+// what's currently shown on the page behind the modal.
+async function fetchCategoryReport(district, period, start, end) {
+    try {
+        const params = new URLSearchParams({ action: 'categories', district: districtParam(district), period });
+        if (period === 'custom' && start && end) {
+            params.set('start', start);
+            params.set('end', end);
+        }
+        const response = await fetch(`../../api/case-report.php?${params.toString()}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load district case report');
+        return { sections: data.sections || [], counts: data.counts || {} };
+    } catch (error) {
+        console.error('Error loading district case report:', error);
+        return { sections: [], counts: {} };
+    }
+}
+
+async function fetchSchoolBreakdownData(district, period, start, end) {
+    try {
+        const params = new URLSearchParams({ action: 'school_breakdown', district: districtParam(district), period });
+        if (period === 'custom' && start && end) {
+            params.set('start', start);
+            params.set('end', end);
+        }
+        const response = await fetch(`../../api/case-report.php?${params.toString()}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load per-school case report');
+        return data.schools || [];
+    } catch (error) {
+        console.error('Error loading per-school case report:', error);
+        return [];
+    }
+}
+
+// Backs the Division Monthly Monitoring Report export — always every
+// district at once (plus a '__ALL__' division-wide total), never scoped to
+// whatever district button is currently selected on screen.
+async function fetchPersonalSocialConcerns(period, start, end) {
+    try {
+        const params = new URLSearchParams({ action: 'personal_social_concerns', period });
+        if (period === 'custom' && start && end) {
+            params.set('start', start);
+            params.set('end', end);
+        }
+        const response = await fetch(`../../api/case-report.php?${params.toString()}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load personal-social concerns report');
+        return { districts: data.districts || [], counts: data.counts || {} };
+    } catch (error) {
+        console.error('Error loading personal-social concerns report:', error);
+        return { districts: [], counts: {} };
+    }
+}
+
 function renderSchoolBreakdown() {
     const section = document.getElementById('schoolBreakdownSection');
     if (section) section.hidden = currentDistrict !== ALL_DISTRICTS;
@@ -188,20 +247,24 @@ function renderSchoolBreakdown() {
     `;
 }
 
-function gradeCell(bucketKey, grade) {
-    const bucket = counts[bucketKey];
+// countsMap defaults to the on-screen global so every existing call site
+// (renderCasesTable etc.) is unaffected; the export panel passes its own
+// freshly-fetched counts instead, for whatever period it was asked for,
+// without touching what's currently rendered on screen.
+function gradeCell(bucketKey, grade, countsMap = counts) {
+    const bucket = countsMap[bucketKey];
     return (bucket && bucket[String(grade)]) || { m: 0, f: 0 };
 }
 
 // Same flattening as pages/coordinator/report-case.js, minus the M/F split
 // (this table only shows one total per grade) — see that file for the
 // full explanation of the section/category/uncategorized/subtotal shape.
-function buildDisplayRows() {
+function buildDisplayRows(sectionsList = sections, countsMap = counts) {
     const rows = [];
     const grandTotal = {};
     ALL_REPORT_GRADES.forEach(g => { grandTotal[g] = 0; });
 
-    sections.forEach(section => {
+    sectionsList.forEach(section => {
         rows.push({ type: 'header', label: `${section.sectionCode}. ${section.sectionName}` });
 
         const sectionTotal = {};
@@ -209,7 +272,7 @@ function buildDisplayRows() {
 
         const addToTotals = (bucketKey) => {
             ALL_REPORT_GRADES.forEach(g => {
-                const cell = gradeCell(bucketKey, g);
+                const cell = gradeCell(bucketKey, g, countsMap);
                 const n = cell.m + cell.f;
                 sectionTotal[g] += n;
                 grandTotal[g] += n;
@@ -232,13 +295,13 @@ function buildDisplayRows() {
     return rows;
 }
 
-function rowTotals(row) {
+function rowTotals(row, countsMap = counts) {
     if (row.type === 'subtotal') {
         return row.totals;
     }
     const totals = {};
     ALL_REPORT_GRADES.forEach(g => {
-        const cell = gradeCell(row.bucketKey, g);
+        const cell = gradeCell(row.bucketKey, g, countsMap);
         totals[g] = cell.m + cell.f;
     });
     return totals;
@@ -314,8 +377,15 @@ function setupEventListeners() {
         document.getElementById('caseModal').classList.remove('show');
     });
 
-    document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
-    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+    document.getElementById('exportPdfBtn').addEventListener('click', () => handleExportClick('pdf'));
+    document.getElementById('exportExcelBtn').addEventListener('click', () => handleExportClick('excel'));
+    document.getElementById('closeExportOptionsModal').addEventListener('click', () => closeModal('exportOptionsModal'));
+    document.getElementById('cancelExportOptionsBtn').addEventListener('click', () => closeModal('exportOptionsModal'));
+    document.getElementById('generateExportBtn').addEventListener('click', handleGenerateExport);
+    document.getElementById('exportReportType').addEventListener('change', updateExportPeriodVisibility);
+    document.querySelectorAll('#exportCasesPeriodButtons .period-btn').forEach(btn => {
+        btn.addEventListener('click', () => setCasesPeriodMode(btn.getAttribute('data-cases-period')));
+    });
 
     setupPeriodFilter();
 
@@ -324,7 +394,11 @@ function setupEventListeners() {
 
 // Weekly / Monthly / Annually / Custom range period filter for the cases table
 function setupPeriodFilter() {
-    const periodButtons = document.querySelectorAll('.period-btn');
+    // Scoped to #periodButtons specifically, not just .period-btn — other
+    // .period-btn groups can exist elsewhere on the page (e.g. modals) and
+    // an unscoped selector here would wire this on-screen filter's click
+    // handler onto those too.
+    const periodButtons = document.querySelectorAll('#periodButtons .period-btn');
     const customRangeGroup = document.getElementById('customRangeGroup');
 
     periodButtons.forEach(btn => {
@@ -361,29 +435,27 @@ function setupPeriodFilter() {
     });
 }
 
-// Shared table shape used by both the PDF and Excel exporters
-function buildExportTable() {
+// Shared table shape used by both the PDF and Excel exporters. rows/countsMap
+// default to the on-screen globals; the export panel passes its own
+// freshly-fetched rows/counts for an arbitrary period instead.
+function buildExportTable(rows = displayRows, countsMap = counts) {
     const header = ['Category of Cases', ...ALL_REPORT_GRADES.map(g => `Grade ${g}`), 'Totals'];
     const body = [];
     const sectionHeaderRows = [];
 
-    displayRows.forEach(row => {
+    rows.forEach(row => {
         if (row.type === 'header') {
             sectionHeaderRows.push(body.length);
             body.push([row.label, ...ALL_REPORT_GRADES.map(() => ''), '']);
             return;
         }
-        const totals = rowTotals(row);
+        const totals = rowTotals(row, countsMap);
         const gradeTotals = ALL_REPORT_GRADES.map(g => totals[g] || 0);
         const total = gradeTotals.reduce((sum, n) => sum + n, 0);
         body.push([row.label, ...gradeTotals, total]);
     });
 
     return { header, body, sectionHeaderRows };
-}
-
-function exportFileBaseName() {
-    return `${districtLabel(currentDistrict).replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}`;
 }
 
 /* ---- Export preview modals — same "view before you download" flow as
@@ -486,77 +558,99 @@ function showExcelPreview(filename, sheets, onDownload) {
 }
 
 // Cases-by-school aoa shared by the Excel and PDF exporters' first table.
-function buildSchoolBreakdownExportRows() {
-    const totals = schoolBreakdown.reduce((acc, s) => {
+// list defaults to the on-screen global; the export panel passes its own
+// freshly-fetched school list for an arbitrary period instead.
+function buildSchoolBreakdownExportRows(list = schoolBreakdown) {
+    const totals = list.reduce((acc, s) => {
         acc.total += s.total; acc.male += s.male; acc.female += s.female;
         return acc;
     }, { total: 0, male: 0, female: 0 });
 
-    const body = schoolBreakdown.map(s => [s.school, s.total, s.male, s.female]);
+    const body = list.map(s => [s.school, s.total, s.male, s.female]);
     return { body, totals };
 }
 
-// Export report as an Excel workbook (.xlsx). "All Districts" only makes
-// sense as the "Cases by School" gender-distribution sheet — there's no
-// single district's category x grade breakdown to include alongside it, so
-// that sheet is skipped entirely in that case. A single district instead
-// gets just its category x grade sheet (no "Cases by School" sheet).
-function exportToExcel() {
-    if (typeof XLSX === 'undefined') {
-        showAlert('error', 'Excel export library failed to load.');
-        return;
-    }
+/* ==================================================================
+   EXPORT OPTIONS PANEL (All Districts only) — clicking Export PDF/Excel
+   opens a modal to pick the report (Cases by School vs. the Division
+   Monthly Monitoring Report) and an explicit month+year, independent of
+   whatever period is currently shown on screen. Generating always fetches
+   fresh data for that period (see fetchCategoryReport/
+   fetchSchoolBreakdownData/fetchPersonalSocialConcerns above) rather than
+   reusing the on-screen globals, so it never changes what's rendered
+   behind the modal. A single school/district instead skips this panel
+   entirely — see handleExportClick below.
+   ================================================================== */
 
-    const filename = `${exportFileBaseName()}.xlsx`;
-    const districtTitle = districtLabel(currentDistrict);
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    let sheets;
+let pendingExportFormat = 'pdf';
+let casesPeriodMode = 'weekly';
 
-    if (currentDistrict === ALL_DISTRICTS) {
-        const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows();
-        const schoolAoa = [
-            [`Cases by School - ${districtTitle}`],
-            [`Period: ${PERIOD_LABELS[currentPeriod]}`],
-            [],
-            ['School', 'Total Cases', 'Male', 'Female'],
-            ...schoolBody,
-            ['Overall Total', schoolTotals.total, schoolTotals.male, schoolTotals.female]
-        ];
-        sheets = [
-            { name: 'Cases by School', aoa: schoolAoa, colWidths: [{ wch: 34 }, { wch: 12 }, { wch: 10 }, { wch: 10 }] }
-        ];
-    } else {
-        const { header, body } = buildExportTable();
-        const categoryAoa = [
-            [`District Report Cases - ${districtTitle}`],
-            [`Period: ${PERIOD_LABELS[currentPeriod]}`],
-            [],
-            header,
-            ...body
-        ];
-        sheets = [
-            { name: 'Report Cases', aoa: categoryAoa, colWidths: [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }] }
-        ];
-    }
+function populateExportPeriodSelects() {
+    const monthSelect = document.getElementById('exportMonthSelect');
+    const yearSelect = document.getElementById('exportYearSelect');
+    if (!monthSelect || !yearSelect || monthSelect.options.length) return; // already populated
 
-    showExcelPreview(filename, sheets, () => {
-        const workbook = XLSX.utils.book_new();
-        sheets.forEach(sheet => {
-            const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
-            worksheet['!cols'] = sheet.colWidths;
-            XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
-        });
-        XLSX.writeFile(workbook, filename);
-        showAlert('success', 'Excel report exported successfully!');
-    });
+    monthSelect.innerHTML = MONTH_NAMES.map((name, i) => `<option value="${i + 1}">${name}</option>`).join('');
+    monthSelect.value = String(new Date().getMonth() + 1);
+
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let y = currentYear; y >= currentYear - 4; y--) years.push(y);
+    yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    yearSelect.value = String(currentYear);
 }
 
-// Export report as a PDF document. "All Districts" only makes sense as the
-// "Cases by School" gender-distribution report — there's no single
-// district's category x grade breakdown to show alongside it, so that page
-// is skipped entirely in that case. A single district instead gets just its
-// category x grade breakdown (no "Cases by School" page).
-function exportToPDF() {
+function setCasesPeriodMode(mode) {
+    casesPeriodMode = mode;
+    document.querySelectorAll('#exportCasesPeriodButtons .period-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-cases-period') === mode);
+    });
+    const rangeGroup = document.getElementById('exportCasesRangeGroup');
+    if (rangeGroup) rangeGroup.hidden = mode !== 'custom';
+}
+
+// "Cases by School" uses Weekly/Monthly/Annually keywords (same "current
+// week/month/year" meaning as the on-screen filter — no specific date to
+// pick). The Division Monthly Monitoring Report instead needs one specific
+// month+year, since that's what the official form is dated by. Only one of
+// the two period controls is relevant at a time, so show whichever matches
+// the selected report.
+function updateExportPeriodVisibility() {
+    const reportType = document.getElementById('exportReportType').value;
+    const casesGroup = document.getElementById('exportCasesPeriodGroup');
+    const dmmrGroup = document.getElementById('exportDmmrPeriodGroup');
+    if (casesGroup) casesGroup.style.display = reportType === 'dmmr' ? 'none' : '';
+    if (dmmrGroup) dmmrGroup.style.display = reportType === 'dmmr' ? '' : 'none';
+}
+
+// The Report/Period panel only makes sense for "All Districts" — that's
+// the only place "Cases by School" and the Division Monthly Monitoring
+// Report are meaningful choices. With one specific school/district
+// selected there's only one applicable export (the Category of Cases table
+// already on screen), so skip the panel and preview it straight away using
+// whatever period is currently shown on screen — no extra picking required.
+function handleExportClick(format) {
+    if (currentDistrict !== ALL_DISTRICTS) {
+        if (format === 'pdf') generateCategoryOfCasesPdf();
+        else generateCategoryOfCasesExcel();
+        return;
+    }
+    openExportOptionsModal(format);
+}
+
+function openExportOptionsModal(format) {
+    pendingExportFormat = format;
+    populateExportPeriodSelects();
+    updateExportPeriodVisibility();
+    openModal('exportOptionsModal');
+}
+
+// Category of Cases export for one selected school/district — same content
+// as the on-screen table (buildExportTable()/PERIOD_LABELS[currentPeriod]
+// with no args default to the live globals), previewed before download.
+function generateCategoryOfCasesPdf() {
     if (typeof window.jspdf === 'undefined') {
         showAlert('error', 'PDF export library failed to load.');
         return;
@@ -565,36 +659,6 @@ function exportToPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
     const districtTitle = districtLabel(currentDistrict);
-
-    if (currentDistrict === ALL_DISTRICTS) {
-        doc.setFontSize(14);
-        doc.text(`Cases by School - ${districtTitle}`, 14, 15);
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Period: ${PERIOD_LABELS[currentPeriod]}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
-
-        const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows();
-        doc.autoTable({
-            head: [['School', 'Total Cases', 'Male', 'Female']],
-            body: [
-                ...schoolBody,
-                [
-                    { content: 'Overall Total', styles: { fontStyle: 'bold' } },
-                    { content: String(schoolTotals.total), styles: { fontStyle: 'bold' } },
-                    { content: String(schoolTotals.male), styles: { fontStyle: 'bold' } },
-                    { content: String(schoolTotals.female), styles: { fontStyle: 'bold' } }
-                ]
-            ],
-            startY: 26,
-            theme: 'grid',
-            headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold' },
-            styles: { fontSize: 9, cellPadding: 3 }
-        });
-
-        showPdfPreview(doc, `${exportFileBaseName()}.pdf`);
-        return;
-    }
-
     const { header, body, sectionHeaderRows } = buildExportTable();
 
     doc.setFontSize(14);
@@ -618,7 +682,338 @@ function exportToPDF() {
         }
     });
 
-    showPdfPreview(doc, `${exportFileBaseName()}.pdf`);
+    const filename = `${districtTitle.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_CategoryOfCases_${new Date().toISOString().split('T')[0]}.pdf`;
+    showPdfPreview(doc, filename);
+}
+
+function generateCategoryOfCasesExcel() {
+    if (typeof XLSX === 'undefined') {
+        showAlert('error', 'Excel export library failed to load.');
+        return;
+    }
+
+    const districtTitle = districtLabel(currentDistrict);
+    const { header, body } = buildExportTable();
+    const categoryAoa = [
+        [`District Report Cases - ${districtTitle}`],
+        [`Period: ${PERIOD_LABELS[currentPeriod]}`],
+        [],
+        header,
+        ...body
+    ];
+    const sheets = [
+        { name: 'Report Cases', aoa: categoryAoa, colWidths: [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }] }
+    ];
+    const filename = `${districtTitle.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_CategoryOfCases_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    showExcelPreview(filename, sheets, () => {
+        const workbook = XLSX.utils.book_new();
+        sheets.forEach(sheet => {
+            const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
+            worksheet['!cols'] = sheet.colWidths;
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+        });
+        XLSX.writeFile(workbook, filename);
+        showAlert('success', 'Excel report exported successfully!');
+    });
+}
+
+// Turns the panel's Month+Year (or just Year) selection into an explicit
+// start/end date range for case_date_condition's 'custom' branch, plus a
+// human label used in report titles/filenames.
+function exportPeriodRange() {
+    const year = parseInt(document.getElementById('exportYearSelect').value, 10);
+    const month = parseInt(document.getElementById('exportMonthSelect').value, 10);
+    const start = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { start, end, label: `${MONTH_NAMES[month - 1]} ${year}` };
+}
+
+async function handleGenerateExport() {
+    const reportType = document.getElementById('exportReportType').value;
+    const format = pendingExportFormat;
+
+    if (reportType === 'dmmr') {
+        closeModal('exportOptionsModal');
+        const { start, end, label } = exportPeriodRange();
+        if (format === 'pdf') await generateDmmrPdf(start, end, label);
+        else await generateDmmrExcel(start, end, label);
+        return;
+    }
+
+    // Cases by School — Weekly/Monthly/Annually mean "current", same as the
+    // on-screen filter, so case_date_condition needs just the keyword.
+    // Custom needs an explicit range, validated before the modal closes.
+    const period = casesPeriodMode;
+    let start = '', end = '', label = PERIOD_LABELS[period];
+
+    if (period === 'custom') {
+        start = document.getElementById('exportCasesRangeStart').value;
+        end = document.getElementById('exportCasesRangeEnd').value;
+        if (!start || !end) {
+            showAlert('error', 'Select both a start and end date.');
+            return;
+        }
+        if (start > end) {
+            showAlert('error', 'Start date must be before the end date.');
+            return;
+        }
+        label = `${start} to ${end}`;
+    }
+
+    closeModal('exportOptionsModal');
+    if (format === 'pdf') await generateCasesBySchoolPdf(period, start, end, label);
+    else await generateCasesBySchoolExcel(period, start, end, label);
+}
+
+// "Cases by School" export — only reachable for "All Districts" (a
+// specific school/district instead goes straight to generateCategoryOf-
+// CasesPdf/Excel above, no panel), fetched fresh for the panel's chosen
+// Weekly/Monthly/Annually/Custom period.
+async function generateCasesBySchoolPdf(period, start, end, label) {
+    if (typeof window.jspdf === 'undefined') {
+        showAlert('error', 'PDF export library failed to load.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const districtTitle = districtLabel(currentDistrict);
+    const filename = `${districtTitle.replace(/\s+/g, '-')}_${label.replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}.pdf`;
+
+    const schools = await fetchSchoolBreakdownData(currentDistrict, period, start, end);
+    const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows(schools);
+
+    doc.setFontSize(14);
+    doc.text(`Cases by School - ${districtTitle}`, 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+
+    doc.autoTable({
+        head: [['School', 'Total Cases', 'Male', 'Female']],
+        body: [
+            ...schoolBody,
+            [
+                { content: 'Overall Total', styles: { fontStyle: 'bold' } },
+                { content: String(schoolTotals.total), styles: { fontStyle: 'bold' } },
+                { content: String(schoolTotals.male), styles: { fontStyle: 'bold' } },
+                { content: String(schoolTotals.female), styles: { fontStyle: 'bold' } }
+            ]
+        ],
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 }
+    });
+
+    showPdfPreview(doc, filename);
+}
+
+async function generateCasesBySchoolExcel(period, start, end, label) {
+    if (typeof XLSX === 'undefined') {
+        showAlert('error', 'Excel export library failed to load.');
+        return;
+    }
+
+    const districtTitle = districtLabel(currentDistrict);
+    const filename = `${districtTitle.replace(/\s+/g, '-')}_${label.replace(/\s+/g, '-')}_ReportCases_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    const schools = await fetchSchoolBreakdownData(currentDistrict, period, start, end);
+    const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows(schools);
+    const schoolAoa = [
+        [`Cases by School - ${districtTitle}`],
+        [`Period: ${label}`],
+        [],
+        ['School', 'Total Cases', 'Male', 'Female'],
+        ...schoolBody,
+        ['Overall Total', schoolTotals.total, schoolTotals.male, schoolTotals.female]
+    ];
+    const sheets = [
+        { name: 'Cases by School', aoa: schoolAoa, colWidths: [{ wch: 34 }, { wch: 12 }, { wch: 10 }, { wch: 10 }] }
+    ];
+
+    showExcelPreview(filename, sheets, () => {
+        const workbook = XLSX.utils.book_new();
+        sheets.forEach(sheet => {
+            const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
+            worksheet['!cols'] = sheet.colWidths;
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+        });
+        XLSX.writeFile(workbook, filename);
+        showAlert('success', 'Excel report exported successfully!');
+    });
+}
+
+/* ---- Division Monthly Monitoring Report of Learners' Personal-Social
+   Concerns — the official DepEd form's fixed section/issue layout. Only
+   issues with a confident, non-inventive match onto this app's existing
+   case_category ids carry real counts (Membership/Smoking/Drinking/
+   Gambling/Weapon/Underachievement match by name; "All forms of bullying"
+   sums the app's Physical+Verbal+Emotional bullying categories; "Abuse"
+   matches the app's "Abused" category). Everything else on the official
+   form (Quarreling, Theft, Disrespect, CICL, Suicidal thoughts, Mental
+   health problems, Neglect, SARDOS, and the "CAR" row itself — which is a
+   section label on the official form, not one of this app's categories)
+   has no equivalent case_category here and always reads 0, per instruction
+   not to invent new categories for it. ---- */
+const DMMR_SECTIONS = [
+    { name: 'Behavioral or Conduct Problem', issues: [
+        { label: 'CAR', categoryIds: null },
+        { label: 'Quarreling', categoryIds: null },
+        { label: 'Membership to any gang/unsolicited group', categoryIds: ['2'] },
+        { label: 'Smoking', categoryIds: ['3'] },
+        { label: 'Drinking', categoryIds: ['4'] },
+        { label: 'Gambling', categoryIds: ['5'] },
+        { label: 'Bringing deadly weapon', categoryIds: ['6'] },
+        { label: 'Theft', categoryIds: null },
+        { label: 'Disrespect', categoryIds: null },
+        { label: 'CICL', categoryIds: null }
+    ] },
+    { name: 'Self-Harming Behavior or Suicide Ideation', issues: [
+        { label: 'Suicidal thoughts', categoryIds: null },
+        { label: 'Mental health problems', categoryIds: null },
+        { label: 'Neglect', categoryIds: null },
+        { label: 'Abuse', categoryIds: ['11'] }
+    ] },
+    { name: 'Poor Social Skills', issues: [
+        { label: 'All forms of bullying', categoryIds: ['12', '13', '14'] }
+    ] },
+    { name: 'Poor Academic Performance', issues: [
+        { label: 'SARDOS', categoryIds: null },
+        { label: 'Underachievement', categoryIds: ['15'] }
+    ] }
+];
+
+// Fixed "who typically handles this" text per issue — nothing in the schema
+// tracks this, so it's the same for every district and every period.
+const DMMR_DEFAULT_PROVIDER = 'Adviser, Guidance Counselor';
+const DMMR_PROVIDER_OVERRIDES = {
+    'Abuse': 'Adviser, Parents, School Head, Guidance Counselor and CSWD',
+    'Underachievement': 'Adviser, School Head, Guidance Counselor'
+};
+function dmmrProvider(issueLabel) {
+    return DMMR_PROVIDER_OVERRIDES[issueLabel] || DMMR_DEFAULT_PROVIDER;
+}
+function dmmrIssueCount(countsForGroup, categoryIds) {
+    if (!categoryIds) return 0;
+    return categoryIds.reduce((sum, id) => sum + (countsForGroup[id] || 0), 0);
+}
+
+// Builds the "Secondary" (division-wide total) + one group per real
+// district, each group being [No. of Cases, Intervention Provider] columns
+// — same grouped-header shape as the coordinator report-case.js's Grade
+// columns (rowSpan/colSpan for PDF, two stacked header rows + !merges for
+// Excel), just grouped by district instead of grade.
+function buildDmmrTable(districts, countsByGroup) {
+    const groups = [{ key: '__ALL__', label: 'Secondary' }, ...districts.map(d => ({ key: d, label: d }))];
+
+    const pdfHead = [
+        [
+            { content: 'Name of School', rowSpan: 2, styles: { valign: 'middle' } },
+            ...groups.map(g => ({ content: g.label, colSpan: 2, styles: { halign: 'center' } }))
+        ],
+        groups.flatMap(() => ['No. of Cases', 'Intervention Provider'])
+    ];
+    const excelRow1 = ['Name of School', ...groups.flatMap(g => [g.label, ''])];
+    const excelRow2 = ['', ...groups.flatMap(() => ['No. of Cases', 'Intervention Provider'])];
+
+    const body = [];
+    const sectionHeaderRows = [];
+
+    DMMR_SECTIONS.forEach(section => {
+        sectionHeaderRows.push(body.length);
+        body.push([section.name, ...groups.flatMap(() => ['', ''])]);
+
+        section.issues.forEach(issue => {
+            const provider = dmmrProvider(issue.label);
+            const row = [issue.label];
+            groups.forEach(g => {
+                const count = dmmrIssueCount(countsByGroup[g.key] || {}, issue.categoryIds);
+                row.push(count, provider);
+            });
+            body.push(row);
+        });
+    });
+
+    return { pdfHead, excelRow1, excelRow2, body, sectionHeaderRows, groups };
+}
+
+async function generateDmmrPdf(start, end, label) {
+    if (typeof window.jspdf === 'undefined') {
+        showAlert('error', 'PDF export library failed to load.');
+        return;
+    }
+
+    const { districts, counts: dmmrCounts } = await fetchPersonalSocialConcerns('custom', start, end);
+    const { pdfHead, body, sectionHeaderRows } = buildDmmrTable(districts, dmmrCounts);
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text(`Division Monthly Monitoring Report of Learners' Personal-Social Concerns`, 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+
+    doc.autoTable({
+        head: pdfHead,
+        body,
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
+        styles: { fontSize: 7, cellPadding: 2 },
+        didParseCell: (data) => {
+            if (data.section === 'body' && sectionHeaderRows.includes(data.row.index)) {
+                data.cell.styles.fillColor = [226, 232, 240];
+                data.cell.styles.fontStyle = 'bold';
+            }
+        }
+    });
+
+    const filename = `DMMR_${label.replace(/\s+/g, '-')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    showPdfPreview(doc, filename);
+}
+
+async function generateDmmrExcel(start, end, label) {
+    if (typeof XLSX === 'undefined') {
+        showAlert('error', 'Excel export library failed to load.');
+        return;
+    }
+
+    const { districts, counts: dmmrCounts } = await fetchPersonalSocialConcerns('custom', start, end);
+    const { excelRow1, excelRow2, body, groups } = buildDmmrTable(districts, dmmrCounts);
+
+    const titleRows = [
+        [`Division Monthly Monitoring Report of Learners' Personal-Social Concerns`],
+        [`Period: ${label}`],
+        []
+    ];
+    const fullAoa = [...titleRows, excelRow1, excelRow2, ...body];
+    const filename = `DMMR_${label.replace(/\s+/g, '-')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const sheets = [{ name: `Division Monthly Monitoring Report`, aoa: fullAoa }];
+
+    showExcelPreview(filename, sheets, () => {
+        const worksheet = XLSX.utils.aoa_to_sheet(fullAoa);
+
+        const headerRowIndex = titleRows.length;
+        const merges = [
+            { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } }
+        ];
+        groups.forEach((_, i) => {
+            const startCol = 1 + i * 2;
+            merges.push({ s: { r: headerRowIndex, c: startCol }, e: { r: headerRowIndex, c: startCol + 1 } });
+        });
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 34 }, ...groups.flatMap(() => [{ wch: 10 }, { wch: 32 }])];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'DMMR');
+        XLSX.writeFile(workbook, filename);
+        showAlert('success', 'Excel report exported successfully!');
+    });
 }
 
 // Initialize page
