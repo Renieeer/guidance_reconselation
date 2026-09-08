@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Sep 07, 2026 at 02:34 PM
+-- Generation Time: Sep 08, 2026 at 05:52 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -76,11 +76,10 @@ INSERT INTO `case_category` (`CaseId`, `SectionID`, `CategoryName`) VALUES
 ('20', 6, 'Family Problem'),
 ('21', 6, 'Unfavorable family set up'),
 ('22', 6, 'Loss of loved one'),
-('23', 6, 'All forms of abuse'),
-('24', 6, 'Physical'),
-('25', 6, 'Verbal'),
-('26', 6, 'Sexual'),
-('27', 6, 'Psychological'),
+('24', 6, 'Physical Abuse'),
+('25', 6, 'Verbal Abuse'),
+('26', 6, 'Sexual Abuse'),
+('27', 6, 'Psychological Abuse'),
 ('28', 1, 'CAR'),
 ('29', 1, '‎Child Inconflict with the Law(CICL)'),
 ('3', 1, 'Smoking'),
@@ -44450,7 +44449,7 @@ CREATE TABLE `schools` (
 
 INSERT INTO `schools` (`school_code`, `school_name`, `assignment_type`, `is_active`, `created_at`, `updated_at`, `district`) VALUES
 ('bucayao', 'Bucayao National High School', 'both', 1, '2026-04-29 05:40:02', '2026-09-06 06:21:40', 'Bucayao National High School'),
-('buvayao', 'Buvayao National High School', 'both', 0, '2026-09-06 03:18:04', '2026-09-06 08:17:52', 'Buvayao National High School'),
+('buvayao', 'Buvayao National High School', 'both', 0, '2026-09-08 04:24:19', '2026-09-08 04:45:15', 'Buvayao National High School'),
 ('canubing', 'Canubing National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Canubing National High School'),
 ('ceriaco-abes', 'Ceriaco A. Abes Memorial National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Ceriaco A. Abes Memorial National High School'),
 ('community-vocational', 'Community Vocational High Schools', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Community Vocational High Schools'),
