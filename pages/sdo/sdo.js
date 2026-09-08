@@ -21,34 +21,24 @@ function initSidebarActive() {
     });
 }
 
-const districts = [
-    'District 1', 'District 2', 'District 3', 'District 4', 'District 5',
-    'District 6', 'District 7', 'District 8', 'District 9', 'District 10', 'District 11'
-];
-
 let sdoReferrals = [];
-let sdoSchoolCount = 0;
 
 function loadSDODashboard() {
     initPage();
     initSidebarActive();
 
-    Promise.all([
-        // No role param: falls through to an unfiltered query, which is
-        // what SDO/division-level oversight actually wants — every
-        // referral across every school, not scoped to one.
-        fetch('../../api/referral.php').then(res => res.json()),
-        fetch('../../api/school-config.php').then(res => res.json())
-    ])
-        .then(([referralResult, schoolResult]) => {
+    // No role param: falls through to an unfiltered query, which is what
+    // SDO/division-level oversight actually wants — every referral across
+    // every school, not scoped to one.
+    fetch('../../api/referral.php')
+        .then(res => res.json())
+        .then(referralResult => {
             if (!referralResult.success) {
                 throw new Error(referralResult.message || 'Failed to load referrals');
             }
             sdoReferrals = referralResult.data || [];
-            sdoSchoolCount = schoolResult.success ? (schoolResult.schools || []).length : 0;
 
             renderOverallStats();
-            loadDistrictSummary();
         })
         .catch(error => {
             console.error('Error loading SDO dashboard:', error);
@@ -56,8 +46,29 @@ function loadSDODashboard() {
                 .forEach(id => { document.getElementById(id).textContent = '—'; });
         });
 
+    loadDistrictOptions();
+    loadDistrictSummary();
+
     // Setup district filter
     document.getElementById('districtFilter').addEventListener('change', loadDistrictSummary);
+}
+
+// Real district list (schools.district), same source as the district report
+// pages — the dropdown used to offer a fixed "District 1".."District 11"
+// that never matched any real district value, so picking one changed
+// nothing.
+async function loadDistrictOptions() {
+    const select = document.getElementById('districtFilter');
+    let districts = [];
+    try {
+        const res = await fetch('../../api/case-report.php?action=districts').then(r => r.json());
+        districts = (res.success && Array.isArray(res.districts)) ? res.districts : [];
+        if (res.success && res.hasUnassigned) districts.push('Unassigned');
+    } catch (error) {
+        console.error('Error loading districts:', error);
+    }
+    select.innerHTML = '<option value="">All Districts</option>' +
+        districts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
 }
 
 function renderOverallStats() {
@@ -75,39 +86,66 @@ function renderOverallStats() {
     document.getElementById('schoolsReporting').textContent = schoolsReporting;
 }
 
-// There's no district-to-school assignment anywhere in this app (schools
-// aren't grouped by district in the database), so — same approach as
-// pages/sdo/district-report-cases.js — every district row shows the same
-// real, division-wide totals rather than fabricated per-district numbers.
+// Real per-district rollup from api/case-report.php (same source/shape as
+// pages/sdo/analytics.js and school-reports.js) — schools grouped by
+// schools.district, referral/resolution counts from the referral table.
+// Respects the district filter dropdown above instead of ignoring it.
 function loadDistrictSummary() {
     const tbody = document.getElementById('districtTableBody');
+    const selectedDistrict = document.getElementById('districtFilter').value;
 
-    const total = sdoReferrals.length;
-    const active = sdoReferrals.filter(r => r.stage >= 3 && r.stage < 6).length;
-    const completed = sdoReferrals.filter(r => r.stage === 6).length;
+    fetch('../../api/case-report.php?action=district_summary')
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to load district summary');
+            }
+            let rows = result.districts || [];
+            if (selectedDistrict) {
+                rows = rows.filter(d => d.district === selectedDistrict);
+            }
+            renderDistrictSummary(rows);
+        })
+        .catch(error => {
+            console.error('Error loading district summary:', error);
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Unable to load district data.</td></tr>';
+        });
+}
 
-    const resolutionDays = sdoReferrals
-        .filter(r => r.stage === 6 && r.date_submitted && r.updated_at)
-        .map(r => (new Date(r.updated_at) - new Date(r.date_submitted)) / (1000 * 60 * 60 * 24))
-        .filter(days => Number.isFinite(days) && days >= 0);
-    const avgTime = resolutionDays.length > 0
-        ? Math.round(resolutionDays.reduce((sum, d) => sum + d, 0) / resolutionDays.length) + ' days'
-        : 'N/A';
+function renderDistrictSummary(rows) {
+    const tbody = document.getElementById('districtTableBody');
 
-    const resolutionRate = total > 0 ? (completed / total) * 100 : 0;
-    const status = total === 0 ? 'Good' : (resolutionRate >= 70 ? 'Good' : 'Attention Needed');
+    if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No schools found.</td></tr>';
+        return;
+    }
 
-    tbody.innerHTML = districts.map(district => `
-        <tr>
-            <td><strong>${district}</strong></td>
-            <td>${sdoSchoolCount}</td>
-            <td>${total}</td>
-            <td>${active}</td>
-            <td>${completed}</td>
-            <td>${avgTime}</td>
-            <td>${createBadge(status === 'Good' ? 'completed' : 'pending')}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = rows.map(row => {
+        const resolutionRate = row.referralCount > 0 ? Math.round((row.resolvedCount / row.referralCount) * 100) : 0;
+        const lastActivity = row.lastActivity ? new Date(row.lastActivity).toLocaleDateString() : 'No activity yet';
+        const status = row.referralCount === 0 ? 'Good' : (resolutionRate >= 70 ? 'Good' : 'Attention Needed');
+
+        return `
+            <tr>
+                <td><strong>${escapeHtml(row.district)}</strong></td>
+                <td>${row.schoolCount}</td>
+                <td>${row.referralCount}</td>
+                <td>${row.resolvedCount}</td>
+                <td>${resolutionRate}%</td>
+                <td>${lastActivity}</td>
+                <td>${createBadge(status === 'Good' ? 'completed' : 'pending')}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 document.addEventListener('DOMContentLoaded', loadSDODashboard);

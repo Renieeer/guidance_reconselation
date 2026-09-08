@@ -649,13 +649,13 @@ if ($action === 'district_summary') {
 
 /* ── PERSONAL-SOCIAL CONCERNS, PER DISTRICT ──
    Backs the "Division Monthly Monitoring Report of Learners' Personal-Social
-   Concerns" export. Counts real cases (same "one count per primary student"
-   rule as 'categories'/'school_breakdown') per case_category, bucketed by
-   the case's school's district — plus a '__ALL__' bucket for the
-   division-wide ("Secondary") total column. The frontend maps only the
-   categoryIds it can confidently match onto the official form's issue rows
-   (see DMMR_SECTIONS in district-report-cases.js); everything else on that
-   form has no equivalent category here and always renders as 0. */
+   Concerns" export. Same section/category set as 'categories' (every real
+   section and category — plus one "uncategorized" bucket per section for
+   cases whose category hasn't been chosen yet — so the report covers 100%
+   of case data, not a curated subset) and the same "one count per primary
+   student" counting rule as 'categories'/'school_breakdown', but bucketed
+   by the case's school's district instead of by grade — plus a '__ALL__'
+   bucket for the division-wide ("Secondary") total column. */
 if ($action === 'personal_social_concerns') {
     $period = trim((string)($_GET['period'] ?? 'all'));
     $rangeStart = trim((string)($_GET['start'] ?? ''));
@@ -673,14 +673,27 @@ if ($action === 'personal_social_concerns') {
     $districts = array_values(array_unique(array_values($schoolDistrict)));
     sort($districts);
 
-    // categoryId => count, per district, plus '__ALL__' for the division total.
+    $sections = fetch_sections($conn);
+
+    // Seed every real category (+ one uncategorized bucket per section) at
+    // zero for every district and the division-wide total, so the frontend
+    // always gets a complete, predictable shape covering every category —
+    // not just the ones that happen to already have cases.
     $counts = ['__ALL__' => []];
     foreach ($districts as $d) {
         $counts[$d] = [];
     }
+    foreach (array_keys($counts) as $groupKey) {
+        foreach ($sections as $section) {
+            foreach ($section['categories'] as $cat) {
+                $counts[$groupKey][$cat['categoryId']] = 0;
+            }
+            $counts[$groupKey]['section-' . $section['sectionId'] . '-uncategorized'] = 0;
+        }
+    }
 
     if (table_exists($conn, 'counselor_case_scenarios')) {
-        $stmt = $conn->prepare("SELECT school_attended, category_id, students_json FROM counselor_case_scenarios WHERE 1=1$dateSql");
+        $stmt = $conn->prepare("SELECT school_attended, section_id, category_id, students_json FROM counselor_case_scenarios WHERE 1=1$dateSql");
         if ($stmt) {
             if ($dateTypes !== '') {
                 $stmt->bind_param($dateTypes, ...$dateValues);
@@ -695,9 +708,7 @@ if ($action === 'personal_social_concerns') {
                 }
 
                 $categoryId = trim((string)$row['category_id']);
-                if ($categoryId === '') {
-                    continue;
-                }
+                $bucketKey = $categoryId !== '' ? $categoryId : ('section-' . $row['section_id'] . '-uncategorized');
 
                 $students = json_decode((string)$row['students_json'], true) ?: [];
                 $primaryCount = 0;
@@ -711,14 +722,14 @@ if ($action === 'personal_social_concerns') {
                     continue;
                 }
 
-                $counts[$district][$categoryId] = ($counts[$district][$categoryId] ?? 0) + $primaryCount;
-                $counts['__ALL__'][$categoryId] = ($counts['__ALL__'][$categoryId] ?? 0) + $primaryCount;
+                $counts[$district][$bucketKey] = ($counts[$district][$bucketKey] ?? 0) + $primaryCount;
+                $counts['__ALL__'][$bucketKey] = ($counts['__ALL__'][$bucketKey] ?? 0) + $primaryCount;
             }
             $stmt->close();
         }
     }
 
-    send_json(200, ['success' => true, 'districts' => $districts, 'counts' => $counts]);
+    send_json(200, ['success' => true, 'districts' => $districts, 'sections' => $sections, 'counts' => $counts]);
 }
 
 send_json(400, ['success' => false, 'message' => 'Unknown action.']);

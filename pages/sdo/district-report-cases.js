@@ -203,10 +203,10 @@ async function fetchPersonalSocialConcerns(period, start, end) {
         const response = await fetch(`../../api/case-report.php?${params.toString()}`);
         const data = await response.json();
         if (!data.success) throw new Error(data.message || 'Failed to load personal-social concerns report');
-        return { districts: data.districts || [], counts: data.counts || {} };
+        return { districts: data.districts || [], sections: data.sections || [], counts: data.counts || {} };
     } catch (error) {
         console.error('Error loading personal-social concerns report:', error);
-        return { districts: [], counts: {} };
+        return { districts: [], sections: [], counts: {} };
     }
 }
 
@@ -442,6 +442,7 @@ function buildExportTable(rows = displayRows, countsMap = counts) {
     const header = ['Category of Cases', ...ALL_REPORT_GRADES.map(g => `Grade ${g}`), 'Totals'];
     const body = [];
     const sectionHeaderRows = [];
+    const subtotalRows = [];
 
     rows.forEach(row => {
         if (row.type === 'header') {
@@ -449,13 +450,16 @@ function buildExportTable(rows = displayRows, countsMap = counts) {
             body.push([row.label, ...ALL_REPORT_GRADES.map(() => ''), '']);
             return;
         }
+        if (row.type === 'subtotal') {
+            subtotalRows.push(body.length);
+        }
         const totals = rowTotals(row, countsMap);
         const gradeTotals = ALL_REPORT_GRADES.map(g => totals[g] || 0);
         const total = gradeTotals.reduce((sum, n) => sum + n, 0);
         body.push([row.label, ...gradeTotals, total]);
     });
 
-    return { header, body, sectionHeaderRows };
+    return { header, body, sectionHeaderRows, subtotalRows };
 }
 
 /* ---- Export preview modals — same "view before you download" flow as
@@ -672,8 +676,9 @@ function generateCategoryOfCasesPdf() {
         body,
         startY: 26,
         theme: 'grid',
-        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', valign: 'middle' },
+        styles: { fontSize: 9, cellPadding: 3, valign: 'middle', overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 60 } },
         didParseCell: (data) => {
             if (data.section === 'body' && sectionHeaderRows.includes(data.row.index)) {
                 data.cell.styles.fillColor = [226, 232, 240];
@@ -686,17 +691,78 @@ function generateCategoryOfCasesPdf() {
     showPdfPreview(doc, filename);
 }
 
+// Real cell colors/borders/wrap-text need actual style-writing on the
+// downloaded .xlsx — see buildDmmrWorkbook's comment for why that's
+// ExcelJS and not the SheetJS build also loaded on this page.
+function buildCategoryOfCasesWorkbook(header, body, sectionHeaderRows, subtotalRows, title, periodLabel) {
+    const totalCols = header.length;
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Report Cases');
+
+    sheet.mergeCells(1, 1, 1, totalCols);
+    const titleCell = sheet.getCell(1, 1);
+    titleCell.value = title;
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    sheet.mergeCells(2, 1, 2, totalCols);
+    const periodCell = sheet.getCell(2, 1);
+    periodCell.value = `Period: ${periodLabel}`;
+    periodCell.font = { size: 10, color: { argb: 'FF666666' } };
+    periodCell.alignment = { horizontal: 'center' };
+
+    const headRow = 4;
+    header.forEach((label, i) => {
+        const cell = sheet.getCell(headRow, i + 1);
+        cell.value = label;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D5AA8' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = THIN_BORDER;
+    });
+
+    body.forEach((row, i) => {
+        const rowIndex = headRow + 1 + i;
+        const isHeader = sectionHeaderRows.includes(i);
+        const isSubtotal = subtotalRows.includes(i);
+
+        if (isHeader) sheet.mergeCells(rowIndex, 1, rowIndex, totalCols);
+
+        row.forEach((value, c) => {
+            if (isHeader && c > 0) return; // merged into the label cell above
+            const cell = sheet.getCell(rowIndex, c + 1);
+            cell.value = value;
+            cell.border = THIN_BORDER;
+            cell.alignment = { vertical: 'middle', horizontal: c === 0 ? 'left' : 'center', wrapText: true };
+            if (isHeader) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                cell.font = { bold: true };
+            } else if (isSubtotal) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                cell.font = { bold: true };
+            }
+        });
+    });
+
+    sheet.getColumn(1).width = 34;
+    for (let c = 2; c <= totalCols; c++) sheet.getColumn(c).width = 12;
+
+    return workbook;
+}
+
 function generateCategoryOfCasesExcel() {
-    if (typeof XLSX === 'undefined') {
+    if (typeof ExcelJS === 'undefined') {
         showAlert('error', 'Excel export library failed to load.');
         return;
     }
 
     const districtTitle = districtLabel(currentDistrict);
-    const { header, body } = buildExportTable();
+    const periodLabel = PERIOD_LABELS[currentPeriod];
+    const title = `District Report Cases - ${districtTitle}`;
+    const { header, body, sectionHeaderRows, subtotalRows } = buildExportTable();
     const categoryAoa = [
-        [`District Report Cases - ${districtTitle}`],
-        [`Period: ${PERIOD_LABELS[currentPeriod]}`],
+        [title],
+        [`Period: ${periodLabel}`],
         [],
         header,
         ...body
@@ -704,16 +770,11 @@ function generateCategoryOfCasesExcel() {
     const sheets = [
         { name: 'Report Cases', aoa: categoryAoa, colWidths: [{ wch: 34 }, ...ALL_REPORT_GRADES.map(() => ({ wch: 10 })), { wch: 10 }] }
     ];
-    const filename = `${districtTitle.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_CategoryOfCases_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const filename = `${districtTitle.replace(/\s+/g, '-')}_${periodLabel.replace(/\s+/g, '-')}_CategoryOfCases_${new Date().toISOString().split('T')[0]}.xlsx`;
 
-    showExcelPreview(filename, sheets, () => {
-        const workbook = XLSX.utils.book_new();
-        sheets.forEach(sheet => {
-            const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
-            worksheet['!cols'] = sheet.colWidths;
-            XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
-        });
-        XLSX.writeFile(workbook, filename);
+    showExcelPreview(filename, sheets, async () => {
+        const workbook = buildCategoryOfCasesWorkbook(header, body, sectionHeaderRows, subtotalRows, title, periodLabel);
+        await downloadExcelJSWorkbook(workbook, filename);
         showAlert('success', 'Excel report exported successfully!');
     });
 }
@@ -847,94 +908,84 @@ async function generateCasesBySchoolExcel(period, start, end, label) {
 }
 
 /* ---- Division Monthly Monitoring Report of Learners' Personal-Social
-   Concerns — the official DepEd form's fixed section/issue layout. Only
-   issues with a confident, non-inventive match onto this app's existing
-   case_category ids carry real counts (Membership/Smoking/Drinking/
-   Gambling/Weapon/Underachievement match by name; "All forms of bullying"
-   sums the app's Physical+Verbal+Emotional bullying categories; "Abuse"
-   matches the app's "Abused" category). Everything else on the official
-   form (Quarreling, Theft, Disrespect, CICL, Suicidal thoughts, Mental
-   health problems, Neglect, SARDOS, and the "CAR" row itself — which is a
-   section label on the official form, not one of this app's categories)
-   has no equivalent case_category here and always reads 0, per instruction
-   not to invent new categories for it. ---- */
-const DMMR_SECTIONS = [
-    { name: 'Behavioral or Conduct Problem', issues: [
-        { label: 'CAR', categoryIds: null },
-        { label: 'Quarreling', categoryIds: null },
-        { label: 'Membership to any gang/unsolicited group', categoryIds: ['2'] },
-        { label: 'Smoking', categoryIds: ['3'] },
-        { label: 'Drinking', categoryIds: ['4'] },
-        { label: 'Gambling', categoryIds: ['5'] },
-        { label: 'Bringing deadly weapon', categoryIds: ['6'] },
-        { label: 'Theft', categoryIds: null },
-        { label: 'Disrespect', categoryIds: null },
-        { label: 'CICL', categoryIds: null }
-    ] },
-    { name: 'Self-Harming Behavior or Suicide Ideation', issues: [
-        { label: 'Suicidal thoughts', categoryIds: null },
-        { label: 'Mental health problems', categoryIds: null },
-        { label: 'Neglect', categoryIds: null },
-        { label: 'Abuse', categoryIds: ['11'] }
-    ] },
-    { name: 'Poor Social Skills', issues: [
-        { label: 'All forms of bullying', categoryIds: ['12', '13', '14'] }
-    ] },
-    { name: 'Poor Academic Performance', issues: [
-        { label: 'SARDOS', categoryIds: null },
-        { label: 'Underachievement', categoryIds: ['15'] }
-    ] }
+   Concerns — rows are built live from every real section and case_category
+   (plus one "Uncategorized" row per section, for cases with no category
+   chosen yet), the same complete set 'categories'/fetch_sections() already
+   uses for the on-screen Category of Cases table. No hardcoded issue list:
+   whatever sections/categories exist in the database is exactly what shows
+   up here, so it always covers 100% of real case data, and a category
+   added or renamed later (e.g. via referral setup) appears automatically. ---- */
+
+// Intervention Provider starts blank on every row — nothing in the schema
+// tracks who actually intervened, so instead of guessing a default per
+// category, the column header spells out who it could be and the
+// guidance counselor fills each cell in by hand (still a normal editable
+// Excel cell, just empty by default).
+const DMMR_PROVIDER_HEADER = 'Intervention Provider (Adviser, Guidance Designate, School Head, RGC)';
+
+// Colors matching the official form's look (cyan column-group headers,
+// green section rows) — shared between the PDF (RGB triplets, jspdf-
+// autotable) and Excel (ARGB hex, ExcelJS) builders so both exports and
+// the reference template stay visually consistent.
+const DMMR_HEADER_COLOR = [0, 255, 255];   // cyan
+const DMMR_SECTION_COLOR = [0, 204, 0];    // green
+const DMMR_HEADER_ARGB = 'FF00FFFF';
+const DMMR_SECTION_ARGB = 'FF00CC00';
+// Generic thin border, reused by every ExcelJS-built report on this page
+// (DMMR and Category of Cases), not just DMMR.
+const THIN_BORDER = {
+    top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+};
+
+// Fixed 4 columns, matching the official form exactly: "Secondary" (the
+// division-wide total) plus three named regions. schools.district is the
+// only per-school classification field this app has, so a region's count
+// only becomes non-zero once schools are assigned district = exactly
+// "East" / "West" / "South" in School Management — until then those three
+// columns correctly read 0 rather than showing fabricated numbers.
+const DMMR_GROUPS = [
+    { key: '__ALL__', label: 'Secondary' },
+    { key: 'East', label: 'East' },
+    { key: 'West', label: 'West' },
+    { key: 'South', label: 'South' }
 ];
 
-// Fixed "who typically handles this" text per issue — nothing in the schema
-// tracks this, so it's the same for every district and every period.
-const DMMR_DEFAULT_PROVIDER = 'Adviser, Guidance Counselor';
-const DMMR_PROVIDER_OVERRIDES = {
-    'Abuse': 'Adviser, Parents, School Head, Guidance Counselor and CSWD',
-    'Underachievement': 'Adviser, School Head, Guidance Counselor'
-};
-function dmmrProvider(issueLabel) {
-    return DMMR_PROVIDER_OVERRIDES[issueLabel] || DMMR_DEFAULT_PROVIDER;
-}
-function dmmrIssueCount(countsForGroup, categoryIds) {
-    if (!categoryIds) return 0;
-    return categoryIds.reduce((sum, id) => sum + (countsForGroup[id] || 0), 0);
-}
-
-// Builds the "Secondary" (division-wide total) + one group per real
-// district, each group being [No. of Cases, Intervention Provider] columns
-// — same grouped-header shape as the coordinator report-case.js's Grade
-// columns (rowSpan/colSpan for PDF, two stacked header rows + !merges for
-// Excel), just grouped by district instead of grade.
-function buildDmmrTable(districts, countsByGroup) {
-    const groups = [{ key: '__ALL__', label: 'Secondary' }, ...districts.map(d => ({ key: d, label: d }))];
+// Builds the [No. of Cases, Intervention Provider] grouped header for each
+// of DMMR_GROUPS — same grouped-header shape as the coordinator
+// report-case.js's Grade columns (rowSpan/colSpan for PDF, two stacked
+// header rows + !merges for Excel), just grouped by region instead of grade
+// — and one row per real section/category instead of a fixed issue list.
+function buildDmmrTable(sections, countsByGroup) {
+    const groups = DMMR_GROUPS;
 
     const pdfHead = [
         [
             { content: 'Name of School', rowSpan: 2, styles: { valign: 'middle' } },
             ...groups.map(g => ({ content: g.label, colSpan: 2, styles: { halign: 'center' } }))
         ],
-        groups.flatMap(() => ['No. of Cases', 'Intervention Provider'])
+        groups.flatMap(() => ['No. of Cases', DMMR_PROVIDER_HEADER])
     ];
     const excelRow1 = ['Name of School', ...groups.flatMap(g => [g.label, ''])];
-    const excelRow2 = ['', ...groups.flatMap(() => ['No. of Cases', 'Intervention Provider'])];
+    const excelRow2 = ['', ...groups.flatMap(() => ['No. of Cases', DMMR_PROVIDER_HEADER])];
 
     const body = [];
     const sectionHeaderRows = [];
 
-    DMMR_SECTIONS.forEach(section => {
-        sectionHeaderRows.push(body.length);
-        body.push([section.name, ...groups.flatMap(() => ['', ''])]);
-
-        section.issues.forEach(issue => {
-            const provider = dmmrProvider(issue.label);
-            const row = [issue.label];
-            groups.forEach(g => {
-                const count = dmmrIssueCount(countsByGroup[g.key] || {}, issue.categoryIds);
-                row.push(count, provider);
-            });
-            body.push(row);
+    const pushRow = (label, bucketKey) => {
+        const row = [label];
+        groups.forEach(g => {
+            const count = (countsByGroup[g.key] && countsByGroup[g.key][bucketKey]) || 0;
+            row.push(count, ''); // Intervention Provider starts blank — filled in by hand
         });
+        body.push(row);
+    };
+
+    sections.forEach(section => {
+        sectionHeaderRows.push(body.length);
+        body.push([`${section.sectionCode}. ${section.sectionName}`, ...groups.flatMap(() => ['', ''])]);
+
+        section.categories.forEach(cat => pushRow(cat.categoryName, cat.categoryId));
+        pushRow('Uncategorized', `section-${section.sectionId}-uncategorized`);
     });
 
     return { pdfHead, excelRow1, excelRow2, body, sectionHeaderRows, groups };
@@ -946,8 +997,8 @@ async function generateDmmrPdf(start, end, label) {
         return;
     }
 
-    const { districts, counts: dmmrCounts } = await fetchPersonalSocialConcerns('custom', start, end);
-    const { pdfHead, body, sectionHeaderRows } = buildDmmrTable(districts, dmmrCounts);
+    const { sections: dmmrSections, counts: dmmrCounts } = await fetchPersonalSocialConcerns('custom', start, end);
+    const { pdfHead, body, sectionHeaderRows } = buildDmmrTable(dmmrSections, dmmrCounts);
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -963,11 +1014,12 @@ async function generateDmmrPdf(start, end, label) {
         body,
         startY: 26,
         theme: 'grid',
-        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
-        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: DMMR_HEADER_COLOR, textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, halign: 'center', valign: 'middle' },
+        styles: { fontSize: 7, cellPadding: 3, valign: 'middle', overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 45, halign: 'left' } },
         didParseCell: (data) => {
             if (data.section === 'body' && sectionHeaderRows.includes(data.row.index)) {
-                data.cell.styles.fillColor = [226, 232, 240];
+                data.cell.styles.fillColor = DMMR_SECTION_COLOR;
                 data.cell.styles.fontStyle = 'bold';
             }
         }
@@ -977,14 +1029,121 @@ async function generateDmmrPdf(start, end, label) {
     showPdfPreview(doc, filename);
 }
 
+// Real cell colors/borders/wrap-text on a genuinely editable .xlsx need
+// actual style-writing, which the SheetJS build loaded on this page (the
+// free "Community Edition") can't do on write — CE dropped that years ago.
+// ExcelJS still does, so the downloaded file (built here) uses that
+// instead; the preview modal (showExcelPreview, shared with the other
+// exports on this page) stays SheetJS/aoa-based — it's an unstyled
+// approximation of the content, not a pixel match, same tradeoff already
+// accepted for the merged grade/district headers on this page.
+function buildDmmrWorkbook(sections, countsByGroup, label) {
+    const groups = DMMR_GROUPS;
+    const totalCols = 1 + groups.length * 2;
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('DMMR');
+
+    sheet.mergeCells(1, 1, 1, totalCols);
+    const titleCell = sheet.getCell(1, 1);
+    titleCell.value = `Division Monthly Monitoring Report of Learners' Personal-Social Concerns`;
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    sheet.mergeCells(2, 1, 2, totalCols);
+    const periodCell = sheet.getCell(2, 1);
+    periodCell.value = `Period: ${label}`;
+    periodCell.font = { size: 10, color: { argb: 'FF666666' } };
+    periodCell.alignment = { horizontal: 'center' };
+
+    const headRow1 = 4;
+    const headRow2 = 5;
+
+    sheet.mergeCells(headRow1, 1, headRow2, 1);
+    sheet.getCell(headRow1, 1).value = 'Name of School';
+
+    let col = 2;
+    groups.forEach(g => {
+        sheet.mergeCells(headRow1, col, headRow1, col + 1);
+        sheet.getCell(headRow1, col).value = g.label;
+        sheet.getCell(headRow2, col).value = 'No. of Cases';
+        sheet.getCell(headRow2, col + 1).value = DMMR_PROVIDER_HEADER;
+        col += 2;
+    });
+
+    for (let r = headRow1; r <= headRow2; r++) {
+        for (let c = 1; c <= totalCols; c++) {
+            const cell = sheet.getCell(r, c);
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: DMMR_HEADER_ARGB } };
+            cell.font = { bold: true };
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border = THIN_BORDER;
+        }
+    }
+
+    let rowIndex = headRow2 + 1;
+
+    const pushDataRow = (label, bucketKey) => {
+        sheet.getCell(rowIndex, 1).value = label;
+        let c = 2;
+        groups.forEach(g => {
+            const count = (countsByGroup[g.key] && countsByGroup[g.key][bucketKey]) || 0;
+            sheet.getCell(rowIndex, c).value = count;
+            sheet.getCell(rowIndex, c + 1).value = ''; // Intervention Provider starts blank — filled in by hand
+            c += 2;
+        });
+        for (let cc = 1; cc <= totalCols; cc++) {
+            const cell = sheet.getCell(rowIndex, cc);
+            cell.border = THIN_BORDER;
+            cell.alignment = { vertical: 'middle', wrapText: true, horizontal: cc === 1 ? 'left' : (cc % 2 === 0 ? 'center' : 'left') };
+        }
+        rowIndex++;
+    };
+
+    sections.forEach(section => {
+        sheet.mergeCells(rowIndex, 1, rowIndex, totalCols);
+        const sectionCell = sheet.getCell(rowIndex, 1);
+        sectionCell.value = `${section.sectionCode}. ${section.sectionName}`;
+        sectionCell.font = { bold: true };
+        sectionCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: DMMR_SECTION_ARGB } };
+        sectionCell.alignment = { vertical: 'middle', wrapText: true };
+        for (let c = 1; c <= totalCols; c++) sheet.getCell(rowIndex, c).border = THIN_BORDER;
+        rowIndex++;
+
+        section.categories.forEach(cat => pushDataRow(cat.categoryName, cat.categoryId));
+        pushDataRow('Uncategorized', `section-${section.sectionId}-uncategorized`);
+    });
+
+    sheet.getColumn(1).width = 32;
+    for (let c = 2; c <= totalCols; c += 2) {
+        sheet.getColumn(c).width = 11;
+        sheet.getColumn(c + 1).width = 30;
+    }
+
+    return workbook;
+}
+
+async function downloadExcelJSWorkbook(workbook, filename) {
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 async function generateDmmrExcel(start, end, label) {
-    if (typeof XLSX === 'undefined') {
+    if (typeof ExcelJS === 'undefined') {
         showAlert('error', 'Excel export library failed to load.');
         return;
     }
 
-    const { districts, counts: dmmrCounts } = await fetchPersonalSocialConcerns('custom', start, end);
-    const { excelRow1, excelRow2, body, groups } = buildDmmrTable(districts, dmmrCounts);
+    const { sections: dmmrSections, counts: dmmrCounts } = await fetchPersonalSocialConcerns('custom', start, end);
+    const { excelRow1, excelRow2, body } = buildDmmrTable(dmmrSections, dmmrCounts);
 
     const titleRows = [
         [`Division Monthly Monitoring Report of Learners' Personal-Social Concerns`],
@@ -995,23 +1154,9 @@ async function generateDmmrExcel(start, end, label) {
     const filename = `DMMR_${label.replace(/\s+/g, '-')}_${new Date().toISOString().split('T')[0]}.xlsx`;
     const sheets = [{ name: `Division Monthly Monitoring Report`, aoa: fullAoa }];
 
-    showExcelPreview(filename, sheets, () => {
-        const worksheet = XLSX.utils.aoa_to_sheet(fullAoa);
-
-        const headerRowIndex = titleRows.length;
-        const merges = [
-            { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } }
-        ];
-        groups.forEach((_, i) => {
-            const startCol = 1 + i * 2;
-            merges.push({ s: { r: headerRowIndex, c: startCol }, e: { r: headerRowIndex, c: startCol + 1 } });
-        });
-        worksheet['!merges'] = merges;
-        worksheet['!cols'] = [{ wch: 34 }, ...groups.flatMap(() => [{ wch: 10 }, { wch: 32 }])];
-
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'DMMR');
-        XLSX.writeFile(workbook, filename);
+    showExcelPreview(filename, sheets, async () => {
+        const workbook = buildDmmrWorkbook(dmmrSections, dmmrCounts, label);
+        await downloadExcelJSWorkbook(workbook, filename);
         showAlert('success', 'Excel report exported successfully!');
     });
 }

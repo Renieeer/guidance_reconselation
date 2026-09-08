@@ -207,6 +207,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- ExcelJS — the DMMR export's real cell colors/borders/wrap-text need
+         actual style-writing on .xlsx, which the SheetJS build above (CE)
+         dropped years ago; ExcelJS still writes full styling. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     <script src="district-report-cases.js?v=<?php echo filemtime(__DIR__ . '/district-report-cases.js'); ?>"></script>
 </body>
 </html>
