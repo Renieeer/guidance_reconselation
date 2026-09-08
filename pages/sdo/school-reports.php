@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="main-wrapper">
@@ -43,7 +44,10 @@
                             </select>
                         </div>
                         <button class="btn btn-primary" onclick="generateReport()">Generate</button>
-                        <button class="btn btn-secondary" onclick="exportReport()">Export PDF</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-danger" onclick="exportReport()"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+                            <button class="btn btn-success" onclick="exportReportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+                        </div>
                     </div>
                 </div>
 

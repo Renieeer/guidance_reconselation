@@ -1,12 +1,15 @@
-// SDO School Reports — both sections now run on real data from
-// api/case-report.php (previously the "Available Reports" generator was
-// pure UI decoration: a fake district1..district11 dropdown, and Generate/
-// Export just showed a toast without producing anything).
+// SDO School Reports — both sections run on real data from
+// api/case-report.php. Export PDF/Excel produce a combined report (School
+// Case & Gender Report + District Summary, mirroring both tables shown on
+// screen) with a preview-before-download flow, matching the UX already
+// established on the District Report Cases page.
 
-// This page's own period wording, mapped to the shared period param
-// api/case-report.php's case_date_condition() understands.
 const PERIOD_PARAM = { current: 'monthly', quarterly: 'quarterly', annual: 'annually' };
 const PERIOD_LABEL = { current: 'Current Month', quarterly: 'Quarterly', annual: 'Annual' };
+
+// Matches district-report-cases.js's table header blue, so exports from
+// both SDO report pages look like one consistent system.
+const REPORT_HEADER_COLOR = [29, 90, 168];
 
 let generatedReports = [];
 
@@ -90,73 +93,300 @@ function renderGeneratedReports() {
             <td>${escapeHtml(PERIOD_LABEL[r.periodKey])}</td>
             <td>${r.generatedAt.toLocaleString()}</td>
             <td><span class="badge badge-completed">Ready</span></td>
-            <td><button type="button" class="btn btn-primary btn-sm" onclick="downloadGeneratedReport(${r.id})"><i class="bi bi-download"></i> Download PDF</button></td>
+            <td style="white-space: nowrap;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="downloadGeneratedReport(${r.id}, 'pdf')"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="downloadGeneratedReport(${r.id}, 'excel')"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+            </td>
         </tr>
     `).join('');
 }
 
-function downloadGeneratedReport(id) {
+function downloadGeneratedReport(id, format) {
     const report = generatedReports.find(r => r.id === id);
     if (!report) return;
-    buildAndDownloadPdf(report.districtParam, report.periodKey);
+    if (format === 'excel') previewReportExcel(report.districtParam, report.periodKey);
+    else previewReportPdf(report.districtParam, report.periodKey);
 }
 
-// Top-level "Export PDF" — builds and downloads a PDF for whatever's
+// Top-level "Export PDF/Excel" — builds and previews a report for whatever's
 // currently selected, without needing a prior "Generate" click.
 function exportReport() {
-    buildAndDownloadPdf(selectedDistrict(), selectedPeriodKey());
+    previewReportPdf(selectedDistrict(), selectedPeriodKey());
 }
 
-async function buildAndDownloadPdf(district, periodKey) {
+function exportReportExcel() {
+    previewReportExcel(selectedDistrict(), selectedPeriodKey());
+}
+
+// Fetches both real data sources this report combines — the School Case &
+// Gender breakdown (school_breakdown) and the District Summary rollup
+// (district_summary) — scoped to whatever district/period was asked for,
+// independent of whatever's currently loaded on screen.
+async function fetchReportData(district, periodKey) {
+    const breakdownParams = new URLSearchParams({ action: 'school_breakdown', district: district || 'all', period: PERIOD_PARAM[periodKey] });
+    const summaryParams = new URLSearchParams({ action: 'district_summary', period: PERIOD_PARAM[periodKey] });
+
+    const [breakdownRes, summaryRes] = await Promise.all([
+        fetch(`../../api/case-report.php?${breakdownParams.toString()}`).then(r => r.json()),
+        fetch(`../../api/case-report.php?${summaryParams.toString()}`).then(r => r.json())
+    ]);
+
+    if (!breakdownRes.success) throw new Error(breakdownRes.message || 'Failed to load case & gender data');
+    if (!summaryRes.success) throw new Error(summaryRes.message || 'Failed to load district summary data');
+
+    let districts = summaryRes.districts || [];
+    if (district) {
+        districts = districts.filter(d => d.district === district);
+    }
+
+    return { schools: breakdownRes.schools || [], districts };
+}
+
+/* ---- Export preview modals — same "view before you download" flow as
+   district-report-cases.js's exports. ---- */
+let pdfPreviewUrl = null;
+
+function ensurePdfModal() {
+    if (document.getElementById('pdfPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="pdfPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:980px; width:95%; height:88vh;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-pdf"></i> PDF Preview</h2>
+                <button type="button" class="modal-close" id="pdfPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:0; flex:1; display:flex;">
+                <iframe id="pdfPreviewFrame" title="PDF preview" style="width:100%; height:100%; border:0;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="pdfPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-secondary" id="pdfPrintBtn"><i class="bi bi-printer"></i> Print</button>
+                <button type="button" class="btn btn-primary" id="pdfDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('pdfPreviewCloseX').addEventListener('click', closePdfPreview);
+    document.getElementById('pdfPreviewCloseBtn').addEventListener('click', closePdfPreview);
+}
+
+function closePdfPreview() {
+    closeModal('pdfPreviewModal');
+    document.getElementById('pdfPreviewFrame').src = 'about:blank';
+    if (pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); pdfPreviewUrl = null; }
+}
+
+function showPdfPreview(doc, filename) {
+    ensurePdfModal();
+    if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    pdfPreviewUrl = doc.output('bloburl');
+    document.getElementById('pdfPreviewFrame').src = pdfPreviewUrl;
+    document.getElementById('pdfDownloadBtn').onclick = () => doc.save(filename);
+    document.getElementById('pdfPrintBtn').onclick = () => {
+        const frame = document.getElementById('pdfPreviewFrame');
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    };
+    openModal('pdfPreviewModal');
+}
+
+function ensureExcelModal() {
+    if (document.getElementById('excelPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="excelPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:900px; width:95%; height:82vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-excel"></i> <span id="excelPreviewTitle">Excel Preview</span></h2>
+                <button type="button" class="modal-close" id="excelPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="flex:1; overflow:auto;">
+                <div class="table-container"><table><tbody id="excelPreviewTbody"></tbody></table></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="excelPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-success" id="excelDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('excelPreviewCloseX').addEventListener('click', () => closeModal('excelPreviewModal'));
+    document.getElementById('excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
+}
+
+// Each sheet's aoa (array-of-arrays) is the exact shape written to its
+// worksheet — row 0 is that sheet's title, a blank row (`[]`) marks the row
+// right after it as a column-header row (rendered as <th>). Two sheets
+// (Case & Gender Report, District Summary) are previewed stacked, each
+// under its own heading, mirroring the actual workbook tabs.
+function showExcelPreview(filename, sheets, onDownload) {
+    ensureExcelModal();
+    document.getElementById('excelPreviewTitle').textContent = sheets.length === 1
+        ? String((sheets[0].aoa[0] && sheets[0].aoa[0][0]) || 'Excel Preview')
+        : 'Excel Preview';
+
+    document.getElementById('excelPreviewTbody').innerHTML = sheets.map((sheet, sheetIndex) => {
+        const title = String((sheet.aoa[0] && sheet.aoa[0][0]) || sheet.name);
+        const heading = `<tr><td colspan="20" style="border:none; padding:${sheetIndex === 0 ? '0' : '24px'} 0 8px; font-weight:700; font-size:15px;">${escapeHtml(title)}</td></tr>`;
+
+        let afterBlank = false;
+        const body = sheet.aoa.slice(1).map(row => {
+            if (row.length === 0) { afterBlank = true; return '<tr><td style="height:10px; border:none; padding:0;"></td></tr>'; }
+            const cellTag = afterBlank ? 'th' : 'td';
+            afterBlank = false;
+            return `<tr>${row.map(cell => `<${cellTag}>${escapeHtml(cell == null ? '' : cell)}</${cellTag}>`).join('')}</tr>`;
+        }).join('');
+
+        return heading + body;
+    }).join('');
+
+    document.getElementById('excelDownloadBtn').onclick = onDownload;
+    openModal('excelPreviewModal');
+}
+
+/* ---- PDF build — two sections in one document: the school-level case &
+   gender breakdown, then the district-level rollup, matching both tables
+   already shown on this page instead of exporting only the first half. ---- */
+function buildReportPdf(schools, districts, districtTitle, periodLabel) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const totals = schools.reduce((acc, s) => {
+        acc.total += s.total; acc.male += s.male; acc.female += s.female;
+        return acc;
+    }, { total: 0, male: 0, female: 0 });
+
+    doc.setFontSize(14);
+    doc.setTextColor(20);
+    doc.text(`School Reports - ${districtTitle}`, 14, 15);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+
+    doc.setFontSize(11);
+    doc.setTextColor(30);
+    doc.text('School Case & Gender Report', 14, 30);
+
+    doc.autoTable({
+        head: [['School', 'District', 'Total Cases', 'Male', 'Female']],
+        body: schools.length ? [
+            ...schools.map(s => [s.school, s.district, s.total, s.male, s.female]),
+            [
+                { content: 'Overall Total', styles: { fontStyle: 'bold' } },
+                '',
+                { content: String(totals.total), styles: { fontStyle: 'bold' } },
+                { content: String(totals.male), styles: { fontStyle: 'bold' } },
+                { content: String(totals.female), styles: { fontStyle: 'bold' } }
+            ]
+        ] : [[{ content: 'No schools found.', colSpan: 5, styles: { halign: 'center', textColor: 130 } }]],
+        startY: 34,
+        theme: 'grid',
+        headStyles: { fillColor: REPORT_HEADER_COLOR, textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.row.index === schools.length && schools.length > 0) {
+                data.cell.styles.fillColor = [241, 245, 249];
+            }
+        }
+    });
+
+    const summaryStartY = doc.lastAutoTable.finalY + 12;
+    doc.setFontSize(11);
+    doc.setTextColor(30);
+    doc.text('District Summary', 14, summaryStartY);
+
+    doc.autoTable({
+        head: [['District', 'Schools', 'Students Referred', 'Cases Resolved', 'Success Rate', 'Last Updated']],
+        body: districts.length ? districts.map(d => {
+            const successRate = d.studentsReferred > 0 ? Math.round((d.resolvedCount / d.studentsReferred) * 100) : 0;
+            const lastDate = d.lastActivity ? new Date(d.lastActivity).toLocaleDateString() : 'No activity yet';
+            return [d.district, d.schoolCount, d.studentsReferred, d.resolvedCount, `${successRate}%`, lastDate];
+        }) : [[{ content: 'No districts found.', colSpan: 6, styles: { halign: 'center', textColor: 130 } }]],
+        startY: summaryStartY + 4,
+        theme: 'grid',
+        headStyles: { fillColor: REPORT_HEADER_COLOR, textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 }
+    });
+
+    return doc;
+}
+
+async function previewReportPdf(district, periodKey) {
     if (typeof window.jspdf === 'undefined') {
         showAlert('PDF export library failed to load.', 'error');
         return;
     }
 
     try {
-        const params = new URLSearchParams({ action: 'school_breakdown', district: district || 'all', period: PERIOD_PARAM[periodKey] });
-        const res = await fetch(`../../api/case-report.php?${params.toString()}`).then(r => r.json());
-        if (!res.success) {
-            throw new Error(res.message || 'Failed to load report data');
-        }
-
-        const schools = res.schools || [];
+        const { schools, districts } = await fetchReportData(district, periodKey);
         const districtTitle = district || 'All Districts';
-        const totals = schools.reduce((acc, s) => {
-            acc.total += s.total; acc.male += s.male; acc.female += s.female;
-            return acc;
-        }, { total: 0, male: 0, female: 0 });
+        const periodLabel = PERIOD_LABEL[periodKey];
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(14);
-        doc.text(`School Report - ${districtTitle}`, 14, 15);
-        doc.setFontSize(9);
-        doc.setTextColor(120);
-        doc.text(`Period: ${PERIOD_LABEL[periodKey]}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
-
-        doc.autoTable({
-            head: [['School', 'Total Cases', 'Male', 'Female']],
-            body: [
-                ...schools.map(s => [s.school, s.total, s.male, s.female]),
-                [
-                    { content: 'Overall Total', styles: { fontStyle: 'bold' } },
-                    { content: String(totals.total), styles: { fontStyle: 'bold' } },
-                    { content: String(totals.male), styles: { fontStyle: 'bold' } },
-                    { content: String(totals.female), styles: { fontStyle: 'bold' } }
-                ]
-            ],
-            startY: 26,
-            theme: 'grid',
-            headStyles: { fillColor: [18, 58, 107], textColor: 255, fontStyle: 'bold' },
-            styles: { fontSize: 9, cellPadding: 3 }
-        });
-
+        const doc = buildReportPdf(schools, districts, districtTitle, periodLabel);
         const filename = `school_report_${districtTitle.replace(/\s+/g, '-')}_${periodKey}_${new Date().toISOString().split('T')[0]}.pdf`;
-        doc.save(filename);
-        showAlert('Report exported as PDF successfully!', 'success');
+        showPdfPreview(doc, filename);
     } catch (error) {
         console.error('Error exporting report:', error);
+        showAlert('Could not export report: ' + error.message, 'error');
+    }
+}
+
+/* ---- Excel build — two sheets (workbook tabs) matching the PDF's two
+   sections, instead of a single flat table. ---- */
+function buildReportExcelSheets(schools, districts, districtTitle, periodLabel) {
+    const totals = schools.reduce((acc, s) => {
+        acc.total += s.total; acc.male += s.male; acc.female += s.female;
+        return acc;
+    }, { total: 0, male: 0, female: 0 });
+
+    const caseGenderAoa = [
+        [`School Case & Gender Report - ${districtTitle}`],
+        [`Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`],
+        [],
+        ['School', 'District', 'Total Cases', 'Male', 'Female'],
+        ...schools.map(s => [s.school, s.district, s.total, s.male, s.female]),
+        ['Overall Total', '', totals.total, totals.male, totals.female]
+    ];
+
+    const summaryAoa = [
+        [`District Summary - ${districtTitle}`],
+        [`Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`],
+        [],
+        ['District', 'Schools', 'Students Referred', 'Cases Resolved', 'Success Rate', 'Last Updated'],
+        ...districts.map(d => {
+            const successRate = d.studentsReferred > 0 ? Math.round((d.resolvedCount / d.studentsReferred) * 100) : 0;
+            const lastDate = d.lastActivity ? new Date(d.lastActivity).toLocaleDateString() : 'No activity yet';
+            return [d.district, d.schoolCount, d.studentsReferred, d.resolvedCount, `${successRate}%`, lastDate];
+        })
+    ];
+
+    return [
+        { name: 'Case & Gender Report', aoa: caseGenderAoa, colWidths: [{ wch: 32 }, { wch: 24 }, { wch: 12 }, { wch: 10 }, { wch: 10 }] },
+        { name: 'District Summary', aoa: summaryAoa, colWidths: [{ wch: 24 }, { wch: 10 }, { wch: 17 }, { wch: 15 }, { wch: 13 }, { wch: 16 }] }
+    ];
+}
+
+async function previewReportExcel(district, periodKey) {
+    if (typeof XLSX === 'undefined') {
+        showAlert('Excel export library failed to load.', 'error');
+        return;
+    }
+
+    try {
+        const { schools, districts } = await fetchReportData(district, periodKey);
+        const districtTitle = district || 'All Districts';
+        const periodLabel = PERIOD_LABEL[periodKey];
+
+        const sheets = buildReportExcelSheets(schools, districts, districtTitle, periodLabel);
+        const filename = `school_report_${districtTitle.replace(/\s+/g, '-')}_${periodKey}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+        showExcelPreview(filename, sheets, () => {
+            const workbook = XLSX.utils.book_new();
+            sheets.forEach(sheet => {
+                const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
+                worksheet['!cols'] = sheet.colWidths;
+                XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+            });
+            XLSX.writeFile(workbook, filename);
+            showAlert('Excel report exported successfully!', 'success');
+        });
+    } catch (error) {
+        console.error('Error exporting Excel report:', error);
         showAlert('Could not export report: ' + error.message, 'error');
     }
 }

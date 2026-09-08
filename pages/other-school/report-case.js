@@ -15,6 +15,24 @@ let sections = [];
 let counts = {};
 let displayRows = [];
 
+// This same report-case.js is shared verbatim by the coordinator, counselor,
+// and combined ("other-school") login pages — role-specific text (report
+// title, filename) reads the logged-in account's own role instead of being
+// hardcoded, so a counselor's export doesn't say "Coordinator".
+function reportRoleLabel() {
+    const role = (getCurrentUser() && getCurrentUser().role) || '';
+    if (role === 'counselor') return 'Counselor';
+    if (role === 'counselor-and-coordinator') return 'Combined Coordinator & Counselor';
+    return 'Coordinator';
+}
+
+function reportRoleSlug() {
+    const role = (getCurrentUser() && getCurrentUser().role) || '';
+    if (role === 'counselor') return 'counselor';
+    if (role === 'counselor-and-coordinator') return 'combined';
+    return 'coordinator';
+}
+
 // Grades this account is allowed to see (e.g. a coordinator scoped to
 // Grades 7-10, or all six if unassigned/no restriction).
 let visibleGrades = ALL_REPORT_GRADES;
@@ -515,7 +533,7 @@ function buildExportTable() {
 }
 
 function exportFileBaseName() {
-    return `coordinator-cases-${(currentSchool || 'school').replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`;
+    return `${reportRoleSlug()}-cases-${(currentSchool || 'school').replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`;
 }
 
 /* ---- Export preview modals — same "view before you download" flow as
@@ -615,7 +633,7 @@ function exportToExcel() {
         const { body } = buildExportTable();
         const { excelRow1, excelRow2 } = buildGradeHeaderRows();
         const titleRows = [
-            [`Coordinator Report Cases - ${currentSchool || 'School'}`],
+            [`${reportRoleLabel()} Report Cases - ${currentSchool || 'School'}`],
             [`Generated: ${new Date().toLocaleDateString()}`],
             []
         ];
@@ -654,7 +672,7 @@ function exportToPDF() {
     const { pdfHead } = buildGradeHeaderRows();
 
     doc.setFontSize(14);
-    doc.text(`Coordinator Report Cases - ${currentSchool || 'School'}`, 14, 15);
+    doc.text(`${reportRoleLabel()} Report Cases - ${currentSchool || 'School'}`, 14, 15);
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 21);
