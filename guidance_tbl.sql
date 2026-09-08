@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Sep 08, 2026 at 05:52 AM
+-- Generation Time: Sep 08, 2026 at 11:03 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -44436,6 +44436,7 @@ CREATE TABLE `schedule_events` (
 CREATE TABLE `schools` (
   `school_code` varchar(120) NOT NULL,
   `school_name` varchar(255) NOT NULL,
+  `school_level` enum('East','West','South','Secondary') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'Secondary',
   `assignment_type` enum('coordinator','counselor','both') NOT NULL DEFAULT 'both',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -44447,19 +44448,18 @@ CREATE TABLE `schools` (
 -- Dumping data for table `schools`
 --
 
-INSERT INTO `schools` (`school_code`, `school_name`, `assignment_type`, `is_active`, `created_at`, `updated_at`, `district`) VALUES
-('bucayao', 'Bucayao National High School', 'both', 1, '2026-04-29 05:40:02', '2026-09-06 06:21:40', 'Bucayao National High School'),
-('buvayao', 'Buvayao National High School', 'both', 0, '2026-09-08 04:24:19', '2026-09-08 04:45:15', 'Buvayao National High School'),
-('canubing', 'Canubing National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Canubing National High School'),
-('ceriaco-abes', 'Ceriaco A. Abes Memorial National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Ceriaco A. Abes Memorial National High School'),
-('community-vocational', 'Community Vocational High Schools', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Community Vocational High Schools'),
-('managpi', 'Managpi National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Managpi National High School'),
-('nag-iba', 'Nag-iba National High School', 'coordinator', 1, '2026-04-29 05:40:02', '2026-09-01 11:48:27', 'Nag-iba National High School'),
-('oriental-mindoro', 'Oriental Mindoro National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Oriental Mindoro National High School'),
-('parang', 'Parang National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Parang National High School'),
-('pedro-panaligan', 'Pedro V Panaligan National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Pedro V Panaligan National High School'),
-('personas', 'Personas National High School', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Personas National High School'),
-('sample-school', 'sample school', 'both', 0, '2026-07-09 16:16:02', '2026-07-29 23:46:11', 'sample school');
+INSERT INTO `schools` (`school_code`, `school_name`, `school_level`, `assignment_type`, `is_active`, `created_at`, `updated_at`, `district`) VALUES
+('bucayao', 'Bucayao National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-09-06 06:21:40', 'Bucayao National High School'),
+('buvayao', 'Buvayao National High School', 'Secondary', 'both', 0, '2026-09-08 04:24:19', '2026-09-08 04:45:15', 'Buvayao National High School'),
+('canubing', 'Canubing National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Canubing National High School'),
+('ceriaco-abes', 'Ceriaco A. Abes Memorial National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Ceriaco A. Abes Memorial National High School'),
+('community-vocational', 'Community Vocational High Schools', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Community Vocational High Schools'),
+('managpi', 'Managpi National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Managpi National High School'),
+('nag-iba', 'Nag-iba National High School', 'Secondary', 'coordinator', 1, '2026-04-29 05:40:02', '2026-09-01 11:48:27', 'Nag-iba National High School'),
+('oriental-mindoro', 'Oriental Mindoro National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Oriental Mindoro National High School'),
+('parang', 'Parang National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Parang National High School'),
+('pedro-panaligan', 'Pedro V Panaligan National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Pedro V Panaligan National High School'),
+('personas', 'Personas National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Personas National High School');
 
 -- --------------------------------------------------------
 
