@@ -37,6 +37,7 @@ const STATUS_CHART_COLOR = { approved: CHART_COLORS.green, closed: CHART_COLORS.
 const BADGE_STATUS = { approved: 'completed', closed: 'completed', completed: 'completed', pending: 'pending', rejected: 'rejected', cancelled: 'rejected' };
 
 let state = { report: 'counseling', student: null };
+let lastAnimatedReport = null;
 let charts = [];
 let appointments = [];
 let referrals = [];
@@ -47,6 +48,18 @@ function esc(v) { const d = document.createElement('div'); d.textContent = v == 
 function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 function $(sel, ctx = document) { return ctx.querySelector(sel); }
 function countBy(rows, fn) { return rows.reduce((m, r) => { const k = fn(r) || 'Unspecified'; m[k] = (m[k] || 0) + 1; return m; }, {}); }
+// referral_reason can hold several "; "-separated reasons (multi-select on the
+// teacher's referral form) — tally each one on its own so the distribution
+// report reflects real counts per reason instead of one bucket per combination.
+function countByReason(rows, fn) {
+    return rows.reduce((m, r) => {
+        const raw = fn(r) || '';
+        const parts = String(raw).split(';').map(s => s.trim()).filter(Boolean);
+        if (parts.length === 0) { m['Unspecified'] = (m['Unspecified'] || 0) + 1; return m; }
+        parts.forEach(part => { m[part] = (m[part] || 0) + 1; });
+        return m;
+    }, {});
+}
 function meta(key) { return REPORTS.find(r => r.key === key); }
 function gradeLabel(rawGrade) { const n = normalizeGradeNumber(rawGrade); return n ? `Grade ${n}` : (rawGrade || 'N/A'); }
 function badge(status) { return createBadge(BADGE_STATUS[String(status || '').toLowerCase()] || 'pending'); }
@@ -143,7 +156,7 @@ function panelHeader(key, subtitle, onExportPdf, onExportExcel) {
     const m = meta(key);
     const h = el(`<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:22px;">
         <div>
-            <h2 class="card-title" style="margin-bottom:6px;">${esc(m.name)} <span class="text-muted" style="font-weight:400; font-size:13px;">Report ${m.code}</span></h2>
+            <h2 class="card-title" style="margin-bottom:6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">${esc(m.name)} <span class="pill pill-soft" style="font-weight:700; font-size:11px;">Report ${m.code}</span></h2>
             <p class="text-muted" style="margin:0; max-width:64ch;">${esc(subtitle)}</p>
         </div>
         <div style="display:flex; gap:10px;">
@@ -155,18 +168,23 @@ function panelHeader(key, subtitle, onExportPdf, onExportExcel) {
     $('#btnExportExcel', h).addEventListener('click', onExportExcel);
     return h;
 }
+// c.color picks a stat-icon-* variant (info/amber/green/red/purple/teal,
+// see css/style.css) so each metric in a row reads as its own thing at a
+// glance instead of four identical blue circles.
 const statCards = cards => `<div class="dashboard-grid" style="margin-bottom:24px;">${cards.map(c => `
-    <div class="stat-card"><div class="stat-icon"><i class="bi ${c.icon}"></i></div><div><h3>${c.num}</h3><p>${esc(c.lbl)}</p></div></div>`).join('')}</div>`;
+    <div class="stat-card"><div class="stat-icon${c.color ? ' stat-icon-' + c.color : ''}"><i class="bi ${c.icon}"></i></div><div><h3>${c.num}</h3><p>${esc(c.lbl)}</p></div></div>`).join('')}</div>`;
 const chartTile = (id, title, tall) => `<div class="table-container" style="padding:20px;">
     <h4 class="text-primary" style="margin-top:0;">${esc(title)}</h4>
     <div style="position:relative; height:${tall ? 320 : 260}px;"><canvas id="${id}"></canvas></div></div>`;
 // Same card/title framing as chartTile, but for when there's no data to
 // plot yet — an empty Chart.js canvas draws nothing at all (no axes, no
 // "no data" message), which just looks broken rather than "zero".
-const chartTileEmpty = (title, text, tall) => `<div class="table-container" style="padding:20px;">
+const chartTileEmpty = (title, text, tall, icon) => `<div class="table-container" style="padding:20px;">
     <h4 class="text-primary" style="margin-top:0;">${esc(title)}</h4>
-    <div style="height:${tall ? 320 : 260}px; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--text-light);">${esc(text)}</div></div>`;
-const emptyNote = text => `<p class="text-center text-muted" style="background:white; border:1px dashed var(--border-color); border-radius:8px; padding:40px 20px;">${esc(text)}</p>`;
+    <div style="height:${tall ? 320 : 260}px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:14px; color:var(--text-light);">
+        <div class="empty-state-icon"><i class="bi ${icon || 'bi-bar-chart'}"></i></div>${esc(text)}</div></div>`;
+const emptyNote = (text, icon) => `<div class="text-center text-muted" style="background:white; border:1px dashed var(--border-color); border-radius:12px; padding:48px 20px; display:flex; flex-direction:column; align-items:center; gap:14px;">
+    <div class="empty-state-icon${icon === 'bi-arrow-repeat' ? ' spin' : ''}"><i class="bi ${icon || 'bi-inbox'}"></i></div><span>${esc(text)}</span></div>`;
 
 /* ---- PDF preview: build with jsPDF + autoTable, show in-page before print/download ---- */
 let pdfPreviewUrl = null;
@@ -286,10 +304,10 @@ function renderAppointments(key) {
 
     const st = countBy(rows, r => r.status);
     frag.append(el(statCards([
-        { num: rows.length, lbl: 'Total', icon: 'bi-calendar3' },
-        { num: st['pending'] || 0, lbl: 'Pending', icon: 'bi-hourglass-split' },
-        { num: st['approved'] || 0, lbl: 'Approved', icon: 'bi-check-circle' },
-        { num: st['rejected'] || 0, lbl: 'Rejected', icon: 'bi-x-circle' },
+        { num: rows.length, lbl: 'Total', icon: 'bi-calendar3', color: 'info' },
+        { num: st['pending'] || 0, lbl: 'Pending', icon: 'bi-hourglass-split', color: 'amber' },
+        { num: st['approved'] || 0, lbl: 'Approved', icon: 'bi-check-circle', color: 'green' },
+        { num: st['rejected'] || 0, lbl: 'Rejected', icon: 'bi-x-circle', color: 'red' },
     ])));
 
     frag.append(el(`<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">
@@ -297,7 +315,7 @@ function renderAppointments(key) {
     frag.append(el(`<div style="margin-bottom:28px;">${chartTile('chTrend', 'Daily Trend')}</div>`));
 
     if (rows.length === 0) {
-        frag.append(el(emptyNote(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`)));
+        frag.append(el(emptyNote(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`, 'bi-calendar2-x')));
     } else {
         const tr = rows.map(r => `<tr><td>${esc(r.preferred_date)}</td><td>${esc(r.preferred_time)}</td><td>${esc(r.student_name)}</td><td>${esc(r.reason)}</td><td>${badge(r.status)}</td></tr>`).join('');
         frag.append(el(`<div class="mb-4"><h3 class="text-primary">Appointment Log</h3><div class="table-container"><table><thead><tr><th>Date</th><th>Time</th><th>Student</th><th>Reason</th><th>Status</th></tr></thead><tbody>${tr}</tbody></table></div></div>`));
@@ -320,7 +338,7 @@ function renderAppointments(key) {
 /* ---- 7.3 referral distribution ---- */
 function renderReferrals() {
     const frag = document.createDocumentFragment();
-    const agg = countBy(referrals, r => r.referral_reason);
+    const agg = countByReason(referrals, r => r.referral_reason);
     const reasons = Object.entries(agg).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
     const total = referrals.length;
 
@@ -366,17 +384,17 @@ function renderReferrals() {
         () => previewExcel('gms_referral_distribution.xlsx', referralsExportTitle, referralsExportHeader, referralsExportBody())));
 
     frag.append(el(statCards([
-        { num: total, lbl: 'Total referrals', icon: 'bi-clipboard-data' },
-        { num: reasons.length, lbl: 'Distinct reasons', icon: 'bi-tags' },
-        { num: reasons[0] ? reasons[0].count : 0, lbl: 'Top reason count', icon: 'bi-graph-up-arrow' },
-        { num: new Set(referrals.map(r => r.student_name)).size, lbl: 'Students referred', icon: 'bi-people' },
+        { num: total, lbl: 'Total referrals', icon: 'bi-clipboard-data', color: 'info' },
+        { num: reasons.length, lbl: 'Distinct reasons', icon: 'bi-tags', color: 'purple' },
+        { num: reasons[0] ? reasons[0].count : 0, lbl: 'Top reason count', icon: 'bi-graph-up-arrow', color: 'teal' },
+        { num: new Set(referrals.map(r => r.student_name)).size, lbl: 'Students referred', icon: 'bi-people', color: 'green' },
     ])));
 
     frag.append(el(`<div style="margin-bottom:20px;">${chartTile('chReasons', 'Referrals by Reason (All)', true)}</div>`));
     frag.append(el(`<div style="max-width:480px; margin-bottom:28px;">${chartTile('chUrgency', 'By Urgency')}</div>`));
 
     if (total === 0) {
-        frag.append(el(emptyNote('No referrals recorded for your school yet.')));
+        frag.append(el(emptyNote('No referrals recorded for your school yet.', 'bi-clipboard-x')));
     } else {
         const tr = reasons.map(r => `<tr><td>${esc(r.reason)}</td><td style="text-align:right;">${r.count}</td><td style="text-align:right;">${((r.count / total) * 100).toFixed(1)}%</td></tr>`).join('');
         frag.append(el(`<div><h3 class="text-primary">Reason Breakdown</h3><div class="table-container"><table><thead><tr><th>Reason</th><th style="text-align:right;">Count</th><th style="text-align:right;">% of total</th></tr></thead><tbody>${tr}</tbody></table></div></div>`));
@@ -397,18 +415,26 @@ function renderChild() {
     frag.append(panelHeader('child', 'The complete guidance record for one student — profile, case history, and follow-ups.', exportChildPdf, exportChildSummaryExcel));
 
     if (studentsList.length === 0) {
-        frag.append(el(emptyNote('No students on file for your school yet.')));
+        frag.append(el(emptyNote('No students on file for your school yet.', 'bi-people')));
         return frag;
     }
 
     const currentPick = studentsList.find(s => String(s.id) === String(state.student));
     const currentPickName = currentPick ? `${currentPick.first_name || ''} ${currentPick.last_name || ''}`.trim() : '';
 
-    const picker = el(`<div class="form-group" style="max-width:420px;">
-        <label for="rdStudentSearch">Select a student</label>
-        <input type="text" id="rdStudentSearch" placeholder="Search by student name…" autocomplete="off"
-            style="padding:10px 12px; border:1px solid var(--border-color); border-radius:8px; width:100%; font-size:14px;"
-            value="${esc(currentPickName)}">
+    const picker = el(`<div class="table-container" style="max-width:460px; padding:20px 22px; margin-bottom:24px; overflow:visible; position:relative; z-index:5;">
+        <label for="rdStudentSearch" style="display:block; font-weight:600; font-size:13.5px; margin-bottom:8px;">Select a student</label>
+        <div style="position:relative; display:flex; align-items:center;">
+            <i class="bi bi-search" style="position:absolute; left:14px; color:var(--text-light); font-size:14px; pointer-events:none;"></i>
+            <input type="text" id="rdStudentSearch" placeholder="Search by student name…" autocomplete="off"
+                style="width:100%; padding:11px 62px 11px 38px; background:var(--light-gray); border:1px solid transparent; border-radius:10px; font-size:14px;"
+                value="${esc(currentPickName)}">
+            <button type="button" id="rdSearchClear" title="Clear selection"
+                style="position:absolute; right:34px; display:${currentPickName ? 'inline-flex' : 'none'}; align-items:center; border:none; background:none; color:var(--text-light); cursor:pointer; padding:4px;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <i class="bi bi-chevron-down" style="position:absolute; right:14px; color:var(--text-light); font-size:12px; pointer-events:none;"></i>
+        </div>
         <div class="person-search-status" id="rdSearchStatus"></div>
         <div class="person-suggestion-box">
             <div class="person-suggestion-list" id="rdSuggestionList"></div>
@@ -418,6 +444,7 @@ function renderChild() {
     const searchInput = $('#rdStudentSearch', picker);
     const suggestionList = $('#rdSuggestionList', picker);
     const statusEl = $('#rdSearchStatus', picker);
+    const clearBtn = $('#rdSearchClear', picker);
 
     function renderSuggestions(term) {
         const q = term.trim().toLowerCase();
@@ -437,7 +464,10 @@ function renderChild() {
         </div>`).join('');
     }
 
-    searchInput.addEventListener('input', () => renderSuggestions(searchInput.value));
+    searchInput.addEventListener('input', () => {
+        renderSuggestions(searchInput.value);
+        clearBtn.style.display = searchInput.value.trim() ? 'inline-flex' : 'none';
+    });
     searchInput.addEventListener('focus', () => { if (searchInput.value.trim()) renderSuggestions(searchInput.value); });
     // mousedown (not click) so it fires before the input's blur clears the list.
     suggestionList.addEventListener('mousedown', e => {
@@ -450,17 +480,23 @@ function renderChild() {
     searchInput.addEventListener('blur', () => {
         setTimeout(() => { suggestionList.innerHTML = ''; statusEl.textContent = ''; }, 200);
     });
+    // mousedown (not click) so it fires before the input's blur.
+    clearBtn.addEventListener('mousedown', e => {
+        e.preventDefault();
+        state.student = null;
+        render();
+    });
 
     frag.append(picker);
 
     if (!state.student) {
-        frag.append(el(emptyNote('Select a student above to view their full record.')));
+        frag.append(el(emptyNote('Select a student above to view their full record.', 'bi-person-lines-fill')));
         return frag;
     }
 
     const cached = studentDetailCache[state.student];
     if (!cached) {
-        frag.append(el(emptyNote('Loading student record…')));
+        frag.append(el(emptyNote('Loading student record…', 'bi-arrow-repeat')));
         loadStudentDetail(state.student).then(() => render());
         return frag;
     }
@@ -471,24 +507,29 @@ function renderChild() {
     const followUps = cached.data.follow_ups || [];
 
     const initials = (s.name || '').split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'S';
+    const isActive = s.is_active !== 0;
+    const statusPill = `<span class="pill" style="margin-left:auto; background:${isActive ? 'var(--ok-bg)' : 'var(--danger-bg)'}; color:${isActive ? 'var(--ok)' : 'var(--danger)'};">
+        <span style="margin-right:6px;">&#9679;</span>${isActive ? 'Active learner' : 'Inactive'}
+    </span>`;
     frag.append(el(`<div class="table-container" style="margin-top:16px; margin-bottom:24px; padding:22px 24px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
         <div class="stat-icon" style="width:56px; height:56px; font-size:17px; font-weight:700;">${esc(initials)}</div>
         <div>
             <h3 style="margin:0 0 4px; color:var(--primary-color); font-size:19px;">${esc(s.name)}</h3>
             <p class="text-muted" style="margin:0; font-size:13.5px;">LRN: ${esc(s.lrn || 'N/A')} &middot; ${esc(gradeLabel(s.grade))} &middot; ${esc(s.section || 'N/A')}</p>
         </div>
+        ${statusPill}
     </div>`));
 
     frag.append(el(statCards([
-        { num: cases.length, lbl: 'Counseling Sessions', icon: 'bi-chat-square-text' },
-        { num: studentReferrals.length, lbl: 'Referrals', icon: 'bi-clipboard-data' },
-        { num: followUps.length, lbl: 'Follow-ups', icon: 'bi-calendar-check' },
+        { num: cases.length, lbl: 'Counseling Sessions', icon: 'bi-chat-square-text', color: 'info' },
+        { num: studentReferrals.length, lbl: 'Referrals', icon: 'bi-clipboard-data', color: 'amber' },
+        { num: followUps.length, lbl: 'Follow-ups', icon: 'bi-calendar-check', color: 'green' },
     ])));
 
     const hasCases = cases.length > 0;
     frag.append(el(`<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">${hasCases
         ? `${chartTile('chCaseStatus', 'Case Status')}${chartTile('chCaseCategory', 'Cases by Category')}`
-        : `${chartTileEmpty('Case Status', 'No counseling case data yet.')}${chartTileEmpty('Cases by Category', 'No counseling case data yet.')}`
+        : `${chartTileEmpty('Case Status', 'No counseling case data yet.', false, 'bi-pie-chart')}${chartTileEmpty('Cases by Category', 'No counseling case data yet.', false, 'bi-bar-chart')}`
     }</div>`));
 
     const followUpsByCase = {};
@@ -624,20 +665,30 @@ function render() {
     const tabs = $('#reportTabs');
     tabs.innerHTML = '';
     REPORTS.forEach(r => {
-        const btn = el(`<button type="button" class="tab-button ${r.key === state.report ? 'active' : ''}" title="${esc(r.desc)}">${esc(r.code)} · ${esc(r.name)}</button>`);
+        const btn = el(`<button type="button" class="tab-button ${r.key === state.report ? 'active' : ''}" title="${esc(r.desc)}">${esc(r.name)}</button>`);
         btn.addEventListener('click', () => { state.report = r.key; render(); });
         tabs.append(btn);
     });
     const panel = $('#reportPanel');
     panel.innerHTML = '';
     panel.append(renderReport());
+
+    // Only replay the fade-in when the active report tab actually changed —
+    // not on every render() (e.g. picking a student within Child Summary
+    // Case also re-renders the same tab, and shouldn't re-flash it).
+    if (state.report !== lastAnimatedReport) {
+        lastAnimatedReport = state.report;
+        panel.classList.remove('report-panel-anim');
+        void panel.offsetWidth;
+        panel.classList.add('report-panel-anim');
+    }
 }
 
 async function init() {
     initPage();
     const school = getUserSchool();
     if (!school) {
-        $('#reportPanel').innerHTML = emptyNote('No school on file for this account — cannot load reports.');
+        $('#reportPanel').innerHTML = emptyNote('No school on file for this account — cannot load reports.', 'bi-building');
         return;
     }
 

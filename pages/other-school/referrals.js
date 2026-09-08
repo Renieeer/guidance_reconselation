@@ -16,15 +16,25 @@ const ACKNOWLEDGEMENT_CHECKLIST_ITEMS = [
     { key: 'under_monitoring', label: 'Under Monitoring' }
 ];
 
-// Stage 5 (Intervention) activity checklist — shared with the teacher
+// Stage 4 (Intervention) activity checklist — shared with the teacher
 // -facing read-only view the same way ACKNOWLEDGEMENT_CHECKLIST_ITEMS is.
+// "external_referral" is handled specially (see renderInterventionChecklist()
+// / toggleExternalReferralForm()) — checking it reveals the Appendix C form
+// and gates advancing to Stage 5 until that form is saved.
 const INTERVENTION_ACTIVITY_ITEMS = [
     { key: 'psychoeducation', label: 'Psychoeducation' },
     { key: 'mindfulness_relaxation', label: 'Mindfulness and Relaxation Activity' },
     { key: 'psychosocial', label: 'Psychosocial Activity' },
     { key: 'pfa', label: 'PFA (Psychological First Aid) Activity' },
-    { key: 'art_expressive', label: 'Art Expressive / Art Activity' }
+    { key: 'art_expressive', label: 'Art Expressive / Art Activity' },
+    { key: 'external_referral', label: 'External Referral (to an outside agency)' }
 ];
+
+// Whether "External Referral" is currently checked, and whether its
+// Appendix C form has been saved — loadCaseActions() reads both to decide
+// whether "Advance to Next Stage" is allowed while at Stage 4.
+let externalReferralRequired = false;
+let externalReferralCompleted = false;
 
 function loadReferralStatus() {
     initPage();
@@ -106,8 +116,9 @@ function loadDetailView(referral) {
     document.getElementById('detStageNote').textContent = referral.stage_note ? ` — ${referral.stage_note}` : '';
 
     // Referral Information
-    document.getElementById('detReferralReason').textContent = referral.referral_reason || 'Not provided';
+    document.getElementById('detDescription').textContent = referral.description || 'Not provided';
     document.getElementById('detIntervention').textContent = referral.intervention_attempts || 'Not provided';
+    document.getElementById('ovReason').textContent = referral.referral_reason || 'Not provided';
 
     // Referred By (the teacher, not the student's family)
     document.getElementById('detTeacherName').textContent = referral.teacher_name || 'Not provided';
@@ -121,12 +132,44 @@ function loadDetailView(referral) {
     // Load stages
     const stageContainer = document.getElementById('detailStagesContainer');
     stageContainer.innerHTML = createStageIndicator(referral.stage);
+    wireStageIndicatorClicks(referral);
 
+    document.getElementById('backToCurrentStageLink').onclick = (e) => {
+        e.preventDefault();
+        renderStageSection(referral, referral.stage);
+    };
+
+    // Show whichever stage's section the referral is actually at — clicking
+    // an earlier stage number (wireStageIndicatorClicks) re-runs this with
+    // a different viewStage to look back at it without changing the real
+    // stage or re-fetching the referral.
+    renderStageSection(referral, referral.stage);
+
+    // Load case actions
+    loadCaseActions();
+}
+
+// Lets the counselor click any stage circle in the progress indicator to
+// review what was recorded there, even after the referral has moved past
+// it — the circles otherwise only ever reflected (and revealed) whichever
+// stage the referral currently sits at.
+function wireStageIndicatorClicks(referral) {
+    document.querySelectorAll('#detailStagesContainer .stage-circle').forEach(circle => {
+        circle.onclick = () => renderStageSection(referral, parseInt(circle.dataset.stage, 10));
+    });
+}
+
+// Shows the single stage-specific section matching viewStage and hides the
+// other five. viewStage is independent of referral.stage — the real stage
+// value — so viewing an old stage never mutates the referral or confuses
+// loadCaseActions()/advanceStage(), which always key off referral.stage.
+function renderStageSection(referral, viewStage) {
     // Show the Interview/Background form for stage 1
     const interviewSection = document.getElementById('interviewFormSection');
-    if (referral.stage === 1) {
+    if (viewStage === 1) {
         interviewSection.style.display = 'block';
         document.getElementById('interviewForm').onsubmit = submitInterviewNotes;
+        document.getElementById('cancelInterviewEditBtn').onclick = cancelInterviewEdit;
         loadInterviewHistory(referral.id);
     } else {
         interviewSection.style.display = 'none';
@@ -134,7 +177,7 @@ function loadDetailView(referral) {
 
     // Show the Initial Risk Assessment completion gate for stage 2
     const screeningSection = document.getElementById('screeningFormSection');
-    if (referral.stage === 2) {
+    if (viewStage === 2) {
         screeningSection.style.display = 'block';
         document.getElementById('assessmentUploadForm').onsubmit = submitAssessmentUpload;
         document.getElementById('assessmentCompletedYesBtn').onclick = confirmAssessmentCompleted;
@@ -148,23 +191,36 @@ function loadDetailView(referral) {
 
     // Show the Parent Call-up/Consent file upload + agreement gate for stage 3
     const consentSection = document.getElementById('consentSection');
-    if (referral.stage === 3) {
+    if (viewStage === 3) {
         consentSection.style.display = 'block';
         document.getElementById('consentUploadForm').onsubmit = submitConsentUpload;
-        document.getElementById('consentStudentAgree').value = '';
-        document.getElementById('consentParentAgree').value = '';
+        const consentStudentAgreeEl = document.getElementById('consentStudentAgree');
+        const consentParentAgreeEl = document.getElementById('consentParentAgree');
+        consentStudentAgreeEl.value = '';
+        consentParentAgreeEl.value = '';
+        consentStudentAgreeEl.classList.remove('field-error');
+        consentParentAgreeEl.classList.remove('field-error');
+        // Clears the red highlight as soon as an answer is picked, rather
+        // than making the counselor click "Continue" again just to see it go away.
+        consentStudentAgreeEl.onchange = () => consentStudentAgreeEl.classList.remove('field-error');
+        consentParentAgreeEl.onchange = () => consentParentAgreeEl.classList.remove('field-error');
         document.getElementById('consentDecisionSubmitBtn').onclick = confirmConsentDecision;
         loadConsentFiles(referral.id);
     } else {
         consentSection.style.display = 'none';
     }
 
-    // Show the intervention activity checklist for stage 5
+    // Show the intervention activity checklist for stage 4
     const interventionSection = document.getElementById('interventionFormSection');
-    if (referral.stage === 5) {
+    if (viewStage === 4) {
         interventionSection.style.display = 'block';
+        // Reset before loading so a previous referral's gate state can
+        // never briefly leak into this one while its own data is fetched.
+        externalReferralRequired = false;
+        externalReferralCompleted = false;
         renderInterventionChecklist();
         document.getElementById('interventionForm').onsubmit = submitIntervention;
+        document.getElementById('saveExternalReferralBtn').onclick = saveExternalReferral;
         loadIntervention(referral.id);
     } else {
         interventionSection.style.display = 'none';
@@ -173,7 +229,7 @@ function loadDetailView(referral) {
     // Show the case-closing acknowledgement form for stage 6 — filled out
     // here by the counselor, then shown read-only to the referring teacher.
     const acknowledgementSection = document.getElementById('acknowledgementFormSection');
-    if (referral.stage === 6) {
+    if (viewStage === 6) {
         acknowledgementSection.style.display = 'block';
         renderAcknowledgementChecklist();
         document.getElementById('acknowledgementForm').onsubmit = submitAcknowledgement;
@@ -182,13 +238,106 @@ function loadDetailView(referral) {
         acknowledgementSection.style.display = 'none';
     }
 
-    // Stage 4 doesn't have a dedicated documentation form yet — say so
-    // explicitly instead of leaving a blank gap that reads as broken.
-    document.getElementById('noStageDocSection').style.display =
-        [1, 2, 3, 5, 6].includes(referral.stage) ? 'none' : 'block';
+    // Stage 5 (Counseling) links out to the standalone Counseling case
+    // feature rather than having its own documentation form — see
+    // applyReferralPrefill() in counseling.js, which reads the query
+    // string this builds to auto-open a pre-filled case for this student.
+    const counselingCtaSection = document.getElementById('counselingCtaSection');
+    if (viewStage === 5) {
+        counselingCtaSection.style.display = 'block';
+        document.getElementById('openCounselingCaseBtn').onclick = () => openCounselingCaseForReferral(referral);
+        checkExistingCounselingCase(referral);
+    } else {
+        counselingCtaSection.style.display = 'none';
+    }
 
-    // Load case actions
-    loadCaseActions();
+    const stageViewNote = document.getElementById('stageViewNote');
+    if (viewStage !== referral.stage) {
+        document.getElementById('stageViewLabel').textContent = `Stage ${viewStage} — ${getStageInfo(viewStage)?.name || ''}`;
+        stageViewNote.style.display = 'block';
+    } else {
+        stageViewNote.style.display = 'none';
+    }
+}
+
+// counselor_case_scenarios has no referral_id column — cases and referrals
+// are separate features — so the link is a one-way handoff via query
+// string instead of a real foreign key: counseling.php reads these back in
+// applyReferralPrefill() to open a case pre-filled with this student rather
+// than making the counselor re-type what's already on the referral.
+async function openCounselingCaseForReferral(referral) {
+    // Stage 1's Interview/Background note lives in referral_screening, not
+    // on the referral row itself, and isn't loaded at all while viewing a
+    // Stage 4 referral (loadInterviewHistory() only runs for Stage 1) — so
+    // it has to be fetched fresh here rather than read off `referral`.
+    let interviewNotes = '';
+    try {
+        const res = await fetch(`../../api/referral-screening.php?referral_id=${referral.id}&stage=1`);
+        const result = await res.json();
+        if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+            interviewNotes = result.data[0].interview_notes || '';
+        }
+    } catch (error) {
+        // Non-critical — the handoff still works without a pre-filled
+        // Notes field, so fail silently rather than surfacing this.
+    }
+
+    const params = new URLSearchParams({
+        prefill_name: referral.student_name || '',
+        prefill_grade: referral.grade || '',
+        prefill_section: referral.section || '',
+        referral_code: referral.referral_code || String(referral.id || ''),
+        referral_intervention: referral.intervention_attempts || '',
+        referral_interview: interviewNotes
+    });
+    window.location.href = `counseling.php?${params.toString()}`;
+}
+
+// Cases and referrals aren't linked by a real foreign key — a case created
+// from a referral just carries a "(Linked to Referral <code>)" tag appended
+// after its Notes (see applyReferralPrefill() in counseling.js). This looks
+// for that tag so the referral view can show a counseling case is already
+// underway, instead of only being visible from the Counseling page's side.
+function checkExistingCounselingCase(referral) {
+    const statusEl = document.getElementById('linkedCaseStatus');
+    const promptEl = document.getElementById('openCounselingCasePrompt');
+
+    // Reset to the default "no linked case yet" state first — these two
+    // elements persist across referrals in this SPA-style detail view, so
+    // without this a case found for the previously viewed referral would
+    // stay showing after switching to one that has no linked case.
+    statusEl.style.display = 'none';
+    statusEl.innerHTML = '';
+    promptEl.style.display = '';
+
+    const school = referral.school_attended || referral.student_school || '';
+    const referralCode = referral.referral_code || String(referral.id || '');
+    if (!school || !referralCode) return;
+
+    const marker = `(Linked to Referral ${referralCode})`;
+
+    fetch(`../../api/case-scenario.php?school_attended=${encodeURIComponent(school)}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) return;
+            const linkedCase = (result.data || []).find(c => (c.caseSummary || '').includes(marker));
+            if (!linkedCase) return;
+
+            const statusLabel = linkedCase.status === 'closed' ? 'Ended' : 'In progress';
+            const statusClass = linkedCase.status === 'closed' ? 'badge-completed' : 'badge-pending';
+            statusEl.innerHTML = `
+                <div class="bg-light rounded p-3" style="margin-bottom: 16px;">
+                    <p style="margin:0 0 8px;"><i class="bi bi-link-45deg"></i> A counseling case is already linked to this referral.</p>
+                    <p style="margin:0 0 10px;"><strong>${escapeHtml(linkedCase.id)}</strong> — <span class="badge ${statusClass}">${statusLabel}</span></p>
+                    <a href="counseling.php?case_id=${encodeURIComponent(linkedCase.id)}" class="btn btn-secondary btn-sm">
+                        <i class="bi bi-box-arrow-up-right"></i> View Counseling Case
+                    </a>
+                </div>
+            `;
+            statusEl.style.display = 'block';
+            promptEl.style.display = 'none';
+        })
+        .catch(() => {});
 }
 
 function renderInterventionChecklist() {
@@ -198,7 +347,36 @@ function renderInterventionChecklist() {
             <input type="checkbox" name="interventionChecklist" value="${item.key}">
             <span>${escapeHtml(item.label)}</span>
         </label>
-    `).join('');
+    `).join('') + `
+        <label class="referral-checklist-item">
+            <input type="checkbox" name="interventionChecklist" value="other" id="interventionOtherCheck">
+            <span>Other (please specify)</span>
+        </label>
+    `;
+
+    container.querySelector('input[value="external_referral"]').addEventListener('change', (e) => {
+        toggleExternalReferralForm(e.target.checked);
+    });
+
+    // "Other" reveals a free-text field when checked — same pattern as the
+    // teacher's Reason-for-Referral checklist (referral-form.js), so an
+    // activity outside the fixed list isn't silently uncapturable.
+    const otherCheck = document.getElementById('interventionOtherCheck');
+    const otherText = document.getElementById('interventionOtherText');
+    otherCheck.addEventListener('change', () => {
+        otherText.style.display = otherCheck.checked ? '' : 'none';
+        if (otherCheck.checked) otherText.focus();
+    });
+}
+
+// Single place that flips the Appendix C form's visibility and updates the
+// gate flag — called both from the live checkbox (above) and from
+// loadIntervention() when restoring a previously saved checklist, so the
+// two never disagree about whether the form should be showing.
+function toggleExternalReferralForm(show) {
+    externalReferralRequired = show;
+    document.getElementById('externalReferralFormSection').style.display = show ? 'block' : 'none';
+    loadCaseActions();
 }
 
 function loadIntervention(referralId) {
@@ -208,20 +386,175 @@ function loadIntervention(referralId) {
             if (!result.success) throw new Error(result.message || 'Failed to load intervention activities');
 
             document.getElementById('interventionForm').reset();
+            const otherText = document.getElementById('interventionOtherText');
+            otherText.value = '';
+            otherText.style.display = 'none';
+
             const data = result.data;
-            if (!data) return;
+            const checklist = data?.checklist || {};
 
-            document.getElementById('interventionNotes').value = data.notes || '';
+            if (data) {
+                document.getElementById('interventionNotes').value = data.notes || '';
+                document.querySelectorAll('#interventionChecklist input[type="checkbox"]').forEach(cb => {
+                    cb.checked = Boolean(checklist[cb.value]);
+                });
+                if (checklist.other) {
+                    otherText.value = checklist.other_text || '';
+                    otherText.style.display = '';
+                }
+            }
 
-            const checklist = data.checklist || {};
-            document.querySelectorAll('#interventionChecklist input[type="checkbox"]').forEach(cb => {
-                cb.checked = Boolean(checklist[cb.value]);
-            });
+            toggleExternalReferralForm(Boolean(checklist['external_referral']));
         })
         .catch(error => {
             console.error('Error loading intervention activities:', error);
         });
+
+    loadExternalReferral(referralId);
 }
+
+// Populates the Appendix C form from any previously saved record, and sets
+// externalReferralCompleted so loadCaseActions() knows whether the Stage
+// 4 → 5 gate is satisfied. Called every time Stage 4 loads regardless of
+// whether "External Referral" is currently checked, so switching it back on
+// later still shows what was saved before.
+function loadExternalReferral(referralId) {
+    fetch(`../../api/referral-external-referral.php?referral_id=${referralId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load external referral');
+
+            const data = result.data;
+            const savedNote = document.getElementById('externalReferralSavedNote');
+            const printBtn = document.getElementById('printExternalReferralBtn');
+
+            const pdfHint = document.getElementById('externalReferralPdfHint');
+
+            if (!data) {
+                externalReferralCompleted = false;
+                savedNote.style.display = 'none';
+                printBtn.style.display = 'none';
+                pdfHint.style.display = 'none';
+                loadCaseActions();
+                return;
+            }
+
+            document.getElementById('extRefAgencyName').value = data.agency_name || '';
+            document.getElementById('extRefAgencyAddress').value = data.agency_address || '';
+            document.getElementById('extRefStudentAddress').value = data.student_address || '';
+            document.getElementById('extRefSchoolName').value = data.referring_school || '';
+            document.getElementById('extRefSchoolAddress').value = data.school_address || '';
+            document.getElementById('extRefCellphone').value = data.cellphone_no || '';
+            document.getElementById('extRefLandline').value = data.landline_no || '';
+            document.getElementById('extRefContactPerson').value = data.contact_person || '';
+            document.getElementById('extRefReason').value = data.reason_for_referral || '';
+            document.getElementById('extRefServices').value = data.specific_services || '';
+
+            externalReferralCompleted = true;
+            savedNote.style.display = 'block';
+            printBtn.style.display = '';
+            pdfHint.style.display = '';
+            loadCaseActions();
+        })
+        .catch(error => {
+            console.error('Error loading external referral:', error);
+        });
+}
+
+function saveExternalReferral() {
+    const agencyName = document.getElementById('extRefAgencyName').value.trim();
+    const reason = document.getElementById('extRefReason').value.trim();
+    const services = document.getElementById('extRefServices').value.trim();
+
+    if (!agencyName || !reason || !services) {
+        showAlert('Agency, Reason for Referral, and Specific Service/s Requested are required.', 'error');
+        return;
+    }
+
+    const user = getCurrentUser();
+    const btn = document.getElementById('saveExternalReferralBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    fetch('../../api/referral-external-referral.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || '',
+            agency_name: agencyName,
+            agency_address: document.getElementById('extRefAgencyAddress').value.trim(),
+            student_address: document.getElementById('extRefStudentAddress').value.trim(),
+            referring_school: document.getElementById('extRefSchoolName').value.trim(),
+            school_address: document.getElementById('extRefSchoolAddress').value.trim(),
+            cellphone_no: document.getElementById('extRefCellphone').value.trim(),
+            landline_no: document.getElementById('extRefLandline').value.trim(),
+            contact_person: document.getElementById('extRefContactPerson').value.trim(),
+            reason_for_referral: reason,
+            specific_services: services
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) throw new Error(result.message || 'Failed to save external referral');
+        showAlert('External referral saved.', 'success');
+        externalReferralCompleted = true;
+        document.getElementById('externalReferralSavedNote').style.display = 'block';
+        document.getElementById('printExternalReferralBtn').style.display = '';
+        document.getElementById('externalReferralPdfHint').style.display = '';
+        loadCaseActions();
+    })
+    .catch(error => {
+        showAlert(error.message || 'Failed to save external referral.', 'error');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    });
+}
+
+// Fills the hidden Appendix C sheet (see #externalReferralPrintSheet in
+// referrals.php and the .er-print-* rules in style.css) from the current
+// form fields plus the referral's own student info — Age/Sex come from the
+// referral record itself, everything else from the External Referral
+// form — then triggers the browser print dialog. The print-external-
+// referral body class is what the @media print rules key off to show only
+// this sheet and hide the rest of the page.
+function printExternalReferral() {
+    const referral = currentReferral;
+
+    document.getElementById('printAgencyName').textContent = document.getElementById('extRefAgencyName').value.trim();
+    document.getElementById('printAgencyAddress').textContent = document.getElementById('extRefAgencyAddress').value.trim();
+    document.getElementById('printStudentName').textContent = referral.student_name || '';
+    document.getElementById('printStudentAge').textContent = referral.age || '';
+    document.getElementById('printStudentSex').textContent = referral.gender || '';
+    document.getElementById('printStudentAddress').textContent = document.getElementById('extRefStudentAddress').value.trim();
+    document.getElementById('printReason').textContent = document.getElementById('extRefReason').value.trim();
+    document.getElementById('printServices').textContent = document.getElementById('extRefServices').value.trim();
+
+    const schoolName = document.getElementById('extRefSchoolName').value.trim();
+    const schoolAddress = document.getElementById('extRefSchoolAddress').value.trim();
+    document.getElementById('printFeedbackSchool').textContent = schoolName;
+    document.getElementById('printFeedbackAddress').textContent = schoolAddress;
+    document.getElementById('printSchoolName').textContent = schoolName;
+    document.getElementById('printSchoolAddress').textContent = schoolAddress;
+
+    document.getElementById('printCellphone').textContent = document.getElementById('extRefCellphone').value.trim();
+    document.getElementById('printLandline').textContent = document.getElementById('extRefLandline').value.trim();
+    document.getElementById('printContactPerson').textContent = document.getElementById('extRefContactPerson').value.trim();
+    // printByName/printByDesignation/printDate are left blank on purpose —
+    // all three are only ever filled in by hand at the moment of signing
+    // the printed copy, never typed in beforehand.
+
+    document.body.classList.add('print-external-referral');
+    window.print();
+}
+
+window.addEventListener('afterprint', () => {
+    document.body.classList.remove('print-external-referral');
+});
 
 function submitIntervention(e) {
     e.preventDefault();
@@ -233,6 +566,9 @@ function submitIntervention(e) {
     document.querySelectorAll('#interventionChecklist input[type="checkbox"]').forEach(cb => {
         checklist[cb.value] = cb.checked;
     });
+    if (checklist.other) {
+        checklist.other_text = document.getElementById('interventionOtherText').value.trim();
+    }
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
@@ -300,8 +636,6 @@ function loadAcknowledgement(referralId) {
             if (!data) return;
 
             document.getElementById('ackAttendedBy').value = data.attended_by || '';
-            document.getElementById('ackFollowUpCount').value = data.follow_up_count || '';
-            document.getElementById('ackReferredTo').value = data.referred_to || '';
 
             const checklist = data.checklist || {};
             document.querySelectorAll('#ackChecklist input[type="checkbox"]').forEach(cb => {
@@ -319,8 +653,6 @@ function submitAcknowledgement(e) {
 
     const user = getCurrentUser();
     const attendedBy = document.getElementById('ackAttendedBy').value.trim();
-    const followUpCount = document.getElementById('ackFollowUpCount').value.trim();
-    const referredTo = document.getElementById('ackReferredTo').value.trim();
 
     const checklist = {};
     document.querySelectorAll('#ackChecklist input[type="checkbox"]').forEach(cb => {
@@ -340,8 +672,6 @@ function submitAcknowledgement(e) {
             counselor_id: user?.id || '',
             counselor_name: user?.name || attendedBy,
             attended_by: attendedBy,
-            follow_up_count: followUpCount,
-            referred_to: referredTo,
             checklist: checklist
         })
     })
@@ -390,10 +720,21 @@ function loadAssessmentFiles(referralId) {
 // Same api/referral-screening.php table as the Stage 2 screening notes
 // above, just filtered to stage=1 so this list never shows Stage 2's risk
 // assessment entries mixed in (see the stage column added there).
+//
+// Once a note exists, the add form hides and the note shows read-only with
+// an Edit button — Stage 1 is meant to hold one revisable note, not a
+// growing log the counselor re-fills out every visit. Any older rows from
+// before this behavior still display for history; only the latest is
+// editable.
+let latestInterviewNote = null;
+let editingInterviewScreeningId = null;
+
 function loadInterviewHistory(referralId) {
     const container = document.getElementById('interviewHistoryList');
     if (!container) return;
     container.innerHTML = '<p class="text-muted">Loading previous interview notes...</p>';
+    latestInterviewNote = null;
+    editingInterviewScreeningId = null;
 
     fetch(`../../api/referral-screening.php?referral_id=${referralId}&stage=1`)
         .then(response => response.json())
@@ -402,21 +743,50 @@ function loadInterviewHistory(referralId) {
             const rows = result.data || [];
             if (rows.length === 0) {
                 container.innerHTML = '<p class="text-muted">No interview notes recorded yet.</p>';
+                showInterviewForm();
                 return;
             }
-            container.innerHTML = rows.map(row => `
+
+            latestInterviewNote = rows[0];
+            container.innerHTML = rows.map((row, index) => `
                 <div style="background:#f9fafb; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <strong>${escapeHtml(row.counselor_name || 'Counselor')}</strong>
                         <small class="text-muted">${formatDate(row.created_at)}</small>
                     </div>
                     ${row.interview_notes ? `<div>${escapeHtml(row.interview_notes)}</div>` : ''}
+                    ${index === 0 ? '<div style="display:flex; justify-content:flex-end; margin-top:8px;"><button type="button" class="btn btn-edit" onclick="editInterviewNotes()">Edit</button></div>' : ''}
                 </div>
             `).join('');
+            hideInterviewForm();
         })
         .catch(error => {
             container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
         });
+}
+
+function showInterviewForm() {
+    document.getElementById('interviewForm').style.display = '';
+}
+
+function hideInterviewForm() {
+    document.getElementById('interviewForm').style.display = 'none';
+}
+
+function editInterviewNotes() {
+    if (!latestInterviewNote) return;
+    editingInterviewScreeningId = latestInterviewNote.screening_id;
+    document.getElementById('interviewNotes').value = latestInterviewNote.interview_notes || '';
+    document.getElementById('cancelInterviewEditBtn').style.display = '';
+    showInterviewForm();
+    document.getElementById('interviewNotes').focus();
+}
+
+function cancelInterviewEdit() {
+    editingInterviewScreeningId = null;
+    document.getElementById('interviewForm').reset();
+    document.getElementById('cancelInterviewEditBtn').style.display = 'none';
+    hideInterviewForm();
 }
 
 function submitInterviewNotes(e) {
@@ -434,21 +804,29 @@ function submitInterviewNotes(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Saving...';
 
-    fetch('../../api/referral-screening.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    const isEditing = !!editingInterviewScreeningId;
+    const method = isEditing ? 'PUT' : 'POST';
+    const body = isEditing
+        ? { screening_id: editingInterviewScreeningId, interview_notes: interviewNotes }
+        : {
             referral_id: currentReferral.id,
             counselor_id: user?.id || '',
             counselor_name: user?.name || '',
             interview_notes: interviewNotes,
             stage: 1
-        })
+        };
+
+    fetch('../../api/referral-screening.php', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
     })
     .then(response => response.json())
     .then(result => {
         if (!result.success) throw new Error(result.message || 'Failed to save interview notes');
-        showAlert('Interview notes saved.', 'success');
+        showAlert(isEditing ? 'Interview notes updated.' : 'Interview notes saved.', 'success');
+        editingInterviewScreeningId = null;
+        document.getElementById('cancelInterviewEditBtn').style.display = 'none';
         document.getElementById('interviewForm').reset();
         loadInterviewHistory(currentReferral.id);
     })
@@ -600,8 +978,15 @@ function loadCaseActions() {
     const container = document.getElementById('caseActionsContainer');
     let html = '';
 
-    if (currentReferral.stage < 6 && !GATED_STAGES.includes(currentReferral.stage)) {
+    // Same idea as GATED_STAGES, but conditional on the checklist rather
+    // than the stage alone — Stage 4 only blocks "Advance" when "External
+    // Referral" is checked and its Appendix C form hasn't been saved yet.
+    const externalReferralBlocking = currentReferral.stage === 4 && externalReferralRequired && !externalReferralCompleted;
+
+    if (currentReferral.stage < 6 && !GATED_STAGES.includes(currentReferral.stage) && !externalReferralBlocking) {
         html += `<button class="btn btn-primary" onclick="advanceStage()">Advance to Next Stage</button>`;
+    } else if (externalReferralBlocking) {
+        html += `<p class="text-muted" style="font-style: italic;">Complete the External Referral form above before advancing to the next stage.</p>`;
     }
 
     if (currentReferral.stage === 6) {
@@ -614,12 +999,13 @@ function loadCaseActions() {
 }
 
 // stageNote is a short human-readable record of *why* the referral is at
-// the new stage (e.g. "Assessment done", "For counseling") — shown next to
+// the new stage (e.g. "Assessment done", "Both agreed to counseling") — shown next to
 // "Current Stage" in the Referral Overview. Omitting it clears any existing
 // note, since a note set by a gated stage shouldn't linger after a later,
 // ungated advance has moved past it.
 function setReferralStage(newStage, stageNote) {
     const newStatus = newStage === 6 ? 'completed' : 'in-progress';
+    const user = getCurrentUser();
 
     fetch('../../api/update-referral.php', {
         method: 'POST',
@@ -630,7 +1016,9 @@ function setReferralStage(newStage, stageNote) {
             referral_id: currentReferral.id,
             stage: newStage,
             status: newStatus,
-            stage_note: stageNote || ''
+            stage_note: stageNote || '',
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || ''
         })
     })
     .then(response => response.json())
@@ -653,12 +1041,18 @@ function advanceStage() {
     setReferralStage(currentReferral.stage + 1);
 }
 
-// The Stage 3 gate — student and parent agreement decides whether the
-// referral goes to Stage 4 (both agreed) or is routed to Stage 5 instead
-// (either one disagreed), rather than always moving straight to Stage 4.
+// The Stage 3 gate — records whether the student and parent agreed to
+// counseling, but no longer branches which stage comes next: everyone goes
+// through Stage 4 (Intervention) before Stage 5 (Counseling), agreed or
+// not, so the outcome only affects the recorded note.
 function confirmConsentDecision() {
-    const studentAgree = document.getElementById('consentStudentAgree').value;
-    const parentAgree = document.getElementById('consentParentAgree').value;
+    const studentAgreeEl = document.getElementById('consentStudentAgree');
+    const parentAgreeEl = document.getElementById('consentParentAgree');
+    const studentAgree = studentAgreeEl.value;
+    const parentAgree = parentAgreeEl.value;
+
+    studentAgreeEl.classList.toggle('field-error', !studentAgree);
+    parentAgreeEl.classList.toggle('field-error', !parentAgree);
 
     if (!studentAgree || !parentAgree) {
         showAlert('Please answer both questions before continuing.', 'error');
@@ -666,20 +1060,17 @@ function confirmConsentDecision() {
     }
 
     const bothAgree = studentAgree === 'yes' && parentAgree === 'yes';
-    const newStage = bothAgree ? 4 : 5;
-    const stageNote = bothAgree ? 'For counseling' : 'Waiting for assessment proper';
-    const message = bothAgree
-        ? 'Both the student and parent agreed — the referral will move to Stage 4. Continue?'
-        : 'Since the student and/or parent did not agree, the referral will move to Stage 5. Continue?';
+    const stageNote = bothAgree ? 'Both agreed to counseling' : 'Did not agree to counseling';
 
-    if (!confirm(message)) return;
-    setReferralStage(newStage, stageNote);
+    if (!confirm('The referral will move to Stage 4 (Intervention). Continue?')) return;
+    setReferralStage(4, stageNote);
 }
 
 function closeCase() {
     if (confirm('Are you sure you want to close this case?')) {
         const apiUrl = `../../api/update-referral.php`;
-        
+        const user = getCurrentUser();
+
         fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -688,7 +1079,10 @@ function closeCase() {
             body: JSON.stringify({
                 referral_id: currentReferral.id,
                 stage: 6,
-                status: 'completed'
+                status: 'completed',
+                stage_note: 'Case closed',
+                counselor_id: user?.id || '',
+                counselor_name: user?.name || ''
             })
         })
         .then(response => response.json())

@@ -46,8 +46,82 @@ function formatGradeLabel(grade) {
 
 document.addEventListener('DOMContentLoaded', () => {
     initPage();
-    loadSectionData().then(() => initCounselingCasePage());
+    loadSectionData().then(() => {
+        initCounselingCasePage();
+        applyReferralPrefill();
+    });
 });
+
+// Holds the "(Linked to Referral <code>)" tag between prefill and save —
+// kept out of the #caseSummary textarea entirely (see applyReferralPrefill()
+// and collectCaseData() below) so the counselor never sees this bookkeeping
+// text mixed into the actual clinical notes, while it's still appended to
+// the stored case_summary at save time for checkExistingCounselingCase()
+// (referrals.js) to find later. There's no referral_id column on
+// counselor_case_scenarios to link them for real, hence the text marker.
+let pendingReferralLinkTag = '';
+
+// Arriving from a Stage 4 referral's "Open Counseling Case" button (see
+// openCounselingCaseForReferral() in referrals.js) — opens the new-case
+// form pre-filled with that referral's student instead of leaving the
+// counselor to re-type what's already on the referral.
+function applyReferralPrefill() {
+    const params = new URLSearchParams(window.location.search);
+    const name = params.get('prefill_name');
+    if (!name) return;
+
+    openCaseForm();
+
+    const nameInput = document.getElementById('studentName');
+    if (nameInput) nameInput.value = name;
+
+    const gradeInput = document.getElementById('studentGrade');
+    if (gradeInput) {
+        const grade = params.get('prefill_grade') || '';
+        const section = params.get('prefill_section') || '';
+        gradeInput.value = section ? `${grade} - ${section}` : grade;
+    }
+
+    const referralIntervention = params.get('referral_intervention') || '';
+    // Notes shows only the Stage 1 Interview/Background note — the link tag
+    // is held in pendingReferralLinkTag instead of being written in here,
+    // so it never appears in what the counselor reads/edits.
+    const referralInterview = params.get('referral_interview') || '';
+    const referralCode = params.get('referral_code') || '';
+
+    const summaryInput = document.getElementById('caseSummary');
+    if (summaryInput) {
+        summaryInput.value = referralInterview;
+    }
+    pendingReferralLinkTag = referralCode ? `(Linked to Referral ${referralCode})` : '';
+
+    // "Initial Actions Taken" on the referral is the same idea as this
+    // form's "Initial action plan" — what's already been tried before
+    // counseling started.
+    const firstActionInput = document.getElementById('firstAction');
+    if (firstActionInput && referralIntervention) {
+        firstActionInput.value = referralIntervention;
+    }
+
+    addStudent();
+}
+
+// Arriving from a referral's "View Counseling Case" link (see
+// checkExistingCounselingCase() in referrals.js) — scrolls to and briefly
+// flashes the matching row in Recent drafts so it's obvious which case that
+// link pointed at instead of leaving the counselor to search the whole
+// table for it.
+function highlightLinkedCase() {
+    const caseId = new URLSearchParams(window.location.search).get('case_id');
+    if (!caseId) return;
+
+    const row = document.getElementById(`caseRow-${caseId}`);
+    if (!row) return;
+
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('case-row-highlight');
+    setTimeout(() => row.classList.remove('case-row-highlight'), 2500);
+}
 
 /* ---- Load sections + categories from DB ---- */
 async function loadSectionData() {
@@ -297,10 +371,36 @@ function populateStudentFromSuggestionCounselor(student) {
     if (gradeInput) gradeInput.value = formatGradeLabel(student.grade_name || student.grade_level || student.grade_id || student.Grade || '');
 }
 
+// Red-highlight helpers for saveCase()'s validation — a toast alone doesn't
+// point at which field is the problem, especially once the form has more
+// than one required field.
+function clearCaseFieldErrors() {
+    document.getElementById('caseSection')?.classList.remove('field-error');
+    document.getElementById('caseSummary')?.classList.remove('field-error');
+    document.getElementById('studentList')?.classList.remove('field-error');
+}
+
+function markFieldError(el) {
+    if (!el) return;
+    el.classList.add('field-error');
+    el.focus();
+}
+
 function bindCaseEvents() {
     document.getElementById('openCaseFormBtn')?.addEventListener('click', openCaseForm);
     document.getElementById('cancelCaseFormBtn')?.addEventListener('click', cancelCaseForm);
     document.getElementById('addStudentBtn')?.addEventListener('click', addStudent);
+    document.getElementById('studentRole')?.addEventListener('change', (e) => {
+        const otherInput = document.getElementById('studentRoleOtherText');
+        otherInput.style.display = e.target.value === 'Other' ? '' : 'none';
+        if (e.target.value === 'Other') otherInput.focus();
+    });
+    document.getElementById('caseSection')?.addEventListener('change', () => {
+        document.getElementById('caseSection').classList.remove('field-error');
+    });
+    document.getElementById('caseSummary')?.addEventListener('input', () => {
+        document.getElementById('caseSummary').classList.remove('field-error');
+    });
     document.getElementById('caseCreateForm')?.addEventListener('submit', event => {
         event.preventDefault();
         saveCase();
@@ -384,16 +484,26 @@ function addStudent() {
             const s = json.data[0];
             const gradeLabel = formatGradeLabel(s.grade_name || s.grade_level || s.grade_id || s.Grade || gradeInput.value.trim());
 
+            // "Other" stores whatever was typed in place of the literal
+            // word "Other", so it reads naturally everywhere role shows up
+            // (student tags, case-report exports) instead of just "Other".
+            const roleOtherInput = document.getElementById('studentRoleOtherText');
+            const role = roleInput.value === 'Other'
+                ? (roleOtherInput.value.trim() || 'Other')
+                : roleInput.value;
+
             caseStudents.push({
                 id: s.id || s.StudentId || generateId(),
                 name: `${s.first_name || s.FirstName || ''} ${s.last_name || s.LastName || ''}`.trim() || name,
                 grade: gradeLabel || 'Grade not set',
-                role: roleInput.value
+                role: role
             });
 
             nameInput.value  = '';
             gradeInput.value = '';
-            roleInput.value  = 'Primary student';
+            roleInput.value  = '';
+            roleOtherInput.value = '';
+            roleOtherInput.style.display = 'none';
 
             renderStudentList();
         } catch (error) {
@@ -419,6 +529,8 @@ function renderStudentList() {
         return;
     }
 
+    list.classList.remove('field-error');
+
     list.innerHTML = caseStudents.map(s => `
         <div class="student-item">
             <div class="student-meta">
@@ -436,17 +548,21 @@ function renderStudentList() {
 /* ---- Save / submit ---- */
 async function saveCase() {
     const payload = collectCaseData();
+    clearCaseFieldErrors();
 
     if (!payload.sectionId) {
         showAlert('Please select a case section.', 'warning');
+        markFieldError(document.getElementById('caseSection'));
         return;
     }
-    if (!payload.caseSummary) {
+    if (!document.getElementById('caseSummary').value.trim()) {
         showAlert('Summary of concern is required.', 'warning');
+        markFieldError(document.getElementById('caseSummary'));
         return;
     }
     if (caseStudents.length === 0) {
         showAlert('Add at least one student before saving the case.', 'warning');
+        markFieldError(document.getElementById('studentList'));
         return;
     }
 
@@ -499,7 +615,9 @@ function collectCaseData() {
         // Title should represent the case section/range.
         caseTitle,
         caseDate:         document.getElementById('caseDate').value,
-        caseSummary:      document.getElementById('caseSummary').value.trim(),
+        // pendingReferralLinkTag (if any) rides along here, invisibly to
+        // the counselor — see applyReferralPrefill() above.
+        caseSummary:      [document.getElementById('caseSummary').value.trim(), pendingReferralLinkTag].filter(Boolean).join('\n\n'),
         caseObjective:    document.getElementById('caseObjective').value.trim(),
         firstAction:      document.getElementById('firstAction').value.trim(),
         followUpDate:     document.getElementById('followUpDate').value,
@@ -534,6 +652,7 @@ async function loadCaseDrafts() {
 
         caseDrafts = json.data;
         renderRecentCases();
+        highlightLinkedCase();
     } catch (error) {
         console.error('Failed to load case scenarios from database:', error);
         caseDrafts = getData('counselor_case_records') || [];
@@ -657,7 +776,7 @@ function renderRecentCases() {
         const categoryDisplay  = recordCategories.length ? recordCategories.join(', ') : '—';
 
         return `
-        <tr>
+        <tr id="caseRow-${escapeHtml(record.id)}">
             <td><strong>${escapeHtml(record.id)}</strong></td>
             <td>${escapeHtml(titleDisplay)}</td>
             <td>${escapeHtml(categoryDisplay)}</td>
@@ -674,7 +793,7 @@ function renderRecentCases() {
                     <i class="bi bi-calendar-plus"></i> Appoint
                 </button>
                 <button type="button" class="btn btn-outline btn-sm" onclick="openFollowUpModal('${record.id}')">
-                    <i class="bi bi-chat-dots"></i> Follow up
+                    <i class="bi bi-chat-dots"></i> Case category
                 </button>
                 <button type="button" class="btn btn-outline btn-sm btn-danger" onclick="endCase('${record.id}')">
                     <i class="bi bi-check-circle"></i> End case
@@ -800,7 +919,11 @@ function initials(name) {
 
 function resetForm() {
     document.getElementById('caseCreateForm').reset();
+    clearCaseFieldErrors();
     caseStudents = [];
+    // Only ever meant for the one case just saved (or abandoned) — never
+    // carry it over to the next case opened in this same page session.
+    pendingReferralLinkTag = '';
     document.getElementById('assignedCounselor').value = getCurrentUser()?.name || 'Assigned counselor';
     setTodayDate('caseDate');
     const followUpDate = document.getElementById('followUpDate');
@@ -1046,10 +1169,17 @@ const FOLLOW_UP_API = '../../api/follow-up.php';
 // can have far more students than comfortably fit in one form).
 const FOLLOW_UP_PREVIEW_LIMIT = 2;
 
+// Category lives per-student now (not one shared "applies to all students"
+// dropdown) — different students in the same case can be presenting
+// completely different behavior, so each one gets its own category picker
+// alongside their note. Defaults to whatever category was picked for them
+// last time, same as the note textarea defaulting to their last note.
 function renderFollowUpNoteTile(record, s, autoExpand) {
     const existing = (record.followUps || []).filter(f => f.studentId === s.id);
     const last     = existing[existing.length - 1];
     const hasNote  = !!(last?.initialAction || '').trim();
+    const categories = getCategoriesForRecord(record);
+    const lastCategoryId = last?.categoryId || '';
 
     return `
     <div class="fu-note-tile ${autoExpand && hasNote ? 'expanded' : ''}">
@@ -1063,6 +1193,13 @@ function renderFollowUpNoteTile(record, s, autoExpand) {
             <i class="bi bi-chevron-down fu-note-tile-caret"></i>
         </button>
         <div class="fu-note-tile-body">
+            <span class="fu-form-label fu-note-category-label">Category — this student's behavior</span>
+            <select class="fu-form-select fu-note-category" data-student-id="${escapeHtml(s.id)}">
+                <option value="">Select category</option>
+                ${categories.map(c =>
+                    `<option value="${escapeHtml(c.CaseId)}" data-name="${escapeHtml(c.CategoryName)}" ${lastCategoryId === c.CaseId ? 'selected' : ''}>${escapeHtml(c.CategoryName)}</option>`
+                ).join('')}
+            </select>
             <textarea
                 class="fu-form-textarea fu-note-textarea"
                 data-student-id="${escapeHtml(s.id)}"
@@ -1107,10 +1244,6 @@ function openFollowUpModal(caseId) {
     const body     = document.getElementById('followUpBody');
     const students = record.students || [];
 
-    // Only categories belonging to this case's section
-    const sectionCategories = getCategoriesForRecord(record);
-    const defaultCategoryId = record.categoryId || '';
-
     const visibleStudents = students.slice(0, FOLLOW_UP_PREVIEW_LIMIT);
     const hiddenStudents   = students.slice(FOLLOW_UP_PREVIEW_LIMIT);
 
@@ -1124,28 +1257,19 @@ function openFollowUpModal(caseId) {
 
     body.innerHTML = `
         <div class="fu-layout-single">
-            <div class="fu-form-row-three">
+            <div class="fu-form-row-two">
                 <div class="fu-form-field">
                     <label class="fu-form-label">SECTION</label>
                     <input type="text" class="fu-form-input" value="${escapeHtml(record.sectionName || '—')}" readonly>
                 </div>
                 <div class="fu-form-field">
-                    <label class="fu-form-label">CATEGORY (applies to all students)</label>
-                    <select id="fu-category" class="fu-form-select">
-                        <option value="">Select category</option>
-                        ${sectionCategories.map(c =>
-                            `<option value="${escapeHtml(c.CaseId)}" data-name="${escapeHtml(c.CategoryName)}" ${defaultCategoryId === c.CaseId ? 'selected' : ''}>${escapeHtml(c.CategoryName)}</option>`
-                        ).join('')}
-                    </select>
-                </div>
-                <div class="fu-form-field">
                     <label class="fu-form-label">DATE</label>
-                    <input type="date" id="fu-date" class="fu-form-input" value="${record.followUpDate || ''}">
+                    <input type="date" id="fu-date" class="fu-form-input" value="${new Date().toISOString().split('T')[0]}" readonly>
                 </div>
             </div>
 
             <div class="fu-form-field">
-                <label class="fu-form-label">Individual notes</label>
+                <label class="fu-form-label">Individual notes &amp; category (per student)</label>
                 <div class="fu-note-tiles">
                     ${students.length ? visibleStudents.map(s => renderFollowUpNoteTile(record, s, s === firstNotedStudent)).join('') : '<p class="empty-state" style="padding:16px;">No students linked to this case.</p>'}
                     ${hiddenStudents.length ? `
@@ -1195,66 +1319,79 @@ async function saveFollowUp() {
 
     record.followUps = record.followUps || [];
 
-    const catSelect = document.getElementById('fu-category');
-    const catOpt    = catSelect?.selectedOptions[0];
-    const date      = document.getElementById('fu-date')?.value;
-
-    if (!catSelect?.value) {
-        showAlert('Please select a category.', 'warning');
-        return;
-    }
-    if (!isCategoryInSection(record.sectionId, catSelect.value)) {
-        showAlert('Selected category does not belong to this case section.', 'warning');
-        return;
-    }
+    const date = document.getElementById('fu-date')?.value;
     if (!date) {
         showAlert('Please select a follow-up date.', 'warning');
         return;
     }
 
-    const notes = Array.from(modal.querySelectorAll('.fu-note-textarea')).map(ta => ({
-        student_id:   ta.dataset.studentId,
-        student_name: ta.dataset.studentName,
-        note:         ta.value.trim()
-    }));
+    // Category is per-student now (see renderFollowUpNoteTile) — each tile
+    // carries its own select alongside its textarea, so a student's
+    // category/note pair is read from the same tile, not a shared field.
+    const tiles = Array.from(modal.querySelectorAll('.fu-note-tile:not(.fu-note-more)'));
+    const entries = tiles.map(tile => {
+        const textarea  = tile.querySelector('.fu-note-textarea');
+        const catSelect = tile.querySelector('.fu-note-category');
+        const catOpt    = catSelect?.selectedOptions[0];
+        return {
+            studentId:    textarea?.dataset.studentId || '',
+            studentName:  textarea?.dataset.studentName || '',
+            note:         textarea?.value.trim() || '',
+            categoryId:   catSelect?.value || '',
+            categoryName: catOpt?.dataset.name || ''
+        };
+    }).filter(e => e.studentId && e.note);
 
-    if (!notes.length) {
-        showAlert('No students linked to this case.', 'warning');
+    if (!entries.length) {
+        showAlert('Enter a note for at least one student before saving.', 'warning');
         return;
     }
 
-    const categoryName = catOpt?.dataset.name || catOpt?.textContent || '';
-    const user          = getCurrentUser();
+    const missingCategory = entries.find(e => !e.categoryId);
+    if (missingCategory) {
+        showAlert(`Please select a category for ${missingCategory.studentName || 'that student'}.`, 'warning');
+        return;
+    }
+
+    const invalidCategory = entries.find(e => !isCategoryInSection(record.sectionId, e.categoryId));
+    if (invalidCategory) {
+        showAlert('Selected category does not belong to this case section.', 'warning');
+        return;
+    }
+
+    const user = getCurrentUser();
 
     try {
-        const res = await fetch(FOLLOW_UP_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                case_uid:       record.id,
-                category_id:    catSelect.value,
-                category_name:  categoryName,
-                follow_up_date: date,
-                counselor_id:   user?.id   || '',
-                counselor_name: user?.name || '',
-                notes
-            })
-        });
-        const json = await res.json();
-        if (!res.ok || !json.success) throw new Error(json.message || `HTTP ${res.status}`);
-
-        const recordedAt = new Date().toISOString();
-        notes.forEach(n => {
-            record.followUps.push({
-                followUpId:    `FU-${json.data?.follow_up_id ?? Date.now()}-${n.student_id}`,
-                studentId:     n.student_id,
-                categoryId:    catSelect.value,
-                categoryName,
-                initialAction: n.note,
-                followUpDate:  date,
-                recordedAt
+        // One follow_up row per student, not one shared row for the whole
+        // batch — the table only has room for a single category per row,
+        // and each student here can now have a different one.
+        for (const entry of entries) {
+            const res = await fetch(FOLLOW_UP_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    case_uid:       record.id,
+                    category_id:    entry.categoryId,
+                    category_name:  entry.categoryName,
+                    follow_up_date: date,
+                    counselor_id:   user?.id   || '',
+                    counselor_name: user?.name || '',
+                    notes: [{ student_id: entry.studentId, student_name: entry.studentName, note: entry.note }]
+                })
             });
-        });
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || `HTTP ${res.status}`);
+
+            record.followUps.push({
+                followUpId:    `FU-${json.data?.follow_up_id ?? Date.now()}-${entry.studentId}`,
+                studentId:     entry.studentId,
+                categoryId:    entry.categoryId,
+                categoryName:  entry.categoryName,
+                initialAction: entry.note,
+                followUpDate:  date,
+                recordedAt:    new Date().toISOString()
+            });
+        }
 
         saveData('counselor_case_records', caseDrafts);
         showAlert('Follow-up recorded successfully.', 'success');

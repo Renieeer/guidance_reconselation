@@ -72,14 +72,20 @@ function loadDashboardData() {
 
 function displayReferralProgress(referrals) {
     const preview = document.getElementById('referralProgressPreview');
+    const viewLink = document.getElementById('viewReferralsLink');
 
     if (referrals.length === 0) {
         preview.innerHTML = '<p style="color: #999; margin: 0; text-align: center;">No referrals yet</p>';
+        if (viewLink) viewLink.href = 'referral-status.php';
         return;
     }
 
-    // Show quick progress for most recent referral
+    // Show quick progress for most recent (i.e. currently active) referral,
+    // and send "View Referrals" straight to that case instead of the bare list.
     const latest = referrals[0];
+    if (viewLink && latest.id) {
+        viewLink.href = `referral-status.php?ref=${encodeURIComponent(latest.id)}`;
+    }
     const currentStage = parseInt(latest.stage || latest.progress_stage || 1) || 1;
     const progress = (currentStage / 6) * 100;
 

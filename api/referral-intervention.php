@@ -17,7 +17,7 @@ function send_json(int $statusCode, array $payload): void {
     exit;
 }
 
-// Stage 5 (Intervention) — which intervention activities were carried out
+// Stage 4 (Intervention) — which intervention activities were carried out
 // for this referral, same shape/pattern as Stage 6's
 // referral_acknowledgement.php. One row per referral (uniq_referral_id):
 // saving again updates the same row instead of creating a new one.

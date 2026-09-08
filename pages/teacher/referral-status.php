@@ -61,7 +61,7 @@
                     </div>
 
                     <div class="mt-5">
-                        <a href="dashboard.php" class="btn btn-secondary">Back to Dashboard</a>
+                        <button type="button" class="btn btn-secondary" onclick="exitReferralDetail()">Back</button>
                     </div>
                 </div>
 

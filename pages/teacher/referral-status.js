@@ -118,6 +118,13 @@ function selectReferral(referralId) {
     }
 }
 
+function exitReferralDetail() {
+    window.history.pushState({}, '', 'referral-status.php');
+    document.getElementById('referralDetailContainer').style.display = 'none';
+    document.getElementById('referralListContainer').style.display = 'block';
+    loadReferralsList();
+}
+
 function escapeHtml(value) {
     const div = document.createElement('div');
     div.textContent = value == null ? '' : String(value);

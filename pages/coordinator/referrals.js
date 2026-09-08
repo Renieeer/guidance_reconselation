@@ -88,8 +88,9 @@ function loadReferralDetail(referral) {
     document.getElementById('detailStatus').innerHTML = createBadge(getStatusLabel(referral.stage));
     document.getElementById('detailStage').textContent = `${referral.stage}/6`;
     document.getElementById('detailStageNote').textContent = referral.stage_note ? ` — ${referral.stage_note}` : '';
-    document.getElementById('detailReason').textContent = referral.referral_reason;
+    document.getElementById('detailDescription').textContent = referral.description || 'Not provided';
     document.getElementById('detailIntervention').textContent = referral.intervention_attempts || 'Not provided';
+    document.getElementById('ovReason').textContent = referral.referral_reason || 'Not provided';
     document.getElementById('detailTeacherName').textContent = referral.teacher_name || 'Not provided';
     document.getElementById('detailTeacherSchool').textContent = referral.school_attended || 'Not provided';
     document.getElementById('detailTeacherContact').textContent = referral.teacher_contact || 'Not provided';
@@ -132,10 +133,11 @@ function openUpdateStageModal() {
 
 function saveStageUpdate() {
     const newStage = parseInt(document.getElementById('newStage').value);
-    const notes = document.getElementById('stageNotes').value;
+    const notes = document.getElementById('stageNotes').value.trim();
+    const user = getCurrentUser();
 
     const apiUrl = `../../api/update-referral.php`;
-    
+
     fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -144,7 +146,10 @@ function saveStageUpdate() {
         body: JSON.stringify({
             referral_id: currentReferral.id,
             stage: newStage,
-            status: newStage === 6 ? 'completed' : (newStage === 1 || newStage === 2 ? 'pending' : 'in-progress')
+            status: newStage === 6 ? 'completed' : (newStage === 1 || newStage === 2 ? 'pending' : 'in-progress'),
+            stage_note: notes,
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || ''
         })
     })
     .then(response => response.json())
@@ -167,7 +172,8 @@ function saveStageUpdate() {
 function openRejectModal() {
     if (confirm('Are you sure you want to reject this referral? This action cannot be undone.')) {
         const apiUrl = `../../api/update-referral.php`;
-        
+        const user = getCurrentUser();
+
         fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -176,7 +182,10 @@ function openRejectModal() {
             body: JSON.stringify({
                 referral_id: currentReferral.id,
                 stage: 6,
-                status: 'rejected'
+                status: 'rejected',
+                stage_note: 'Rejected',
+                counselor_id: user?.id || '',
+                counselor_name: user?.name || ''
             })
         })
         .then(response => response.json())

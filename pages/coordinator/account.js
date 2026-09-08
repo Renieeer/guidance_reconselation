@@ -8,6 +8,9 @@ let allAccounts = [];
 let currentGradeFilter = '';
 let pageSize = 20;
 let currentPage = 1;
+// Deactivated students are excluded server-side by default (see
+// api/manage-accounts.php) — this only decides whether we ask for them.
+let showInactive = false;
 
 function initAccountPage() {
     initPage();
@@ -24,6 +27,12 @@ function initAccountPage() {
         currentGradeFilter = e.target.value;
         currentPage = 1;
         applyFiltersAndRender();
+    });
+
+    document.getElementById('showInactiveFilter').addEventListener('change', (e) => {
+        showInactive = e.target.checked;
+        currentPage = 1;
+        searchAccounts();
     });
 
     document.getElementById('pageSizeFilter').addEventListener('change', (e) => {
@@ -211,8 +220,11 @@ function loadSchoolAccounts() {
         return;
     }
 
-    const apiUrl = `../../api/manage-accounts.php?school=${encodeURIComponent(school)}`;
-    
+    let apiUrl = `../../api/manage-accounts.php?school=${encodeURIComponent(school)}`;
+    if (showInactive) {
+        apiUrl += '&include_inactive=1';
+    }
+
     fetch(apiUrl)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -231,7 +243,7 @@ function loadSchoolAccounts() {
             console.error('Error loading accounts:', error);
             const tbody = document.getElementById('accountsTableBody');
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="6" class="no-accounts"><i class="bi bi-exclamation-triangle"></i> <p>Error: ${error.message}</p></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="no-accounts"><i class="bi bi-exclamation-triangle"></i> <p>Error: ${error.message}</p></td></tr>`;
             }
         });
 }
@@ -239,7 +251,7 @@ function loadSchoolAccounts() {
 function searchAccounts() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const school = getCurrentSchool();
-    
+
     if (!school) {
         showAlert('School information not found', 'error');
         return;
@@ -249,7 +261,10 @@ function searchAccounts() {
     if (searchTerm) {
         apiUrl += `&search=${encodeURIComponent(searchTerm)}`;
     }
-    
+    if (showInactive) {
+        apiUrl += '&include_inactive=1';
+    }
+
     fetch(apiUrl)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -315,11 +330,26 @@ function renderAccountsTable(accounts) {
     const tbody = document.getElementById('accountsTableBody');
 
     if (!accounts || accounts.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="no-accounts"><i class="bi bi-inbox"></i> <p>No accounts found</p></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="no-accounts"><i class="bi bi-inbox"></i> <p>No accounts found</p></td></tr>`;
         return;
     }
 
-    tbody.innerHTML = accounts.map(account => `
+    tbody.innerHTML = accounts.map(account => {
+        // is_active only applies to student accounts here — staff status is
+        // an SDO-only concern (see account-status.php), so anything else
+        // always reads as Active on this page.
+        const isStudent = String(account.Type || '').toLowerCase() === 'student';
+        const isActive = account.is_active !== 0 && account.is_active !== '0';
+        const statusBadge = isStudent
+            ? `<span class="user-type-badge ${isActive ? 'badge-completed' : 'badge-rejected'}">${isActive ? 'Active' : 'Inactive'}</span>`
+            : '&mdash;';
+        const toggleBtn = isStudent
+            ? `<button class="btn ${isActive ? 'btn-danger' : 'btn-success'} btn-sm" onclick="toggleStudentActive(${account.id}, ${isActive ? 'true' : 'false'})">
+                    <i class="bi ${isActive ? 'bi-person-dash' : 'bi-person-check'}"></i> ${isActive ? 'Deactivate' : 'Activate'}
+                </button>`
+            : '';
+
+        return `
         <tr>
             <td><strong>${account.First_name} ${account.Last_name}</strong></td>
             <td>${account.email}</td>
@@ -329,16 +359,57 @@ function renderAccountsTable(accounts) {
                 </span>
             </td>
             <td>${gradeScopeLabel(account.Grade) || '&mdash;'}</td>
+            <td>${statusBadge}</td>
             <td>${formatDate(account.created_at)}</td>
             <td>
                 <div class="action-buttons">
                     <button class="btn-edit" onclick="openEditModal(${account.id}, '${account.First_name}', '${account.Last_name}', '${account.email}', '${account.Type}')">
                         <i class="bi bi-pencil-square"></i> Edit
                     </button>
+                    ${toggleBtn}
                 </div>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+}
+
+// Coordinator can deactivate a student's account once they've left the
+// school (transferred, graduated, dropped out) so it stops showing up in
+// this list and can no longer log in (login.php gates on is_active) —
+// without deleting the student's history/records. Reactivating brings it
+// back into the default (non-"Show inactive") view.
+function toggleStudentActive(id, currentlyActive) {
+    const nextActive = !currentlyActive;
+    const confirmMessage = nextActive
+        ? 'Reactivate this student account? They will be able to log in again.'
+        : 'Deactivate this student account? They will no longer be able to log in, and the account will be hidden from this list unless "Show inactive students" is checked.';
+    if (!window.confirm(confirmMessage)) {
+        return;
+    }
+
+    const school = getCurrentSchool();
+
+    fetch('../../api/manage-accounts.php', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setActive', id, active: nextActive, school })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(result => {
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to update account status');
+            }
+            showAlert(nextActive ? 'Student account activated.' : 'Student account deactivated.', 'success');
+            loadSchoolAccounts();
+        })
+        .catch(error => {
+            console.error('Error toggling account status:', error);
+            showAlert('Error: ' + error.message, 'error');
+        });
 }
 
 function openEditModal(id, firstName, lastName, email, type) {

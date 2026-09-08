@@ -56,6 +56,7 @@ function loadReferrals() {
             
             if (result.success && result.data) {
                 displayReferrals(result.data);
+                focusReferralFromUrl();
             } else {
                 throw new Error(result.message || 'Failed to load referrals');
             }
@@ -125,7 +126,7 @@ function displayProgressOverview(referrals) {
         const progress = (currentStage / totalStages) * 100;
         
         return `
-            <div style="margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border-left: 4px solid ${getStatusColor(referral.status)};">
+            <div data-referral-id="${referral.id}" style="margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border-left: 4px solid ${getStatusColor(referral.status)};">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                     <div>
                         <strong style="display: block; font-size: 1em; color: #1f2937; margin-bottom: 4px;">${referral.referral_reason}</strong>
@@ -175,6 +176,22 @@ function displayProgressOverview(referrals) {
             </div>
         `;
     }).join('');
+}
+
+// Arriving from the dashboard's "View Referrals" link (?ref=<id>) should land
+// directly on that specific — usually still-active — case, not a bare list.
+function focusReferralFromUrl() {
+    const referralId = new URLSearchParams(window.location.search).get('ref');
+    if (!referralId) return;
+
+    const card = document.querySelector(`#referralProgressList [data-referral-id="${referralId}"]`);
+    if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.style.outline = '3px solid #3b82f6';
+        card.style.outlineOffset = '2px';
+    }
+
+    viewReferral(referralId);
 }
 
 function formatDate(dateString) {

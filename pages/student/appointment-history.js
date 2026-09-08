@@ -382,7 +382,7 @@ function shBuildTimelineEntry(record) {
         actorLine = `<strong>${esc(c.counselor_name || 'A counselor')}</strong> ${resolved ? 'resolved counseling case' : 'logged a counseling session'} — <strong>${esc(c.case_title || c.section_name || 'Counseling Case')}</strong>`;
         dateVal = c.created_at || c.case_date;
         detailBody = `
-            <div class="sh-detail-row"><div class="sh-detail-label">Summary</div><div class="sh-detail-value">${esc(c.case_summary) || '—'}</div></div>
+            <div class="sh-detail-row"><div class="sh-detail-label">Summary</div><div class="sh-detail-value">${esc(shStripReferralLinkTag(c.case_summary)) || '—'}</div></div>
             <div class="sh-detail-row"><div class="sh-detail-label">Objective</div><div class="sh-detail-value">${esc(c.case_objective) || '—'}</div></div>
             <div class="sh-detail-row"><div class="sh-detail-label">First Action Taken</div><div class="sh-detail-value">${esc(c.first_action) || '—'}</div></div>
             <div class="sh-detail-row"><div class="sh-detail-label">Counselor</div><div class="sh-detail-value">${esc(c.counselor_name) || '—'}</div></div>
@@ -444,29 +444,92 @@ function shBuildTimelineEntry(record) {
 
 const SH_RESOLVED_CASE_STATUSES = ['completed', 'resolved', 'done', 'closed'];
 
+const SH_STAGE_NAMES = {
+    1: 'Interview/Background',
+    2: 'Initial Risk Assessment',
+    3: 'Parent Call-up/Consent',
+    4: 'Intervention',
+    5: 'Counseling',
+    6: 'Student Follow-up'
+};
+
+// Turns one referral_stage_log row (see api/update-referral.php) into a
+// plain-English sentence for the timeline. The specific cases mirror the
+// actual branching logic in referral-status.js/referrals.js
+// (confirmAssessmentCompleted(), confirmConsentDecision()) — everything
+// else (a plain advance, or a coordinator's manual stage jump) falls back
+// to a generic "moved from X to Y" description built from the stage names.
+function shDescribeStageTransition(fromStage, toStage, note) {
+    const key = `${fromStage}-${toStage}`;
+
+    // Both the "agreed" and "declined" consent outcomes land on the same
+    // next stage now — Intervention is mandatory before Counseling either
+    // way (see confirmConsentDecision()) — so this reads the note it
+    // actually recorded instead of a fixed per-key sentence.
+    if (key === '3-4') {
+        return note ? `${note} — proceeding to Intervention first.` : 'Completed Parent Call-up/Consent and moved to Intervention.';
+    }
+
+    const specific = {
+        '1-2': 'Completed the Interview/Background check-up and moved to Initial Risk Assessment.',
+        '2-3': 'Completed the assessment test and moved to Parent Call-up/Consent.',
+        '4-5': 'Completed intervention activities and moved to Counseling.',
+        '5-6': 'Completed counseling sessions and moved to Student Follow-up.'
+    };
+    if (specific[key]) return specific[key];
+
+    const fromName = SH_STAGE_NAMES[fromStage] || `Stage ${fromStage}`;
+    const toName = SH_STAGE_NAMES[toStage] || `Stage ${toStage}`;
+
+    if (toStage === 6 && fromStage !== 5) {
+        return note ? `Case closed early (${note}) while at ${fromName}.` : `Case closed early while at ${fromName}.`;
+    }
+    return note ? `Moved from ${fromName} to ${toName} — ${note}.` : `Moved from ${fromName} to ${toName}.`;
+}
+
+// Cases created from a referral (see applyReferralPrefill() in
+// counseling.js) carry a "(Linked to Referral <code>)" tag appended to
+// case_summary purely so the referral side can find the case again — it's
+// bookkeeping, not part of the clinical narrative, so every place that
+// displays a case's summary strips it back out first.
+function shStripReferralLinkTag(text) {
+    return String(text || '').replace(/\s*\(Linked to Referral [^)]*\)\s*$/, '').trim();
+}
+
 /* A counseling case with linked follow-ups becomes one "case thread" — Day 1
    is the case itself, Day 2+ are its follow-ups in date order — instead of
    showing up as separate flat entries. */
 function shBuildCaseThreadEntry(c, followUpsRaw) {
-    const sortedFollowUps = followUpsRaw.slice().sort((a, b) => {
-        const da = shParseDate(a.follow_up_date || a.created_at) || new Date(0);
-        const db = shParseDate(b.follow_up_date || b.created_at) || new Date(0);
-        return da - db;
-    });
-
     const resolved = SH_RESOLVED_CASE_STATUSES.includes(String(c.status || '').toLowerCase());
     const day1Note = [
-        c.case_summary,
+        shStripReferralLinkTag(c.case_summary),
         c.case_objective ? `Objective: ${c.case_objective}` : '',
         c.first_action ? `First action: ${c.first_action}` : ''
     ].filter(Boolean).join(' ') || 'Counseling session recorded.';
 
-    const days = [{ rawDate: c.created_at || c.case_date, label: 'Initial session', note: day1Note }]
-        .concat(sortedFollowUps.map(f => ({
+    // Sorted by actual date, not by "case first, then follow-ups in the
+    // order they were recorded" — a follow-up logged with an earlier date
+    // than the case's own created_at (e.g. old data entered before the
+    // follow-up date field was locked to today) used to still show up as
+    // "Day 2" after the case's "Day 1", even though it happened first.
+    const days = [
+        { rawDate: c.created_at || c.case_date, label: 'Initial session', note: day1Note },
+        ...followUpsRaw.map(f => ({
             rawDate: f.follow_up_date || f.created_at,
-            label: 'Follow-up',
+            // Category is the counselor's own read on this student's
+            // behavior for this follow-up (see renderFollowUpNoteTile() /
+            // saveFollowUp() in counseling.js, now picked per-student
+            // rather than one category for the whole batch) — surfaced
+            // here so the history shows what was actually assessed, not
+            // just a generic "Follow-up" label.
+            label: f.categoryName ? `Follow-up: ${f.categoryName}` : 'Follow-up',
             note: f.note || 'Follow-up session recorded.'
-        })));
+        }))
+    ].sort((a, b) => {
+        const da = shParseDate(a.rawDate) || new Date(0);
+        const db = shParseDate(b.rawDate) || new Date(0);
+        return da - db;
+    });
 
     if (resolved && days.length > 1) {
         days[days.length - 1].label = 'Closing';
@@ -559,6 +622,23 @@ function shBuildReferralThreadEntry(r) {
             verb: isBackground ? 'logged an interview / background check-up' : 'logged a risk assessment',
             note: parts.join(' ') || (isBackground ? 'Interview / background check-up recorded.' : 'Risk assessment recorded.'),
             pill: isBackground ? 'INTERVIEWED' : 'ASSESSED'
+        });
+    });
+
+    // Every stage change this referral has gone through (see
+    // api/update-referral.php's referral_stage_log) — narrated in plain
+    // English via shDescribeStageTransition() instead of surfacing the raw
+    // stage_note, so e.g. a Stage 3 disagreement reads as a sentence
+    // explaining what happens next and why, not just "Waiting for
+    // assessment proper".
+    (r.stage_log || []).forEach(log => {
+        events.push({
+            rawDate: log.changed_at,
+            label: `Moved to Stage ${log.to_stage}`,
+            by: log.changed_by || 'A counselor',
+            verb: 'updated the referral stage',
+            note: shDescribeStageTransition(log.from_stage, log.to_stage, log.note),
+            pill: 'UPDATED'
         });
     });
 

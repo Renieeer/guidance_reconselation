@@ -57,23 +57,29 @@
                                 <p><strong>Current Stage:</strong> <span id="detStage"></span><span id="detStageNote" class="text-muted"></span></p>
                             </div>
                         </div>
+                        <p><strong>Reason for Referral:</strong> <span id="ovReason"></span></p>
 
                         <hr>
 
                         <!-- Stage Progress -->
                         <h3 class="text-primary">Referral Progress (6 Stages)</h3>
+                        <p class="text-muted" style="margin-top:-6px;">Click any stage number to review what was recorded there.</p>
                         <div id="detailStagesContainer"></div>
+                        <div id="stageViewNote" class="text-muted" style="margin-top: 10px; display: none;">
+                            Viewing <strong id="stageViewLabel"></strong> (not the current stage) —
+                            <a href="#" id="backToCurrentStageLink">Back to current stage</a>
+                        </div>
 
                         <hr>
 
                         <!-- Referral Reason & Description -->
                         <h3 class="text-primary">Referral Information</h3>
-                        <div class="form-row">
-                            <div>
-                                <p><strong>Reason for Referral:</strong> <span id="detReferralReason"></span></p>
-                            </div>
+                        <div class="referral-info-columns">
                             <div>
                                 <p><strong>Initial Actions Taken:</strong> <span id="detIntervention"></span></p>
+                            </div>
+                            <div>
+                                <p><strong>Description:</strong> <span id="detDescription"></span></p>
                             </div>
                         </div>
 
@@ -93,6 +99,7 @@
                                 </div>
 
                                 <button type="submit" class="btn btn-success">Save Interview Notes</button>
+                                <button type="button" class="btn btn-secondary" id="cancelInterviewEditBtn" style="display: none;">Cancel</button>
                             </form>
                         </div>
 
@@ -157,22 +164,23 @@
                                     </select>
                                 </div>
                             </div>
-                            <p class="text-muted" style="margin-top:-6px;">If both agree, the referral moves to Stage 4. If either disagrees, it moves to Stage 5.</p>
+                            <p class="text-muted" style="margin-top:-6px;">Either way, the referral moves to Stage 4 (Intervention) — everyone needs intervention before counseling.</p>
 
                             <button type="button" class="btn btn-success" id="consentDecisionSubmitBtn">
                                 <i class="bi bi-check-lg"></i> Confirm &amp; Continue
                             </button>
                         </div>
 
-                        <!-- Intervention Activities (Stage 5) -->
+                        <!-- Intervention Activities (Stage 4) -->
                         <div id="interventionFormSection" style="display: none;">
-                            <h3 class="text-primary">Intervention (Stage 5)</h3>
+                            <h3 class="text-primary">Intervention (Stage 4)</h3>
                             <p class="text-muted" style="margin-top:-6px;">Check off which intervention activities were carried out for this student.</p>
 
                             <form id="interventionForm">
                                 <div class="form-group">
                                     <label>Activities Conducted</label>
                                     <div id="interventionChecklist" class="referral-checklist"></div>
+                                    <textarea id="interventionOtherText" class="referral-reason-other-input" rows="2" placeholder="Specify other activities — one per line, or separate with a comma..." style="display:none;"></textarea>
                                 </div>
 
                                 <div class="form-group">
@@ -182,6 +190,83 @@
 
                                 <button type="submit" class="btn btn-success">Save Intervention</button>
                             </form>
+
+                            <!-- Shown only when "External Referral" is checked above — DepEd
+                                 Appendix C "Referral for Service". Required before this
+                                 referral can advance to Stage 5 (Counseling). -->
+                            <div id="externalReferralFormSection" style="display: none;">
+                                <hr>
+                                <h4 class="text-primary">External Referral — Referral for Service (Appendix C)</h4>
+                                <p class="text-muted" style="margin-top:-6px;">Required before this referral can move to Counseling.</p>
+
+                                <div class="form-row-two">
+                                    <div class="form-group">
+                                        <label for="extRefAgencyName">Referred To (Agency)</label>
+                                        <input type="text" id="extRefAgencyName" placeholder="e.g. City Social Welfare and Development">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="extRefAgencyAddress">Agency Address</label>
+                                        <input type="text" id="extRefAgencyAddress">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="extRefStudentAddress">Student's Home Address</label>
+                                    <input type="text" id="extRefStudentAddress" placeholder="Used on the printable Appendix C form">
+                                </div>
+
+                                <div class="form-row-two">
+                                    <div class="form-group">
+                                        <label for="extRefSchoolName">Referring Party / School</label>
+                                        <input type="text" id="extRefSchoolName">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="extRefSchoolAddress">School Address</label>
+                                        <input type="text" id="extRefSchoolAddress">
+                                    </div>
+                                </div>
+
+                                <div class="form-row-three">
+                                    <div class="form-group">
+                                        <label for="extRefCellphone">Cellphone No.</label>
+                                        <input type="text" id="extRefCellphone">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="extRefLandline">Landline No.</label>
+                                        <input type="text" id="extRefLandline">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="extRefContactPerson">Contact Person</label>
+                                        <input type="text" id="extRefContactPerson">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="extRefReason">Reason/s for Referral</label>
+                                    <textarea id="extRefReason" rows="3"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="extRefServices">Specific Service/s Requested</label>
+                                    <textarea id="extRefServices" rows="3"></textarea>
+                                </div>
+
+                                <!-- No inputs for "Referred By (Signature Over Printed Name)" or
+                                     "Designation" — both are filled in by hand at the moment of
+                                     signing the printed copy, not typed in ahead of time (see the
+                                     blank #printByName/#printByDesignation lines in
+                                     #externalReferralPrintSheet below). -->
+                                <button type="button" class="btn btn-success" id="saveExternalReferralBtn">Save External Referral</button>
+                                <button type="button" class="btn btn-secondary" id="printExternalReferralBtn" style="display:none;" onclick="printExternalReferral()">
+                                    <i class="bi bi-printer"></i> Print / Save as PDF (Appendix C)
+                                </button>
+                                <p id="externalReferralPdfHint" class="text-muted" style="display:none; margin-top:6px; font-size:13px;">
+                                    In the print dialog, choose <strong>Save as PDF</strong> as the destination to download it instead of printing.
+                                </p>
+                                <p id="externalReferralSavedNote" class="text-muted" style="display:none; margin-top:8px;">
+                                    <i class="bi bi-check-circle-fill" style="color:#1b8f59;"></i> Saved — this referral can now advance to Counseling.
+                                </p>
+                            </div>
                         </div>
 
                         <!-- Case Closing Acknowledgement (Stage 6) -->
@@ -200,23 +285,26 @@
                                     <div id="ackChecklist" class="referral-checklist"></div>
                                 </div>
 
-                                <div class="form-group">
-                                    <label for="ackFollowUpCount">Number of follow-ups made by the Counselor</label>
-                                    <input type="text" id="ackFollowUpCount" name="ackFollowUpCount" placeholder="e.g. 3">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="ackReferredTo">Referred to (if applicable)</label>
-                                    <input type="text" id="ackReferredTo" name="ackReferredTo" placeholder="e.g. External specialist / agency name">
-                                </div>
-
                                 <button type="submit" class="btn btn-success">Save Acknowledgement</button>
                             </form>
                         </div>
 
-                        <!-- Stage 4 doesn't have a dedicated documentation form yet -->
-                        <div id="noStageDocSection" style="display: none;">
-                            <p class="text-muted">No additional documentation is required at this stage.</p>
+                        <!-- Stage 5: Counseling — links out to the standalone Counseling
+                             case feature (sidebar) instead of duplicating it here. -->
+                        <div id="counselingCtaSection" style="display: none;">
+                            <h3 class="text-primary">Counseling (Stage 5)</h3>
+
+                            <!-- Shown once checkExistingCounselingCase() (referrals.js)
+                                 finds a case already linked to this referral, so it's clear
+                                 the referral and that counseling case are the same effort. -->
+                            <div id="linkedCaseStatus" style="display: none;"></div>
+
+                            <div id="openCounselingCasePrompt">
+                                <p class="text-muted" style="margin-top:-6px;">This referral has reached the Counseling stage. Open a counseling case for this student to begin logging sessions.</p>
+                                <button type="button" class="btn btn-primary" id="openCounselingCaseBtn">
+                                    <i class="bi bi-plus-circle"></i> Open Counseling Case
+                                </button>
+                            </div>
                         </div>
 
                         <hr>
@@ -224,6 +312,88 @@
                         <!-- Case Management Actions -->
                         <h3 class="text-primary">Case Management</h3>
                         <div id="caseActionsContainer"></div>
+                    </div>
+
+                    <!-- Printable Appendix C sheet — deliberately a sibling of .card
+                         (not nested inside it) since @media print hides .card entirely;
+                         a display:none ancestor hides its descendants regardless of
+                         their own display value, so this has to live outside it to be
+                         printable at all. Hidden on screen, shown only via @media print
+                         (see printExternalReferral() in referrals.js). Layout/wording
+                         mirrors the official DepEd "Referral for Service" form exactly;
+                         only the underlined blanks are filled in dynamically. -->
+                    <div id="externalReferralPrintSheet" class="er-print-sheet" style="display:none;">
+                        <div class="er-print-page">
+                            <div class="er-print-appendix">Appendix C</div>
+                            <div class="er-print-confidential">Confidential</div>
+                            <div class="er-print-logo">DepEd</div>
+                            <h2 class="er-print-title">REFERRAL FOR SERVICE</h2>
+
+                            <table class="er-print-instructions">
+                                <tr>
+                                    <td class="er-print-instructions-label">Instructions</td>
+                                    <td class="er-print-instructions-text">
+                                        This should be completed by fully trained and designated staff of the school.
+                                        Original copy shall be maintained in the school and shall form part of the client's confidential records.<br><br>
+                                        Any information contained herein and the rest of the records of the client shall be held in strict confidence. No information from this card shall be shared to anyone except to service provider and as may be authorized.<br>
+                                        Attach additional pages with continued narrative, if needed.
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p class="er-print-line"><strong>To:</strong> <span class="er-print-fill" id="printAgencyName"></span></p>
+                            <p class="er-print-line"><strong>Address:</strong> <span class="er-print-fill" id="printAgencyAddress"></span></p>
+                            <p class="er-print-line"><strong>Name of Student:</strong> <span class="er-print-fill" id="printStudentName"></span></p>
+                            <p class="er-print-line">
+                                <strong>Age:</strong> <span class="er-print-fill er-print-fill-sm" id="printStudentAge"></span>
+                                <strong>Sex:</strong> <span class="er-print-fill er-print-fill-sm" id="printStudentSex"></span>
+                                <strong>Address:</strong> <span class="er-print-fill" id="printStudentAddress"></span>
+                            </p>
+
+                            <p class="er-print-section-label"><strong>Reason/s for Referral:</strong></p>
+                            <p class="er-print-block" id="printReason"></p>
+
+                            <p class="er-print-section-label"><strong>Specific Service/s Requested:</strong></p>
+                            <p class="er-print-block er-print-block-ruled" id="printServices"></p>
+
+                            <p>Please refer to attached report/intake form/case summary for more information.</p>
+
+                            <p>Feedback is requested. Please send to:</p>
+                            <p class="er-print-feedback">
+                                Office of the School Principal, <span id="printFeedbackSchool"></span><br>
+                                <span id="printFeedbackAddress"></span>
+                            </p>
+                        </div>
+
+                        <div class="er-print-page er-print-page-break">
+                            <div class="er-print-appendix">Appendix C</div>
+                            <div class="er-print-confidential">Confidential</div>
+
+                            <p class="er-print-line"><strong>Referring Party/School:</strong> <span class="er-print-fill" id="printSchoolName"></span></p>
+                            <p class="er-print-line"><strong>Address:</strong> <span class="er-print-fill" id="printSchoolAddress"></span></p>
+                            <p class="er-print-line">
+                                <strong>Cellphone No. :</strong> <span class="er-print-fill er-print-fill-sm" id="printCellphone"></span>
+                                <strong>Landline No:</strong> <span class="er-print-fill er-print-fill-sm" id="printLandline"></span>
+                            </p>
+                            <p class="er-print-line"><strong>Contact Person:</strong> <span class="er-print-fill" id="printContactPerson"></span></p>
+
+                            <p class="er-print-referred-by">Referred by:</p>
+                            <div class="er-print-signature-row">
+                                <div class="er-print-signature">
+                                    <div class="er-print-signature-line" id="printByName"></div>
+                                    <div class="er-print-signature-caption">Signature Over Printed Name</div>
+                                </div>
+                                <div class="er-print-signature">
+                                    <div class="er-print-signature-line" id="printByDesignation"></div>
+                                    <div class="er-print-signature-caption">Designation</div>
+                                </div>
+                            </div>
+
+                            <div class="er-print-signature er-print-date">
+                                <div class="er-print-signature-line" id="printDate"></div>
+                                <div class="er-print-signature-caption">Date Accomplished</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -352,8 +522,8 @@
                                 <select id="stageFilter" style="padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
                                     <option value="">All Stages</option>
                                     <option value="3">Parent Call-up/Consent (3)</option>
-                                    <option value="4">Counseling (4)</option>
-                                    <option value="5">Intervention (5)</option>
+                                    <option value="4">Intervention (4)</option>
+                                    <option value="5">Counseling (5)</option>
                                 </select>
                             </div>
                             <button class="btn btn-primary" onclick="applyStageFilter()">Filter</button>

@@ -9,8 +9,65 @@ function initReferralForm() {
     populateTeacherSchool();
     setupPeopleList();
     setupPersonEditModal();
+    setupReasonChecklist();
     loadExistingReferralData();
     document.getElementById('referralForm').addEventListener('submit', submitReferralForm);
+}
+
+// "Others" reveals a free-text field when checked — kept for reasons that
+// don't fit the fixed list, without letting every referral fall back to
+// freeform text (which is what made the reason breakdown in Analytics
+// unusable for filtering in the first place).
+function setupReasonChecklist() {
+    const otherCheck = document.getElementById('referralReasonOtherCheck');
+    const otherText = document.getElementById('referralReasonOtherText');
+    otherCheck.addEventListener('change', () => {
+        otherText.style.display = otherCheck.checked ? '' : 'none';
+        if (otherCheck.checked) otherText.focus();
+    });
+}
+
+// Combines the checked reason boxes (plus "Others" free text, if used) into
+// the single semicolon-separated string the API stores as referral_reason.
+// Analytics splits on the same separator to tally each reason on its own.
+function collectReferralReason() {
+    const checked = Array.from(document.querySelectorAll('.referral-reason-check:checked')).map(c => c.value);
+    const otherCheck = document.getElementById('referralReasonOtherCheck');
+    if (otherCheck.checked) {
+        const otherText = document.getElementById('referralReasonOtherText').value.trim();
+        if (otherText) checked.push(otherText);
+    }
+    return checked.join('; ');
+}
+
+// Re-checks the boxes matching a previously saved referral_reason string
+// (editing/prefill flow). Any part that doesn't match one of the fixed
+// options — e.g. a referral saved before this checklist existed — is
+// preserved under "Others" instead of being silently dropped.
+function populateReferralReasonChecklist(storedReason) {
+    if (!storedReason) return;
+
+    const options = Array.from(document.querySelectorAll('.referral-reason-check'));
+    const parts = storedReason.split(';').map(s => s.trim()).filter(Boolean);
+    const candidates = parts.length ? parts : [storedReason.trim()];
+    const leftover = [];
+
+    candidates.forEach(part => {
+        const match = options.find(c => c.value.toLowerCase() === part.toLowerCase());
+        if (match) {
+            match.checked = true;
+        } else {
+            leftover.push(part);
+        }
+    });
+
+    if (leftover.length) {
+        const otherCheck = document.getElementById('referralReasonOtherCheck');
+        const otherText = document.getElementById('referralReasonOtherText');
+        otherCheck.checked = true;
+        otherText.value = leftover.join('; ');
+        otherText.style.display = '';
+    }
 }
 
 // Load existing referral data from database (if editing or viewing previous submission)
@@ -48,7 +105,7 @@ function loadExistingReferralData() {
 function populateReferralForm(referral) {
     const sharedFieldMap = {
         date_submitted: 'referralDate',
-        referral_reason: 'referralReason',
+        description: 'referralDescription',
         intervention_attempts: 'interventionAttempts',
         teacher_contact: 'teacherContact'
     };
@@ -66,6 +123,8 @@ function populateReferralForm(referral) {
             }
         }
     });
+
+    populateReferralReasonChecklist(referral.referral_reason);
 
     const firstCard = allPersonCards()[0];
     if (!firstCard) return;
@@ -625,11 +684,9 @@ function populateTeacherSchool() {
 function submitReferralForm(e) {
     e.preventDefault();
 
-    const referralReasonField = document.getElementById('referralReason');
-    const referralReason = referralReasonField.value.trim();
+    const referralReason = collectReferralReason();
     if (!referralReason) {
-        showErrorMessage('Please enter the reason for referral.');
-        referralReasonField.focus();
+        showErrorMessage('Please select at least one reason for referral.');
         return;
     }
 
@@ -644,6 +701,7 @@ function submitReferralForm(e) {
     // record below — each person still becomes its own full referral row.
     const shared = {
         referral_reason: referralReason,
+        description: document.getElementById('referralDescription').value.trim(),
         intervention_attempts: document.getElementById('interventionAttempts').value.trim(),
         teacher_id: user.id || null,
         teacher_name: user.name || user.email,

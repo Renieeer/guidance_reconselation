@@ -44,20 +44,6 @@
                         </div>
                     </div>
 
-                    <!-- Pending Referrals -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div>
-                                <h3 class="card-title">Pending Review</h3>
-                            </div>
-                            <div class="card-icon"><i class="bi bi-hourglass-split"></i></div>
-                        </div>
-                        <div class="card-content">
-                            <div class="card-stats" id="pendingReferrals">0</div>
-                            <p>Awaiting coordinator review</p>
-                        </div>
-                    </div>
-
                     <!-- Approved Referrals -->
                     <div class="card">
                         <div class="card-header">

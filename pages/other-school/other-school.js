@@ -48,7 +48,7 @@ function loadReferralStats(school) {
 
             // Calculate statistics
             const active = referrals.filter(r => r.stage >= 3 && r.stage < 6).length;
-            const followUps = referrals.filter(r => r.stage === 3 || r.stage === 5).length;
+            const followUps = referrals.filter(r => r.stage === 3 || r.stage === 4).length;
             const assignedReferrals = referrals.filter(r => r.stage >= 3);
             const totalStudents = assignedReferrals.length;
 

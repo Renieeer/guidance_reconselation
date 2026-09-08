@@ -57,6 +57,7 @@
                                 <p><strong>Current Stage:</strong> <span id="detailStage"></span><span id="detailStageNote" class="text-muted"></span></p>
                             </div>
                         </div>
+                        <p><strong>Reason for Referral:</strong> <span id="ovReason"></span></p>
 
                         <hr style="margin: 20px 0;">
 
@@ -68,12 +69,12 @@
 
                         <!-- Referral Reason & Description -->
                         <h3 class="text-primary">Referral Information</h3>
-                        <div class="form-row">
-                            <div>
-                                <p><strong>Reason for Referral:</strong> <span id="detailReason"></span></p>
-                            </div>
+                        <div class="referral-info-columns">
                             <div>
                                 <p><strong>Initial Actions Taken:</strong> <span id="detailIntervention"></span></p>
+                            </div>
+                            <div>
+                                <p><strong>Description:</strong> <span id="detailDescription"></span></p>
                             </div>
                         </div>
 
@@ -168,8 +169,8 @@
                         <option value="1">Stage 1: Interview/Background</option>
                         <option value="2">Stage 2: Initial Risk Assessment</option>
                         <option value="3">Stage 3: Parent Call-up/Consent</option>
-                        <option value="4">Stage 4: Counseling</option>
-                        <option value="5">Stage 5: Intervention</option>
+                        <option value="4">Stage 4: Intervention</option>
+                        <option value="5">Stage 5: Counseling</option>
                         <option value="6">Stage 6: Student Follow-up</option>
                     </select>
                 </div>

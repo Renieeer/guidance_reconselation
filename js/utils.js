@@ -140,8 +140,8 @@ const referralStages = [
     { id: 1, name: 'Interview/Background', description: 'Initial interview with the student to gather background information (walk-in, or referred by the adviser, subject teacher, or student).' },
     { id: 2, name: 'Initial Risk Assessment', description: 'Initial risk assessment by the counselor using tools such as GAD-7, PHQ, Columbia Suicide Severity Rating Scale, HEEADSSS, etc.' },
     { id: 3, name: 'Parent Call-up/Consent', description: 'Parent called and consent obtained for further assessment and interventions.' },
-    { id: 4, name: 'Counseling', description: 'Counseling sessions with the student — discussion of findings and next steps.' },
-    { id: 5, name: 'Intervention', description: 'Intervention plan carried out — support measures and coping strategies put in place.' },
+    { id: 4, name: 'Intervention', description: 'Intervention plan carried out — support measures and coping strategies put in place.' },
+    { id: 5, name: 'Counseling', description: 'Counseling sessions with the student — discussion of findings and next steps.' },
     { id: 6, name: 'Student Follow-up', description: 'Follow-up with the student to monitor progress and well-being after intervention.' }
 ];
 
@@ -163,7 +163,7 @@ function createStageIndicator(currentStage) {
         const isCompleted = stage.id < currentStage;
         const stageClass = isActive ? 'active' : (isCompleted ? 'completed' : '');
         html += `<div class="stage ${stageClass}">
-                    <div class="stage-circle">${stage.id}</div>
+                    <div class="stage-circle" data-stage="${stage.id}">${stage.id}</div>
                     <div class="stage-name">${stage.name}</div>
                  </div>`;
     });
@@ -224,6 +224,47 @@ function ensureLogoutConfirmModal() {
 function requestLogout(e) {
     if (e) e.preventDefault();
     ensureLogoutConfirmModal().classList.add('show');
+}
+
+const PROFILE_ROLE_LABELS = {
+    student: 'Student',
+    teacher: 'Teacher',
+    counselor: 'Counselor',
+    coordinator: 'Coordinator',
+    'counselor-and-coordinator': 'Counselor & Coordinator',
+    sdo: 'SDO',
+    admin: 'Administrator'
+};
+
+// Human-readable role label — used on pages/<role>/profile.php (js/profile.js)
+// and the sidebar's "My Profile" popup (js/sidebar-active.js).
+function formatProfileRole(role) {
+    return PROFILE_ROLE_LABELS[String(role || '').toLowerCase()] || role || '';
+}
+
+// Keeps sessionStorage/localStorage user objects in sync after a profile
+// change, so the sidebar avatar/name update immediately without re-login.
+// Used by pages/<role>/profile.php's edit form (js/profile.js) and by the
+// sidebar's "My Profile" popup edit form (js/sidebar-active.js).
+function syncStoredUser(patch) {
+    ['user', 'userInfo'].forEach(key => {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) return;
+        try {
+            const obj = Object.assign(JSON.parse(raw), patch);
+            sessionStorage.setItem(key, JSON.stringify(obj));
+        } catch (err) { /* ignore malformed storage */ }
+    });
+
+    const rawLocal = localStorage.getItem('currentUser');
+    if (rawLocal) {
+        try {
+            const obj = Object.assign(JSON.parse(rawLocal), patch);
+            localStorage.setItem('currentUser', JSON.stringify(obj));
+        } catch (err) { /* ignore malformed storage */ }
+    }
+
+    setUserInfo();
 }
 
 // Set user info in topbar

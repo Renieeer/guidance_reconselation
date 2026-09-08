@@ -11,6 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once 'conn.php';
 require_once 'grade-scope.php';
+require_once 'account-status.php';
+
+ensure_users_table_active_column($conn);
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
@@ -40,11 +43,12 @@ if ($studentId === '') {
 }
 
 $studentStmt = $conn->prepare('
-    SELECT StudentId, AccountID, LRN, FirstName, MiddleName, LastName, Nickname, Sex, Age, Grade, Section,
-           EmailAccount, CellphoneNumber, DateOfBirth, PlaceOfBirth, ReligionFromBirth, CurrentReligion,
-           CurrentAddress, PermanentAddress
-    FROM student_table
-    WHERE StudentId = ?
+    SELECT s.StudentId, s.AccountID, s.LRN, s.FirstName, s.MiddleName, s.LastName, s.Nickname, s.Sex, s.Age, s.Grade, s.Section,
+           s.EmailAccount, s.CellphoneNumber, s.DateOfBirth, s.PlaceOfBirth, s.ReligionFromBirth, s.CurrentReligion,
+           s.CurrentAddress, s.PermanentAddress, u.is_active
+    FROM student_table s
+    LEFT JOIN users_tables u ON u.AccountID = s.AccountID
+    WHERE s.StudentId = ?
 ');
 if (!$studentStmt) {
     send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
@@ -100,7 +104,8 @@ if (table_exists($conn, 'referral')) {
                     'section' => $row['section'] ?? '',
                     'date_submitted' => $row['date_submitted'] ?? null,
                     'updated_at' => $row['updated_at'] ?? null,
-                    'screenings' => []
+                    'screenings' => [],
+                    'stage_log' => []
                 ];
             }
         }
@@ -139,6 +144,43 @@ if (table_exists($conn, 'referral')) {
                 }
                 foreach ($referrals as &$ref) {
                     $ref['screenings'] = $screeningsByReferral[$ref['id']] ?? [];
+                }
+                unset($ref);
+            }
+            $stmt->close();
+        }
+    }
+
+    // Every stage transition this referral has gone through — see
+    // api/update-referral.php, which writes one row here per change instead
+    // of only keeping the single latest stage_note. Narrated into the
+    // timeline by shDescribeStageTransition() in {counselor,other-school}/
+    // student-history.js and student/appointment-history.js.
+    if (!empty($referrals) && table_exists($conn, 'referral_stage_log')) {
+        $ids = array_column($referrals, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = str_repeat('i', count($ids));
+        $stmt = $conn->prepare("
+            SELECT * FROM referral_stage_log
+            WHERE referral_id IN ($placeholders)
+            ORDER BY changed_at ASC, id ASC
+        ");
+        if ($stmt) {
+            $stmt->bind_param($types, ...$ids);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                $logByReferral = [];
+                while ($row = $result->fetch_assoc()) {
+                    $logByReferral[(int)$row['referral_id']][] = [
+                        'from_stage' => (int)$row['from_stage'],
+                        'to_stage' => (int)$row['to_stage'],
+                        'note' => $row['note'] ?? '',
+                        'changed_by' => $row['changed_by'] ?? '',
+                        'changed_at' => $row['changed_at'] ?? null
+                    ];
+                }
+                foreach ($referrals as &$ref) {
+                    $ref['stage_log'] = $logByReferral[$ref['id']] ?? [];
                 }
                 unset($ref);
             }
@@ -313,7 +355,11 @@ send_json(200, [
         'grade' => $student['Grade'] ?? '',
         'section' => $student['Section'] ?? '',
         'email' => $student['EmailAccount'] ?? '',
-        'contact' => $student['CellphoneNumber'] ?? ''
+        'contact' => $student['CellphoneNumber'] ?? '',
+        // No AccountID (no self-service account yet) still counts as an
+        // active learner — only an explicit is_active=0 (SDO deactivation)
+        // marks them inactive.
+        'is_active' => $student['AccountID'] !== null && isset($student['is_active']) ? (int)$student['is_active'] : 1
     ],
     'data' => [
         'referrals' => $referrals,

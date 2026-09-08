@@ -898,6 +898,7 @@ body.auth-page {
 
 .referral-checklist {
     display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 8px;
 }
 
@@ -2056,6 +2057,24 @@ input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
     box-shadow: 0 0 0 3px rgba(26, 76, 136,0.08);
 }
 
+.fu-form-input[readonly] {
+    background: #f2f6fb;
+    color: #5a6b82;
+    cursor: not-allowed;
+}
+
+/* Flashes a Recent drafts row when arriving via a referral's "View
+   Counseling Case" link (see highlightLinkedCase() in counseling.js), so
+   it's obvious which case that link pointed at. */
+.case-row-highlight {
+    animation: caseRowHighlightFlash 2.5s ease-out;
+}
+
+@keyframes caseRowHighlightFlash {
+    0% { background-color: rgba(26, 76, 136, 0.18); }
+    100% { background-color: transparent; }
+}
+
 .fu-form-textarea {
     padding: 10px 12px;
     border: 1px solid #e7edf4;
@@ -2165,7 +2184,18 @@ input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
 }
 
 .fu-note-tile.expanded .fu-note-tile-body {
-    max-height: 160px;
+    max-height: 260px;
+}
+
+.fu-note-tile-body .fu-note-category-label {
+    display: block;
+    margin: 0 12px 4px;
+}
+
+.fu-note-tile-body .fu-note-category {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 0 12px 10px;
 }
 
 .fu-note-tile-body .fu-note-textarea {
@@ -3794,6 +3824,41 @@ body.sidebar-open .sidebar-overlay {
     flex-shrink: 0;
 }
 
+/* Per-metric accent variants for .stat-icon (pages/*/analytics.js's
+   statCards()) so a row of stat cards reads as distinct metrics at a
+   glance instead of four identical blue circles. Colors reuse the same
+   tokens the rest of the app already uses for these meanings (badges,
+   role tags) rather than introducing a new palette. */
+.stat-icon-info {
+    background: linear-gradient(135deg, rgba(29, 90, 168, 0.16), rgba(29, 90, 168, 0.06));
+    color: var(--info);
+}
+
+.stat-icon-amber {
+    background: linear-gradient(135deg, rgba(161, 92, 0, 0.18), rgba(161, 92, 0, 0.06));
+    color: var(--warn);
+}
+
+.stat-icon-green {
+    background: linear-gradient(135deg, rgba(27, 127, 90, 0.18), rgba(27, 127, 90, 0.06));
+    color: var(--ok);
+}
+
+.stat-icon-red {
+    background: linear-gradient(135deg, rgba(179, 38, 30, 0.16), rgba(179, 38, 30, 0.06));
+    color: var(--danger);
+}
+
+.stat-icon-purple {
+    background: linear-gradient(135deg, rgba(106, 79, 163, 0.18), rgba(106, 79, 163, 0.06));
+    color: var(--role-coordinator);
+}
+
+.stat-icon-teal {
+    background: linear-gradient(135deg, rgba(14, 110, 110, 0.18), rgba(14, 110, 110, 0.06));
+    color: var(--role-teacher);
+}
+
 .stat-card h3 {
     font-size: 28px;
     line-height: 1.1;
@@ -4103,6 +4168,10 @@ body.sidebar-open .sidebar-overlay {
     display: flex;
     gap: 12px;
     margin-top: 32px;
+}
+
+.case-form .form-actions {
+    justify-content: flex-end;
 }
 
 .sdo-assignment-form {
@@ -4578,6 +4647,32 @@ tr:hover {
     background: #8494a7;
 }
 
+/* Sidebar "My Profile" popup body (includes/sidebar-*.php) — same slim
+   scrollbar treatment as .modal-body textarea above, applied to the whole
+   scrolling body since the edit form is taller than one field. */
+.profile-popup-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #d8e0ea #f2f6fb;
+}
+
+.profile-popup-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.profile-popup-scroll::-webkit-scrollbar-track {
+    background: #f2f6fb;
+    border-radius: 10px;
+}
+
+.profile-popup-scroll::-webkit-scrollbar-thumb {
+    background: #d8e0ea;
+    border-radius: 10px;
+}
+
+.profile-popup-scroll::-webkit-scrollbar-thumb:hover {
+    background: #8494a7;
+}
+
 /* ========== DISTRICT NAVIGATION ========== */
 .district-nav {
     padding: 0;
@@ -4907,6 +5002,46 @@ tr:hover {
 
 .tab-content.active {
     display: block;
+}
+
+/* Reports Dashboard (pages/*/analytics.js) — plays whenever #reportPanel's
+   content is swapped for a different report tab, via report-panel-anim
+   being removed/reflowed/re-added in that file's render(). */
+@keyframes reportPanelFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.report-panel-anim {
+    animation: reportPanelFadeIn 0.32s ease;
+}
+
+/* Icon shown above the text in an empty-state card (emptyNote()) or an
+   empty chart tile (chartTileEmpty()) — turns a "no data yet" message from
+   a bare line of gray text into something that matches the rest of the
+   dashboard's card styling. .spin plays on the "Loading…" state's
+   bi-arrow-repeat icon. */
+.empty-state-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--light-gray);
+    color: var(--text-light);
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.empty-state-icon.spin i {
+    display: inline-block;
+    animation: emptyStateSpin 1s linear infinite;
+}
+
+@keyframes emptyStateSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 /* ========== RESPONSIVE ========== */
@@ -5701,25 +5836,36 @@ html {
    not just the landing page. Scoping them to body.landing-page left the
    nav's background/radius/shadow silently resolving to nothing everywhere else. */
 :root {
-    --clay-canvas: #e7ecf6;
+    /* ===== Flattened to the GMS Design Canvas (gms-design-canvas.html) =====
+       These were originally claymorphism tokens (soft embossed/debossed
+       shadows, near-pill radii, gradient fills). The design canvas moved the
+       whole app to a flat system instead — thin borders, small radii, solid
+       fills, subtle shadows. Every shared component (buttons, cards, badges,
+       modals, forms, sidebar, tables) keys off these same custom properties,
+       so redefining them here carries the flat system to every role's pages
+       at once, the same "one shared token, no page edits" approach the
+       original clay reskin below already relied on. Kept the --clay-* names
+       (rather than renaming everywhere they're used) to avoid an
+       error-prone find/replace across 40+ selectors for a value-only change. */
+    --clay-canvas: #eef3f9;
     --clay-white: #ffffff;
-    --clay-light-bg: #f4f7fc;
-    --clay-navy-fill: linear-gradient(155deg, #12305c 0%, #0b1f3a 62%, #081729 100%);
-    --clay-navy-fill-2: linear-gradient(155deg, #16386c 0%, #0f2a4f 100%);
-    --clay-accent-fill: linear-gradient(135deg, #2a6bc0 0%, #1a4c88 45%, #123a6b 100%);
+    --clay-light-bg: #f5f7fa;
+    --clay-navy-fill: linear-gradient(185deg, #12305c 0%, #0b1f3a 70%);
+    --clay-navy-fill-2: #0f2a4f;
+    --clay-accent-fill: #123a6b;
 
-    --clay-out: 9px 9px 20px rgba(10, 22, 45, 0.14), -9px -9px 18px rgba(255, 255, 255, 0.85);
-    --clay-out-sm: 6px 6px 13px rgba(10, 22, 45, 0.12), -6px -6px 11px rgba(255, 255, 255, 0.8);
-    --clay-in: inset 4px 4px 9px rgba(10, 22, 45, 0.12), inset -4px -4px 9px rgba(255, 255, 255, 0.7);
+    --clay-out: var(--shadow);
+    --clay-out-sm: 0 1px 3px rgba(11, 31, 58, 0.08);
+    --clay-in: none;
 
-    --clay-dark-out: 12px 16px 32px rgba(2, 8, 20, 0.5), -8px -10px 24px rgba(63, 111, 178, 0.14);
-    --clay-dark-out-sm: 7px 9px 18px rgba(2, 8, 20, 0.45), -6px -7px 15px rgba(63, 111, 178, 0.12);
-    --clay-dark-in: inset 3px 3px 7px rgba(0, 0, 0, 0.4), inset -3px -3px 7px rgba(80, 130, 200, 0.12);
+    --clay-dark-out: var(--shadow-md);
+    --clay-dark-out-sm: 0 2px 8px rgba(11, 31, 58, 0.08);
+    --clay-dark-in: none;
 
-    --clay-r-xl: 44px;
-    --clay-r-lg: 32px;
-    --clay-r-md: 24px;
-    --clay-r-sm: 16px;
+    --clay-r-xl: 16px;
+    --clay-r-lg: 12px;
+    --clay-r-md: 8px;
+    --clay-r-sm: 6px;
     --clay-r-pill: 100px;
 }
 
@@ -7662,6 +7808,178 @@ footer {
         size: letter;
     }
 }
+
+/* ========== EXTERNAL REFERRAL — APPENDIX C PRINTABLE SHEET ==========
+   pages/{counselor,other-school}/referral-status.js's printExternalReferral()
+   adds .print-external-referral to <body> and calls window.print(); this
+   sheet only ever renders inside that @media print block, using its own ID
+   (higher specificity than the .card{display:none!important} rule above)
+   to stay visible while everything else on the page is hidden. Layout aims
+   to mirror the official 2-page DepEd "Referral for Service" form as
+   closely as plain HTML/CSS reasonably allows. */
+.er-print-sheet {
+    display: none;
+}
+
+@media print {
+    body.print-external-referral .card,
+    body.print-external-referral .page-hero,
+    body.print-external-referral .btn,
+    body.print-external-referral .navbar,
+    body.print-external-referral .sidebar,
+    body.print-external-referral .sidebar-toggle,
+    body.print-external-referral .sidebar-overlay,
+    body.print-external-referral .alert {
+        display: none !important;
+    }
+
+    body.print-external-referral #externalReferralPrintSheet {
+        display: block !important;
+    }
+
+    body.print-external-referral .main-wrapper,
+    body.print-external-referral .main-content {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        width: 100%;
+    }
+
+    .er-print-page {
+        position: relative;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 11pt;
+        color: #000;
+        padding-top: 34px;
+    }
+
+    .er-print-page-break {
+        page-break-before: always;
+    }
+
+    .er-print-appendix {
+        position: absolute;
+        top: 0;
+        right: 0;
+        font-style: italic;
+        font-size: 10pt;
+    }
+
+    .er-print-confidential {
+        position: absolute;
+        top: 20px;
+        right: 0;
+        border: 1px solid #000;
+        padding: 4px 16px;
+        font-size: 10pt;
+    }
+
+    .er-print-logo {
+        font-weight: 800;
+        font-size: 20pt;
+        letter-spacing: 1px;
+    }
+
+    .er-print-title {
+        text-align: center;
+        font-weight: 700;
+        font-size: 13pt;
+        margin: 20px 0;
+    }
+
+    .er-print-instructions {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #000;
+        margin-bottom: 20px;
+    }
+
+    .er-print-instructions-label {
+        border: 1px solid #000;
+        font-weight: 700;
+        padding: 10px;
+        vertical-align: top;
+        width: 100px;
+    }
+
+    .er-print-instructions-text {
+        border: 1px solid #000;
+        padding: 10px;
+        font-size: 9.5pt;
+        line-height: 1.4;
+    }
+
+    .er-print-line {
+        margin: 10px 0;
+    }
+
+    .er-print-fill {
+        display: inline-block;
+        min-width: 260px;
+        border-bottom: 1px solid #000;
+        padding: 0 4px 2px;
+    }
+
+    .er-print-fill-sm {
+        min-width: 80px;
+        margin-right: 20px;
+    }
+
+    .er-print-section-label {
+        margin: 16px 0 4px;
+    }
+
+    .er-print-block {
+        min-height: 80px;
+        white-space: pre-wrap;
+    }
+
+    .er-print-block-ruled {
+        border-top: 1px solid #000;
+        border-bottom: 1px solid #000;
+        min-height: 40px;
+        padding: 4px 0;
+        white-space: pre-wrap;
+    }
+
+    .er-print-feedback {
+        text-decoration: underline;
+        margin-top: 4px;
+    }
+
+    .er-print-referred-by {
+        margin-top: 60px;
+    }
+
+    .er-print-signature-row {
+        display: flex;
+        gap: 60px;
+        margin-top: 50px;
+    }
+
+    .er-print-signature {
+        text-align: center;
+        min-width: 200px;
+    }
+
+    .er-print-signature-line {
+        border-bottom: 1px solid #000;
+        min-height: 20px;
+        margin-bottom: 4px;
+    }
+
+    .er-print-signature-caption {
+        font-size: 9pt;
+    }
+
+    .er-print-date {
+        margin-top: 40px;
+        max-width: 220px;
+    }
+}
+
 /* ========== GUIDANCE CASE REPORT CARD MODAL ========== */
 .modal-content-wide {
     max-width: 1080px;
@@ -8787,6 +9105,21 @@ footer {
 .btn-danger:hover { box-shadow: var(--clay-out-sm), 0 14px 26px rgba(179, 38, 30, 0.3); }
 .btn-danger:active { box-shadow: var(--clay-in); }
 
+/* "End case" (pages/{counselor,other-school}/counseling.js) combines
+   .btn-outline with .btn-danger. Both are single-class selectors of equal
+   specificity, so whichever is declared later in this file wins the
+   background — .btn-outline's white background happened to come after
+   .btn-danger's red one, silently blanking the button out. A two-class
+   selector always outranks either alone, so this wins regardless of where
+   the other two rules sit. */
+.btn-outline.btn-danger {
+    background: linear-gradient(135deg, #c23328 0%, #8f1e17 100%);
+    color: white;
+    box-shadow: var(--clay-out-sm);
+}
+.btn-outline.btn-danger:hover { box-shadow: var(--clay-out-sm), 0 14px 26px rgba(179, 38, 30, 0.3); }
+.btn-outline.btn-danger:active { box-shadow: var(--clay-in); }
+
 .btn-warning {
     background: linear-gradient(135deg, #b8720a 0%, #8a5400 100%);
     box-shadow: var(--clay-out-sm);
@@ -8859,6 +9192,36 @@ footer {
     border-color: transparent;
     background: var(--clay-light-bg);
     box-shadow: var(--clay-in), 0 0 0 3px rgba(29, 90, 168, 0.18);
+}
+
+/* Validation error state (pages/{counselor,other-school}/counseling.js's
+   saveCase()) — this design uses box-shadow rather than a visible border for
+   every input (see --clay-in above), so a plain red border wouldn't show up;
+   this needs to out-specificity the .form-field input/select/textarea rule
+   above it rather than relying on !important. */
+.case-form input.field-error,
+.case-form select.field-error,
+.case-form textarea.field-error {
+    background: #fdf1f1;
+    box-shadow: var(--clay-in), 0 0 0 3px rgba(217, 83, 79, 0.45);
+}
+
+/* Same treatment, generalized beyond .case-form — used by the Stage 3
+   Parent Call-up/Consent "Did the student/parent agree?" selects (see
+   confirmConsentDecision() in counselor/referral-status.js and other-
+   school/referrals.js) when submitted unanswered. */
+.form-group input.field-error,
+.form-group select.field-error,
+.form-group textarea.field-error {
+    background: #fdf1f1;
+    box-shadow: var(--clay-in), 0 0 0 3px rgba(217, 83, 79, 0.45);
+}
+
+.case-form #studentList.field-error {
+    border: 1px solid rgba(217, 83, 79, 0.5);
+    border-radius: var(--clay-r-md);
+    box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.35);
+    padding: 4px;
 }
 
 .form-group label {
@@ -8993,6 +9356,269 @@ tr:hover {
     box-shadow: var(--clay-in);
 }
 
+/* ============================================================
+   CANVAS FLAT ALIGNMENT (gms-design-canvas.html)
+   The clay reskin above (and the --clay-* token flattening at its
+   definition, ~line 5838) gets shadows/radii/fills most of the way to the
+   design canvas automatically. What tokens alone can't fix: every clay
+   surface hardcoded `border: none` (clay leaned on shadow, not a line, for
+   edges) and the canvas wants a visible 1px border instead — restored here.
+   Same "surface only, last-in-source-order wins the cascade" approach as
+   the block above, so this doesn't require touching pages/*/*.php or *.js. */
+
+.card,
+.stat-card,
+.school-folder,
+.guidelines-section,
+.referral-form,
+.content-section,
+.form-container,
+.pipeline-stage,
+.assignment-person-card,
+.modal-content,
+.table-container,
+.account-table-container,
+.data-table {
+    border: 1px solid var(--border-color);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea,
+.form-control,
+.form-field input,
+.form-field select,
+.form-field textarea,
+.modal-body input[type="text"],
+.modal-body input[type="email"],
+.modal-body input[type="date"],
+.modal-body input[type="number"],
+.modal-body textarea,
+.referral-form .form-field input[type="text"],
+.referral-form .form-field input[type="tel"],
+.referral-form .form-field input[type="date"],
+.referral-form .form-field select,
+.referral-form .form-field textarea {
+    border: 1px solid var(--border-color);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+.form-control:focus,
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus,
+.modal-body input[type="text"]:focus,
+.modal-body input[type="email"]:focus,
+.modal-body input[type="date"]:focus,
+.modal-body input[type="number"]:focus,
+.modal-body textarea:focus,
+.referral-form .form-field input[type="text"]:focus,
+.referral-form .form-field input[type="tel"]:focus,
+.referral-form .form-field input[type="date"]:focus,
+.referral-form .form-field select:focus,
+.referral-form .form-field textarea:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(26, 76, 136, 0.12);
+}
+
+/* Buttons — canvas uses a flat 8px radius, solid fill, and only secondary/
+   ghost/danger carry a visible border; primary/success stay borderless. */
+.btn,
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-secondary,
+.btn-outline,
+.btn-outline-primary,
+.btn-ghost,
+.btn-clear-filters,
+.btn-edit,
+.btn-sm {
+    border-radius: 8px;
+}
+
+.btn:hover {
+    transform: none;
+}
+
+.btn-secondary,
+.btn-outline,
+.btn-outline-primary,
+.btn-clear-filters,
+.btn-ghost {
+    border: 1px solid var(--border-color);
+}
+
+.btn-danger {
+    border: 1px solid #e6c3c0;
+}
+
+/* Flat solid fills — the clay reskin above only touched radius/shadow,
+   leaving the original colour gradients and glow-shadow hovers underneath. */
+.btn-primary {
+    background: var(--navy-700);
+    box-shadow: none;
+}
+.btn-primary:hover { background: var(--navy-900); box-shadow: none; }
+
+.btn-success {
+    background: var(--ok);
+    box-shadow: none;
+}
+.btn-success:hover { filter: brightness(0.94); box-shadow: none; }
+
+.btn-danger {
+    background: #fff;
+    color: var(--danger);
+    box-shadow: none;
+}
+.btn-danger:hover { background: var(--danger-bg); box-shadow: none; }
+
+.btn-outline.btn-danger {
+    background: var(--danger);
+    color: #fff;
+    box-shadow: none;
+}
+.btn-outline.btn-danger:hover { background: #8f1e17; box-shadow: none; }
+
+.btn-warning {
+    background: var(--warn);
+    box-shadow: none;
+}
+.btn-warning:hover { filter: brightness(0.94); box-shadow: none; }
+
+.btn-secondary {
+    background: #fff;
+    color: var(--secondary-color);
+    box-shadow: none;
+}
+.btn-secondary:hover { background: var(--light-gray); box-shadow: none; }
+
+.btn-ghost:hover {
+    box-shadow: none;
+}
+
+/* Sidebar nav — canvas active/hover states are a translucent white wash on
+   the navy panel, not a solid accent block. */
+.sidebar-menu a:hover {
+    box-shadow: none;
+}
+
+.sidebar-menu a.active {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+}
+
+/* Badges/pills — canvas status pills are fully rounded with a small dot;
+   every existing .badge-* subclass (pending/in-progress/completed/rejected/
+   the role tags) already sets a text `color`, so `currentColor` on the dot
+   and the pill radius apply to all of them with no other changes. */
+.badge {
+    border-radius: var(--clay-r-pill);
+    text-transform: capitalize;
+    letter-spacing: normal;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+/* Tabs — canvas uses a bordered segmented control, not underlined tabs. */
+.tabs {
+    display: inline-flex;
+    border: 1px solid var(--border-color);
+    border-radius: 9px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.tab-button {
+    border-bottom: none;
+    border-right: 1px solid var(--border-color);
+    margin-bottom: 0;
+    padding: 9px 16px;
+}
+
+.tab-button:last-child {
+    border-right: none;
+}
+
+.tab-button.active {
+    background: var(--secondary-color);
+    color: #fff;
+    background-image: none;
+}
+
+/* Alerts (toast notifications) — flat solid fills instead of gradients. */
+.alert-success {
+    background: var(--ok-bg);
+    background-image: none;
+    color: #15633f;
+    border-left-color: var(--ok);
+}
+
+.alert-error {
+    background: var(--danger-bg);
+    background-image: none;
+    color: #8f1d17;
+    border-left-color: var(--danger);
+}
+
+.alert-info {
+    background: var(--info-bg);
+    background-image: none;
+    color: #123a6b;
+    border-left-color: var(--info);
+}
+
+.alert-warning {
+    background: var(--warn-bg);
+    background-image: none;
+    color: #7a4600;
+    border-left-color: var(--warn);
+}
+
+/* Stat cards — canvas tiles carry a 4px colored accent bar on the left
+   edge, keyed off the same per-metric accent already used on the icon. */
+.stat-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--navy-700);
+}
+
+.stat-card:has(.stat-icon-green)::before { background: var(--ok); }
+.stat-card:has(.stat-icon-amber)::before { background: var(--warn); }
+.stat-card:has(.stat-icon-red)::before { background: var(--danger); }
+.stat-card:has(.stat-icon-purple)::before { background: var(--role-coordinator); }
+.stat-card:has(.stat-icon-teal)::before { background: var(--role-teacher); }
+
+/* Table header — canvas uses a light tint with uppercase, letter-spaced
+   labels rather than a transparent header. */
+.table th,
+th {
+    background: #f7fafd;
+}
+
 /* pages/student/schedule.php has its own topbar #userAvatar box (distinct
    from the sidebar's #sidebarAvatar) sized/rounded via inline style —
    setUserInfo() in js/utils.js now injects an <img> into it the same way
@@ -9109,6 +9735,67 @@ tr:hover {
 .referral-add-person-btn {
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+/* Collapsible guidelines checklist for the counselor's Create Referral
+   (Walk-in) modal (pages/counselor/referral-status.php) — the same
+   guidelines content as the teacher's full-page .guidelines-section, just
+   collapsed by default since it's reference material, not something that
+   should push the form itself below the fold inside a modal. */
+.walkin-guidelines {
+    background: #f8fafc;
+    border: 1px solid #e8eff7;
+    border-radius: 10px;
+    padding: 0 18px;
+    margin-bottom: 24px;
+}
+
+.walkin-guidelines summary {
+    cursor: pointer;
+    padding: 16px 0;
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    list-style: none;
+}
+
+.walkin-guidelines summary::-webkit-details-marker {
+    display: none;
+}
+
+.walkin-guidelines-caret {
+    margin-left: auto;
+    transition: transform 0.2s ease;
+}
+
+.walkin-guidelines[open] .walkin-guidelines-caret {
+    transform: rotate(180deg);
+}
+
+.walkin-guidelines-body {
+    padding-bottom: 10px;
+}
+
+/* Chip strip for the counselor's Create Referral (Walk-in) modal —
+   functionally the same as the teacher page's .referral-people-chips-bar
+   (collapsed people render as file-icon chips here), but always in-flow.
+   The teacher page's version goes position:fixed as a floating sidebar
+   past 1600px viewports, which only makes sense pinned to that full page;
+   inside this modal it would escape the dialog entirely, so this is a
+   deliberately simpler, non-responsive variant rather than reusing that
+   class as-is. */
+.walkin-people-chips-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.walkin-people-chips-bar:empty {
+    display: none;
 }
 
 /* Holds every person's card — collapsed ones render as small file-icon
@@ -9490,6 +10177,50 @@ h4.text-primary {
     background: linear-gradient(135deg, #1b8f63 0%, #146247 100%);
     color: white;
     box-shadow: var(--clay-out-sm);
+}
+
+/* Only the counselor/other-school referral detail views wire click
+   handlers onto these circles (see wireStageIndicatorClicks() in
+   referral-status.js/referrals.js) — scoped to #detailStagesContainer so
+   the teacher/student read-only stage trackers, which share the same
+   .stage-circle markup but aren't clickable, don't look interactive too. */
+#detailStagesContainer .stage-circle {
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#detailStagesContainer .stage-circle:hover {
+    transform: scale(1.12);
+    box-shadow: var(--clay-out-sm), 0 4px 10px rgba(11, 31, 58, 0.25);
+}
+
+/* Referral Information's two fields (Initial Actions Taken / Description) —
+   side-by-side with a vertical divider between them, matching the tone of
+   this page's <hr> rules, instead of the plain grid-gap .form-row uses
+   elsewhere on the same detail view. */
+.referral-info-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.referral-info-columns > div:first-child {
+    padding-right: 24px;
+    border-right: 1px solid rgba(15, 42, 79, 0.08);
+}
+
+@media (max-width: 768px) {
+    .referral-info-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .referral-info-columns > div:first-child {
+        padding-right: 0;
+        padding-bottom: 16px;
+        margin-bottom: 16px;
+        border-right: none;
+        border-bottom: 1px solid rgba(15, 42, 79, 0.08);
+    }
 }
 
 /* Report Cases filter results — one card per matching case, styled like a

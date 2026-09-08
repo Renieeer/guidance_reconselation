@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'conn.php';
+require_once 'account-status.php';
+
+ensure_users_table_active_column($conn);
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
@@ -24,6 +27,7 @@ try {
         // Fetch all accounts from the same school
         $school = trim((string)($_GET['school'] ?? ''));
         $search = trim((string)($_GET['search'] ?? ''));
+        $includeInactive = !empty($_GET['include_inactive']);
 
         if ($school === '') {
             send_json(400, ['success' => false, 'message' => 'School is required']);
@@ -37,10 +41,11 @@ try {
                     Type,
                     school_attended,
                     Grade,
-                    created_at
+                    created_at,
+                    is_active
                 FROM users_tables
                 WHERE school_attended = ?";
-        
+
         $types = 's';
         $params = [$school];
 
@@ -51,6 +56,13 @@ try {
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
+        }
+
+        // Deactivated students (e.g. transferred/graduated) are hidden from
+        // the default view — only "Show inactive students" surfaces them.
+        // Staff account status is managed by the SDO, not scoped here.
+        if (!$includeInactive) {
+            $sql .= " AND (Type != 'student' OR is_active = 1)";
         }
 
         $sql .= " ORDER BY created_at DESC";
@@ -83,6 +95,40 @@ try {
 
         if (!is_array($payload)) {
             send_json(400, ['success' => false, 'message' => 'Invalid JSON payload']);
+        }
+
+        if (($payload['action'] ?? '') === 'setActive') {
+            // Coordinator-only toggle, and only for student accounts (a
+            // student who has left the school) — staff account status stays
+            // an SDO-only action (see account-status.php).
+            $id = (int)($payload['id'] ?? 0);
+            $school = trim((string)($payload['school'] ?? ''));
+            $active = !empty($payload['active']) ? 1 : 0;
+
+            if ($id === 0 || $school === '') {
+                send_json(400, ['success' => false, 'message' => 'Missing required fields']);
+            }
+
+            $stmt = $conn->prepare(
+                "UPDATE users_tables SET is_active = ? WHERE AccountID = ? AND school_attended = ? AND Type = 'student'"
+            );
+            if (!$stmt) {
+                send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
+            }
+            $stmt->bind_param('iis', $active, $id, $school);
+
+            if (!$stmt->execute()) {
+                send_json(500, ['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
+            }
+            if ($stmt->affected_rows === 0) {
+                send_json(404, ['success' => false, 'message' => 'Student account not found or access denied']);
+            }
+            $stmt->close();
+
+            send_json(200, [
+                'success' => true,
+                'message' => $active ? 'Account activated' : 'Account deactivated'
+            ]);
         }
 
         $id = (int)($payload['id'] ?? 0);

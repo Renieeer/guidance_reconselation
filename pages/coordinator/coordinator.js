@@ -64,8 +64,8 @@ function renderCoordinatorDashboard(referrals) {
     document.getElementById('stageSub').textContent = referrals.filter(r => r.stage === 1).length;
     document.getElementById('stageReview').textContent = referrals.filter(r => r.stage === 2).length;
     document.getElementById('stageFollowUp').textContent = referrals.filter(r => r.stage === 3).length;
-    document.getElementById('stageCounseling').textContent = referrals.filter(r => r.stage === 4).length;
-    document.getElementById('stageProgress').textContent = referrals.filter(r => r.stage === 5).length;
+    document.getElementById('stageCounseling').textContent = referrals.filter(r => r.stage === 5).length;
+    document.getElementById('stageProgress').textContent = referrals.filter(r => r.stage === 4).length;
     document.getElementById('stageClosed').textContent = referrals.filter(r => r.stage === 6).length;
 
     // Already sorted newest-first by the API (date_submitted DESC).

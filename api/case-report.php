@@ -26,6 +26,19 @@ function table_exists(mysqli $conn, string $name): bool {
     return $result && $result->num_rows > 0;
 }
 
+// Cases can list bystanders/witnesses alongside the actual subject (see the
+// studentRole select in counseling.php — now 'Offender' | 'Victim' |
+// 'Bystander' | 'Other', previously 'Primary student' | 'Peer involved' |
+// 'Witness' | 'Other') — only the subject is who the case is "about", so
+// only they should count toward tallies/exports below. Checks against both
+// vocabularies (rather than just the current one) so reports on cases saved
+// before this role list changed still exclude their bystanders/witnesses
+// correctly instead of suddenly counting them as the subject.
+function case_report_role_is_primary(string $role): bool {
+    $nonPrimaryRoles = ['Peer involved', 'Witness', 'Bystander'];
+    return $role === '' || !in_array($role, $nonPrimaryRoles, true);
+}
+
 /* Same 6 sections / 27 categories the counselor case workflow already uses
    (see api/get-case-section.php) — every case report table on the coordinator
    and SDO side groups by these instead of a fabricated category list. */
@@ -173,13 +186,8 @@ if ($action === 'categories') {
                 $students = json_decode((string)$row['students_json'], true) ?: [];
                 $ids = [];
                 foreach ($students as $s) {
-                    // Cases can list peers/witnesses alongside the actual
-                    // subject (see the studentRole select in counseling.php:
-                    // 'Primary student' | 'Peer involved' | 'Witness' |
-                    // 'Other') — only the primary student is who this case
-                    // is "about", so only they count toward the tally.
                     $role = trim((string)($s['role'] ?? ''));
-                    if ($role !== '' && $role !== 'Primary student') {
+                    if (!case_report_role_is_primary($role)) {
                         continue;
                     }
                     $sid = trim((string)($s['id'] ?? $s['StudentId'] ?? $s['studentId'] ?? ''));
@@ -312,7 +320,7 @@ if ($action === 'list') {
                 $primary = null;
                 foreach ($students as $s) {
                     $role = trim((string)($s['role'] ?? ''));
-                    if ($role === '' || $role === 'Primary student') {
+                    if (case_report_role_is_primary($role)) {
                         $primary = $s;
                         break;
                     }

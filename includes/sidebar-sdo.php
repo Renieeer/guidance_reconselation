@@ -7,7 +7,7 @@
 <!-- Sidebar -->
 <div class="sidebar">
     <div class="sidebar-header">
-        <a href="profile.php" class="sidebar-avatar-link" title="My Profile">
+        <a href="profile.php" class="sidebar-avatar-link" title="My Profile" data-profile-popup-trigger>
             <span class="sidebar-avatar" id="sidebarAvatar">S</span>
         </a>
         <h2>SDO</h2>
@@ -16,12 +16,13 @@
     <ul class="sidebar-menu">
         <li><a href="dashboard.php"><i class="bi bi-graph-up"></i> Dashboard</a></li>
         <li><a href="school-management.php"><i class="bi bi-building"></i> School Management</a></li>
-        <li><a href="district-analytics.php"><i class="bi bi-bar-chart"></i> District Analytics</a></li>
         <li><a href="district-report-cases.php"><i class="bi bi-pencil-square"></i> Report Cases</a></li>
+        <li><a href="district-analytics.php"><i class="bi bi-bar-chart"></i> District Analytics</a></li>
         <li><a href="school-reports.php"><i class="bi bi-file-earmark-text"></i> School Reports</a></li>
-        <li><a href="profile.php"><i class="bi bi-person-badge"></i> My Profile</a></li>
         <li><a href="#" id="logoutBtn"><i class="bi bi-box-arrow-left"></i> Logout</a></li>
     </ul>
 </div>
+
+<?php include __DIR__ . '/profile-summary-modal.php'; ?>
 
 <script src="../../js/sidebar-active.js"></script>

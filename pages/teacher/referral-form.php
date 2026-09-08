@@ -134,8 +134,43 @@
                     <input type="hidden" id="referralDate" name="referralDate">
 
                     <div class="form-field">
-                        <label>Reason/s for Referral:</label>
-                        <textarea id="referralReason" name="referralReason" required></textarea>
+                        <label>Reason/s for Referral: <span style="color: var(--danger-color);">*</span></label>
+                        <div class="guidelines-checklist referral-reason-checklist">
+                            <label class="guideline-item">
+                                <input type="checkbox" class="referral-reason-check" value="Behavioral or conduct problem">
+                                <span>Behavioral or conduct problem</span>
+                            </label>
+                            <label class="guideline-item">
+                                <input type="checkbox" class="referral-reason-check" value="Self-harming behavior or suicide ideation">
+                                <span>Self-harming behavior or suicide ideation</span>
+                            </label>
+                            <label class="guideline-item">
+                                <input type="checkbox" class="referral-reason-check" value="Poor social skills">
+                                <span>Poor social skills</span>
+                            </label>
+                            <label class="guideline-item">
+                                <input type="checkbox" class="referral-reason-check" value="Poor academic performance">
+                                <span>Poor academic performance</span>
+                            </label>
+                            <label class="guideline-item">
+                                <input type="checkbox" class="referral-reason-check" value="Difficulty in adapting to current situation">
+                                <span>Difficulty in adapting to current situation</span>
+                            </label>
+                            <label class="guideline-item">
+                                <input type="checkbox" class="referral-reason-check" value="Signs of distress (physical deterioration, lack of focus and motivation)">
+                                <span>Signs of distress characterized by physical deterioration, lack of focus and motivation</span>
+                            </label>
+                            <label class="guideline-item">
+                                <input type="checkbox" id="referralReasonOtherCheck">
+                                <span>Others (please specify)</span>
+                            </label>
+                        </div>
+                        <input type="text" id="referralReasonOtherText" class="referral-reason-other-input" placeholder="Specify other reason..." style="display:none;">
+                    </div>
+
+                    <div class="form-field">
+                        <label>Description:</label>
+                        <textarea id="referralDescription" name="referralDescription" placeholder="Describe the incident or concern in more detail..."></textarea>
                     </div>
 
                     <div class="form-field">

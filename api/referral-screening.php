@@ -1,6 +1,6 @@
 <?php
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
@@ -147,6 +147,49 @@ if ($method === 'POST') {
         'message' => 'Screening notes saved.',
         'data' => ['screening_id' => $screeningId]
     ]);
+}
+
+// Edits the single most recent entry in place (see submitInterviewNotes() /
+// editInterviewNotes() in counselor/referral-status.js and other-school/
+// referrals.js) instead of the POST handler's insert-a-new-row behavior —
+// Stage 1's Interview/Background Notes is meant to read as one note the
+// counselor can revise, not an appended log.
+if ($method === 'PUT') {
+    $raw = file_get_contents('php://input');
+    $body = json_decode($raw, true);
+
+    if (!is_array($body)) {
+        send_json(400, ['success' => false, 'message' => 'Invalid JSON payload']);
+    }
+
+    $screeningId = (int)($body['screening_id'] ?? 0);
+    if ($screeningId <= 0) {
+        send_json(400, ['success' => false, 'message' => 'screening_id is required']);
+    }
+
+    $interviewNotes = trim((string)($body['interview_notes'] ?? ''));
+    $observations = trim((string)($body['observations'] ?? ''));
+    $riskLevel = trim((string)($body['risk_level'] ?? ''));
+
+    if ($interviewNotes === '' && $observations === '') {
+        send_json(400, ['success' => false, 'message' => 'Enter interview notes or observations before saving']);
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE referral_screening
+        SET interview_notes = ?, observations = ?, risk_level = NULLIF(?, '')
+        WHERE screening_id = ?
+    ");
+    if (!$stmt) {
+        send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
+    }
+    $stmt->bind_param('sssi', $interviewNotes, $observations, $riskLevel, $screeningId);
+    if (!$stmt->execute()) {
+        send_json(500, ['success' => false, 'message' => 'Failed to update screening notes: ' . $stmt->error]);
+    }
+    $stmt->close();
+
+    send_json(200, ['success' => true, 'message' => 'Screening notes updated.']);
 }
 
 send_json(405, ['success' => false, 'message' => 'Method not allowed']);

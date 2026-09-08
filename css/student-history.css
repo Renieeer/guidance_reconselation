@@ -81,8 +81,6 @@
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 10px;
     margin-top: 12px;
-    max-height: 480px;
-    overflow-y: auto;
     padding-right: 2px;
 }
 
@@ -404,8 +402,6 @@
 
 .sh-folder-body {
     display: none;
-    max-height: 600px;
-    overflow-y: auto;
 }
 
 .sh-folder-body.active {
@@ -669,10 +665,10 @@
     font-size: 13px;
 }
 
-/* ---------- Referral thread: collapses to just its summary header,
-   click to reveal the full Day 1/2/3... story (shBuildReferralThreadEntry).
-   Scoped to .sh-referral-thread only — the plain counseling .sh-case-thread
-   keeps its existing always-open look, unchanged. ---------- */
+/* ---------- Referral / counseling-case thread: collapses to just its
+   summary header, click to reveal the full Day 1/2/3... story
+   (shBuildReferralThreadEntry() / shBuildCaseThreadEntry() both render this
+   same .sh-referral-thread-* markup). ---------- */
 .sh-referral-thread-toggle {
     cursor: pointer;
     user-select: none;

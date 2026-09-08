@@ -92,11 +92,13 @@
                                 <div class="form-field">
                                     <label for="studentRole">Role in case</label>
                                     <select id="studentRole">
-                                        <option value="Primary student">Primary student</option>
-                                        <option value="Peer involved">Peer involved</option>
-                                        <option value="Witness">Witness</option>
+                                        <option value="" selected disabled>Select role</option>
+                                        <option value="Offender">Offender</option>
+                                        <option value="Victim">Victim</option>
+                                        <option value="Bystander">Bystander</option>
                                         <option value="Other">Other</option>
                                     </select>
+                                    <input type="text" id="studentRoleOtherText" placeholder="Specify the role..." style="display:none; margin-top:8px;">
                                 </div>
                                 <button type="button" class="btn btn-outline add-student-btn" id="addStudentBtn">
                                     <i class="bi bi-plus-lg"></i> Add student

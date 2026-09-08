@@ -54,6 +54,9 @@
                                 <option value="30">Show 30</option>
                                 <option value="all">Show All</option>
                             </select>
+                            <label style="display:flex; align-items:center; gap:6px; font-size:14px; color:#555; white-space:nowrap;">
+                                <input type="checkbox" id="showInactiveFilter"> Show inactive students
+                            </label>
                             <button class="btn btn-primary" onclick="searchAccounts()">
                                 <i class="bi bi-search"></i> Search
                             </button>
@@ -69,13 +72,14 @@
                                     <th>Email</th>
                                     <th>Type</th>
                                     <th>Grade</th>
+                                    <th>Status</th>
                                     <th>Created</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="accountsTableBody">
                                 <tr>
-                                    <td colspan="6" class="no-accounts">
+                                    <td colspan="7" class="no-accounts">
                                         <i class="bi bi-hourglass-split" style="font-size: 24px; margin-bottom: 10px;"></i>
                                         <p>Loading accounts...</p>
                                     </td>

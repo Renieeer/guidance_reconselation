@@ -301,7 +301,12 @@
         });
     }
 async function fetchAddressOptions(level, params = {}) {
-    const url = new URL(`${getApiUrl()}/address-options.php`, window.location.origin);
+    // window.location.origin is scheme+host only (no path), so resolving a
+    // relative "../../api/..." against it collapses straight to the site
+    // root regardless of where this page actually lives — window.location.href
+    // (the full current URL) is what a relative path needs to resolve
+    // against correctly.
+    const url = new URL(`${getApiUrl()}/address-options.php`, window.location.href);
     url.searchParams.set('level', level);
  
     Object.entries(params).forEach(([key, value]) => {
@@ -310,17 +315,14 @@ async function fetchAddressOptions(level, params = {}) {
         }
     });
  
-    console.log('[address] fetching:', url.toString());
- 
     const response = await fetch(url.toString());
- 
+
     if (!response.ok) {
         throw new Error(`HTTP ${response.status} from address-options.php`);
     }
- 
+
     const data = await response.json();
-    console.log(`[address] ${level} response:`, data);
- 
+
     if (!data.success) {
         throw new Error(data.message || `Unable to load ${level}`);
     }
@@ -360,18 +362,15 @@ async function fetchAddressOptions(level, params = {}) {
    async function loadAddressRegions(prefix, selectedRegionCode = '') {
     const selectElement = getAddressSelect(prefix, 'Region');
     if (!selectElement) {
-        console.warn(`[address] Region select not found for prefix: ${prefix}`);
         return [];
     }
- 
+
     try {
         const regions = await fetchAddressOptions('regions');
         fillAddressSelect(selectElement, regions, 'Select region', selectedRegionCode);
         selectElement.disabled = false;
-        console.log(`[address] Loaded ${regions.length} regions into ${prefix}`);
         return regions;
     } catch (err) {
-        console.error(`[address] Failed to load regions for ${prefix}:`, err);
         selectElement.innerHTML = '<option value="">Failed to load regions</option>';
         return [];
     }

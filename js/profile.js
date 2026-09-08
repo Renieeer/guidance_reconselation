@@ -19,19 +19,8 @@ function getProfileId() {
     return user ? user.id : null;
 }
 
-const PROFILE_ROLE_LABELS = {
-    student: 'Student',
-    teacher: 'Teacher',
-    counselor: 'Counselor',
-    coordinator: 'Coordinator',
-    'counselor-and-coordinator': 'Counselor & Coordinator',
-    sdo: 'SDO',
-    admin: 'Administrator'
-};
-
-function formatProfileRole(role) {
-    return PROFILE_ROLE_LABELS[String(role || '').toLowerCase()] || role || '';
-}
+// formatProfileRole() lives in js/utils.js — also used by the sidebar's "My
+// Profile" popup (js/sidebar-active.js).
 
 function renderAvatarPreview(url) {
     const el = document.getElementById('profileAvatar');
@@ -82,28 +71,8 @@ function loadProfile() {
         .catch(error => showAlert('Error: ' + error.message, 'error'));
 }
 
-// Keeps sessionStorage/localStorage user objects in sync after a profile
-// change, so the sidebar avatar/name update immediately without re-login.
-function syncStoredUser(patch) {
-    ['user', 'userInfo'].forEach(key => {
-        const raw = sessionStorage.getItem(key);
-        if (!raw) return;
-        try {
-            const obj = Object.assign(JSON.parse(raw), patch);
-            sessionStorage.setItem(key, JSON.stringify(obj));
-        } catch (err) { /* ignore malformed storage */ }
-    });
-
-    const rawLocal = localStorage.getItem('currentUser');
-    if (rawLocal) {
-        try {
-            const obj = Object.assign(JSON.parse(rawLocal), patch);
-            localStorage.setItem('currentUser', JSON.stringify(obj));
-        } catch (err) { /* ignore malformed storage */ }
-    }
-
-    setUserInfo();
-}
+// syncStoredUser() lives in js/utils.js — also used by the sidebar's "My
+// Profile" popup edit form (js/sidebar-active.js).
 
 function onAvatarSelected(e) {
     const file = e.target.files[0];

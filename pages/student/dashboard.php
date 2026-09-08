@@ -35,7 +35,7 @@
                         <div id="referralProgressPreview" style="margin-bottom: 12px; font-size: 0.9em;">
                             <!-- Quick progress preview will appear here -->
                         </div>
-                        <a href="referral-status.php" class="btn btn-primary" style="width: 100%;">View Referrals</a>
+                        <a href="referral-status.php" id="viewReferralsLink" class="btn btn-primary" style="width: 100%;">View Referrals</a>
                     </div>
 
                     <!-- Appointments Card -->
