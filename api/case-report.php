@@ -97,6 +97,43 @@ function all_active_school_names(mysqli $conn): array {
     return $names;
 }
 
+/** True if every school in $schoolNames is elementary (school_level
+ *  East/West/South) — false for an empty list, a Secondary school, or a
+ *  mix of levels (a report can only show one grade range at a time, so a
+ *  mixed selection falls back to the standard secondary 7-12 range). */
+function schools_are_elementary(mysqli $conn, array $schoolNames): bool {
+    if (empty($schoolNames)) {
+        return false;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
+    $types = str_repeat('s', count($schoolNames));
+    $stmt = $conn->prepare("SELECT DISTINCT school_level FROM schools WHERE school_name IN ($placeholders)");
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param($types, ...$schoolNames);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $levels = [];
+    while ($row = $result->fetch_assoc()) {
+        $levels[] = $row['school_level'];
+    }
+    $stmt->close();
+
+    if (empty($levels)) {
+        return false;
+    }
+
+    foreach ($levels as $level) {
+        if (!in_array($level, ['East', 'West', 'South'], true)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function zero_grade_buckets(array $gradeKeys): array {
     $buckets = [];
     foreach ($gradeKeys as $gradeKey) {
@@ -141,7 +178,6 @@ if ($action === 'categories') {
     $school = trim((string)($_GET['school'] ?? ''));
     $district = trim((string)($_GET['district'] ?? ''));
     $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
-    $gradeKeys = ['7', '8', '9', '10', '11', '12'];
 
     $period = trim((string)($_GET['period'] ?? 'all'));
     $rangeStart = trim((string)($_GET['start'] ?? ''));
@@ -156,6 +192,11 @@ if ($action === 'categories') {
     } elseif ($district !== '') {
         $schoolNames = schools_in_district($conn, $district);
     }
+
+    // East/West/South (elementary) schools report grades 1-6 instead of the
+    // usual secondary 7-12 — see schools_are_elementary().
+    $isElementary = schools_are_elementary($conn, $schoolNames);
+    $gradeKeys = $isElementary ? ['1', '2', '3', '4', '5', '6'] : ['7', '8', '9', '10', '11', '12'];
 
     $sections = fetch_sections($conn);
 
@@ -227,7 +268,7 @@ if ($action === 'categories') {
                     $studentResult = $studentStmt->get_result();
                     while ($srow = $studentResult->fetch_assoc()) {
                         $studentInfo[$srow['StudentId']] = [
-                            'grade' => normalize_grade_number($srow['Grade']),
+                            'grade' => normalize_grade_number($srow['Grade'], $isElementary),
                             'sex' => (string)($srow['Sex'] ?? '')
                         ];
                     }
@@ -270,6 +311,7 @@ if ($action === 'categories') {
     send_json(200, [
         'success' => true,
         'grades' => array_map('intval', $gradeKeys),
+        'isElementary' => $isElementary,
         'sections' => $sections,
         'counts' => $counts
     ]);
@@ -303,6 +345,8 @@ if ($action === 'list') {
     } elseif ($district !== '') {
         $schoolNames = schools_in_district($conn, $district);
     }
+
+    $isElementary = schools_are_elementary($conn, $schoolNames);
 
     $rows = [];
 
@@ -374,7 +418,7 @@ if ($action === 'list') {
                     $studentResult = $studentStmt->get_result();
                     while ($srow = $studentResult->fetch_assoc()) {
                         $studentInfo[$srow['StudentId']] = [
-                            'grade' => normalize_grade_number($srow['Grade']),
+                            'grade' => normalize_grade_number($srow['Grade'], $isElementary),
                             'sex' => (string)($srow['Sex'] ?? '')
                         ];
                     }
@@ -647,41 +691,43 @@ if ($action === 'district_summary') {
     send_json(200, ['success' => true, 'districts' => array_values($districts)]);
 }
 
-/* ── PERSONAL-SOCIAL CONCERNS, PER DISTRICT ──
+/* ── PERSONAL-SOCIAL CONCERNS, PER SCHOOL LEVEL ──
    Backs the "Division Monthly Monitoring Report of Learners' Personal-Social
    Concerns" export. Same section/category set as 'categories' (every real
    section and category — plus one "uncategorized" bucket per section for
    cases whose category hasn't been chosen yet — so the report covers 100%
    of case data, not a curated subset) and the same "one count per primary
    student" counting rule as 'categories'/'school_breakdown', but bucketed
-   by the case's school's district instead of by grade — plus a '__ALL__'
-   bucket for the division-wide ("Secondary") total column. */
+   by the case's school's school_level (Secondary/East/West/South — set
+   per-school in School Management's Add School modal) instead of by grade.
+   The four columns are mutually exclusive: a school's cases land in exactly
+   the one column matching its own level, never also into a division-wide
+   total. */
 if ($action === 'personal_social_concerns') {
     $period = trim((string)($_GET['period'] ?? 'all'));
     $rangeStart = trim((string)($_GET['start'] ?? ''));
     $rangeEnd = trim((string)($_GET['end'] ?? ''));
     [$dateSql, $dateTypes, $dateValues] = case_date_condition($period, $rangeStart, $rangeEnd);
 
-    $schoolDistrict = [];
-    $result = $conn->query("SELECT school_name, COALESCE(NULLIF(district, ''), 'Unassigned') AS district FROM schools WHERE is_active = 1");
+    $groups = ['Secondary', 'East', 'West', 'South'];
+
+    $schoolLevel = [];
+    $result = $conn->query("SELECT school_name, COALESCE(NULLIF(school_level, ''), 'Secondary') AS school_level FROM schools WHERE is_active = 1");
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            $schoolDistrict[$row['school_name']] = $row['district'];
+            $schoolLevel[$row['school_name']] = $row['school_level'];
         }
     }
-
-    $districts = array_values(array_unique(array_values($schoolDistrict)));
-    sort($districts);
 
     $sections = fetch_sections($conn);
 
     // Seed every real category (+ one uncategorized bucket per section) at
-    // zero for every district and the division-wide total, so the frontend
-    // always gets a complete, predictable shape covering every category —
-    // not just the ones that happen to already have cases.
-    $counts = ['__ALL__' => []];
-    foreach ($districts as $d) {
-        $counts[$d] = [];
+    // zero for every group, so the frontend always gets a complete,
+    // predictable shape covering every category — not just the ones that
+    // happen to already have cases.
+    $counts = [];
+    foreach ($groups as $g) {
+        $counts[$g] = [];
     }
     foreach (array_keys($counts) as $groupKey) {
         foreach ($sections as $section) {
@@ -702,8 +748,8 @@ if ($action === 'personal_social_concerns') {
             $result = $stmt->get_result();
 
             while ($row = $result->fetch_assoc()) {
-                $district = $schoolDistrict[$row['school_attended']] ?? null;
-                if ($district === null) {
+                $level = $schoolLevel[$row['school_attended']] ?? null;
+                if ($level === null || !in_array($level, $groups, true)) {
                     continue; // school not active / not in schools table — skip
                 }
 
@@ -722,14 +768,13 @@ if ($action === 'personal_social_concerns') {
                     continue;
                 }
 
-                $counts[$district][$bucketKey] = ($counts[$district][$bucketKey] ?? 0) + $primaryCount;
-                $counts['__ALL__'][$bucketKey] = ($counts['__ALL__'][$bucketKey] ?? 0) + $primaryCount;
+                $counts[$level][$bucketKey] = ($counts[$level][$bucketKey] ?? 0) + $primaryCount;
             }
             $stmt->close();
         }
     }
 
-    send_json(200, ['success' => true, 'districts' => $districts, 'sections' => $sections, 'counts' => $counts]);
+    send_json(200, ['success' => true, 'districts' => $groups, 'sections' => $sections, 'counts' => $counts]);
 }
 
 send_json(400, ['success' => false, 'message' => 'Unknown action.']);

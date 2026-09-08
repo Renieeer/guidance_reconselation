@@ -132,6 +132,7 @@ try {
 
     $schoolName = trim((string)($data['schoolName'] ?? ''));
     $assignType = trim((string)($data['assignType'] ?? ''));
+    $schoolLevel = trim((string)($data['schoolLevel'] ?? ''));
 
     if ($schoolName === '') {
         http_response_code(400);
@@ -145,11 +146,18 @@ try {
         exit;
     }
 
+    // East/West/South are elementary-only levels; Secondary is the default
+    // for everything else (and for existing schools whose level is locked
+    // client-side when just adding another account — see school-management.js).
+    if (!in_array($schoolLevel, ['Secondary', 'East', 'West', 'South'], true)) {
+        $schoolLevel = 'Secondary';
+    }
+
     // schools.assignment_type only distinguishes coordinator/counselor/both;
     // "combined" (single counselor-and-coordinator login) still needs both
     // roles available at the school, so it maps onto 'both' there.
     $schoolAssignmentType = $assignType === 'combined' ? 'both' : $assignType;
-    $schoolRecord = upsertSchoolRecord($conn, $schoolName, $schoolAssignmentType);
+    $schoolRecord = upsertSchoolRecord($conn, $schoolName, $schoolAssignmentType, $schoolLevel);
 
     $coordinator = normalizePerson($data['coordinator'] ?? []);
     $counselor = normalizePerson($data['counselor'] ?? []);
@@ -338,6 +346,7 @@ function getAssignments(mysqli $conn): array {
                 s.school_code,
                 s.school_name,
                 s.assignment_type,
+                s.school_level,
                 s.district,
                 COUNT(u.AccountID) AS totalAssigned,
                 MAX(CASE WHEN u.Type = 'coordinator' THEN u.AccountID END) AS coordinator_id,
@@ -360,7 +369,7 @@ function getAssignments(mysqli $conn): array {
                 ON (u.school_attended = s.school_code OR u.school_attended = s.school_name)
                 AND u.Type IN ('coordinator', 'counselor', 'counselor-and-coordinator')
             WHERE s.is_active = 1
-            GROUP BY s.school_code, s.school_name, s.assignment_type, s.district
+            GROUP BY s.school_code, s.school_name, s.assignment_type, s.school_level, s.district
             ORDER BY s.school_name ASC";
     $result = $conn->query($query);
 
@@ -375,6 +384,7 @@ function getAssignments(mysqli $conn): array {
             'schoolName' => $row['school_name'],
             'schoolCode' => $row['school_code'],
             'assignmentType' => $row['assignment_type'],
+            'schoolLevel' => $row['school_level'] ?: 'Secondary',
             'district' => $row['district'],
             'coordinator' => $row['coordinator_name'] ? [
                 'accountId' => (int)$row['coordinator_id'],

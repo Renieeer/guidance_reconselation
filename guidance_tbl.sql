@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Sep 08, 2026 at 11:03 AM
+-- Generation Time: Sep 08, 2026 at 01:45 PM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -44451,6 +44451,7 @@ CREATE TABLE `schools` (
 INSERT INTO `schools` (`school_code`, `school_name`, `school_level`, `assignment_type`, `is_active`, `created_at`, `updated_at`, `district`) VALUES
 ('bucayao', 'Bucayao National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-09-06 06:21:40', 'Bucayao National High School'),
 ('buvayao', 'Buvayao National High School', 'Secondary', 'both', 0, '2026-09-08 04:24:19', '2026-09-08 04:45:15', 'Buvayao National High School'),
+('camilmil-elementary-school', 'camilmil elementary school', 'East', 'counselor', 1, '2026-09-08 12:55:06', '2026-09-08 12:55:06', 'camilmil elementary school'),
 ('canubing', 'Canubing National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Canubing National High School'),
 ('ceriaco-abes', 'Ceriaco A. Abes Memorial National High School', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Ceriaco A. Abes Memorial National High School'),
 ('community-vocational', 'Community Vocational High Schools', 'Secondary', 'both', 1, '2026-04-29 05:40:02', '2026-07-29 23:46:11', 'Community Vocational High Schools'),
@@ -44600,7 +44601,7 @@ INSERT INTO `users_tables` (`AccountID`, `Password`, `First_name`, `Last_name`, 
 (19, '$2y$10$zVWKTA4gmO0uj3vwueZTZerzmDC5vJFyPUY9DkT86w37CcDskhtvy', 'Trisha', 'sepeda', 'counselor', 'trisha@gmail.com', 'Oriental Mindoro National High School', '2026-08-29 02:02:32', '2026-08-29 06:25:17', NULL, 1, 1, NULL),
 (20, '$2y$10$4KG00gc0AE6i82gaD22Qv.PM2PeyLcKkSakuzbS6qdCo/CQOUWzsm', 'trisha', 'sepeda', 'counselor', 'trishasepeda@gmail.com', 'Oriental Mindoro National High School', '2026-06-12 06:18:56', '2026-08-24 17:16:12', '7', 1, 1, 'avatar_20_1787591772_a1b439ee.png'),
 (21, '$2y$10$XvE0TuKWOCQXO2ClveqUueqyaA7gK.Ao6xA2xrbiBY.lDlQrcc5TW', 'Pollene Joy', 'De chaves', 'teacher', 'lioshiren@gmail.com', 'Oriental Mindoro National High School', '2026-08-29 03:01:24', '2026-08-29 03:01:24', NULL, 1, 1, NULL),
-(22, '$2y$10$PCyYleht0ShfuNoHcPUuCecylYFOETFBGFIUouLd3mX.kZ4/lAYJC', 'jonas', 'makapuno', 'student', 'cantos@gmail.com', 'Oriental Mindoro National High School', '2026-06-15 03:52:38', '2026-08-24 17:48:37', NULL, 1, 1, 'avatar_22_1787593717_ec16ac4e.png'),
+(22, '$2y$10$PCyYleht0ShfuNoHcPUuCecylYFOETFBGFIUouLd3mX.kZ4/lAYJC', 'jonas', 'makapuno', 'student', 'cantos@gmail.com', 'Oriental Mindoro National High School', '2026-06-15 03:52:38', '2026-09-08 13:04:51', NULL, 1, 1, NULL),
 (24, '$2y$10$DRITZ0KO/vg5j5kqkW9RM.iF3p5CB10RbZCNOXk5cOju1Xe3UQnk2', 'Andrea', 'Villanueva', 'student', 'andrea.villanueva@gmail.com', 'Oriental Mindoro National High School', '2026-08-29 18:48:41', '2026-08-29 18:48:41', '10', 1, 1, NULL),
 (25, '$2y$10$c3HTEkMrcOp8kohzOs1P8OrtXdWMBOuChwiiJUn.1UmB8EEdqt0Ee', 'Juan Carlos', 'Reyes', 'student', 'juan.carlos.reyes@gmail.com', 'Oriental Mindoro National High School', '2026-08-29 18:57:25', '2026-08-29 18:57:25', '10', 1, 1, NULL),
 (26, '$2y$10$2r04yx8ajmlYLtagF8PYue8Ei52kHi8GirHgG3Pd13SPQXr7.dhPK', 'Maria Isabel', 'Cruz', 'student', 'maria.isabel.cruz@gmail.com', 'Oriental Mindoro National High School', '2026-08-29 18:57:25', '2026-08-29 18:59:12', '9', 1, 1, NULL),
@@ -44623,7 +44624,8 @@ INSERT INTO `users_tables` (`AccountID`, `Password`, `First_name`, `Last_name`, 
 (43, '$2y$10$SEka0n/D/gdE94N9gbr0yOw8V8UjjQGcrUvYCDsZ1V2p8iK3plsZK', 'Christian Paul', 'Ignacio', 'student', 'christian.paul.ignacio@gmail.com', 'Oriental Mindoro National High School', '2026-08-29 18:57:26', '2026-08-29 18:59:12', '11', 1, 1, NULL),
 (44, '$2y$10$e78K/YojhvbytO4gFsXHoOEXbH8bLXjP0/xkq8c6hSTwISzc8rwLW', 'Bianca Mae', 'Corpuz', 'student', 'bianca.mae.corpuz@gmail.com', 'Oriental Mindoro National High School', '2026-08-29 18:57:26', '2026-08-29 18:59:12', '10', 1, 1, NULL),
 (58, '$2y$10$PnK0hk3eJFVmUbB.OLEpFeM8I8IDGZikugU2QVH3ltbyHbCEoWsLa', 'ren', 'lioshi', 'student', 'reneirmanongsong1@gmail.com', 'Oriental Mindoro National High School', '2026-08-24 15:58:46', '2026-08-24 18:14:51', NULL, 1, 1, NULL),
-(62, '$2y$10$NI7z15O0AZR7OcMrVieMEeR3RRxeTFN6RNv6APjimhrHa.iV.Q3RK', 'Hanna', 'Chavez', 'coordinator', 'hanna@gmail.com', 'Nag-iba National High School', '2026-09-01 11:48:27', '2026-09-06 07:42:08', '7,8,9,10,11,12', 1, 1, NULL);
+(62, '$2y$10$NI7z15O0AZR7OcMrVieMEeR3RRxeTFN6RNv6APjimhrHa.iV.Q3RK', 'Hanna', 'Chavez', 'coordinator', 'hanna@gmail.com', 'Nag-iba National High School', '2026-09-01 11:48:27', '2026-09-06 07:42:08', '7,8,9,10,11,12', 1, 1, NULL),
+(63, '$2y$10$L1PaDmlR6HP03zXBpzefEOJF5Edds7rOowUEG62cqlOukIWTpT4mi', 'sample', 'sample', 'counselor', 'sample@gmail.com', 'camilmil elementary school', '2026-09-08 12:55:06', '2026-09-08 12:55:06', '1,2,3,4,5,6', 1, 1, NULL);
 
 --
 -- Indexes for dumped tables
@@ -44957,7 +44959,7 @@ ALTER TABLE `sibling`
 -- AUTO_INCREMENT for table `users_tables`
 --
 ALTER TABLE `users_tables`
-  MODIFY `AccountID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=63;
+  MODIFY `AccountID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
 
 --
 -- Constraints for dumped tables

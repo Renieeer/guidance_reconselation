@@ -25,7 +25,7 @@
             <div class="page-content">
                 <!-- Action Buttons -->
                 <div class="card mb-5">
-                    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: flex-end;">
                         <button class="btn btn-danger" id="exportPdfBtn"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
                         <button class="btn btn-success" id="exportExcelBtn"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
                         <button class="btn btn-secondary" id="filterBtn" style="background: #e2e8f0; color: #0f172a;"><i class="bi bi-funnel"></i> Filter</button>

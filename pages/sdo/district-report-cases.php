@@ -87,7 +87,7 @@
                 <div class="table-container">
                     <table id="reportCasesTable">
                         <thead>
-                            <tr>
+                            <tr id="reportCasesHeaderRow">
                                 <th>Category of Cases</th>
                                 <th>Grade 7</th>
                                 <th>Grade 8</th>

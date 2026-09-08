@@ -3,7 +3,12 @@
 // in counselor_case_scenarios). Categories/sections match the real
 // case_category/section tables used by the counselor's case workflow.
 
-const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
+// Mutable: reassigned to [1..6] whenever this account's school is
+// elementary (school_level East/West/South) — see loadReportData() and
+// api/case-report.php's schools_are_elementary(). Defaults to the usual
+// secondary range until the first fetch comes back.
+let ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
+let isElementarySchool = false;
 
 let currentSchool = '';
 let sections = [];
@@ -15,21 +20,25 @@ let displayRows = [];
 let visibleGrades = ALL_REPORT_GRADES;
 
 function computeVisibleGrades() {
-    const scoped = gradeScopeToList(getCurrentGradeScope());
+    const scoped = gradeScopeToList(getCurrentGradeScope(), isElementarySchool);
     return scoped.length ? scoped : ALL_REPORT_GRADES;
 }
 
-// Remove the header column-groups for any grade outside this account's
-// scope (e.g. a Grade 7-10 coordinator never sees Grade 11/12 columns).
-// Removed (not just hidden) so the remaining header/body columns stay
-// aligned once buildCasesTable() only emits cells for visibleGrades.
-function applyGradeColumnVisibility() {
-    document.querySelectorAll('#reportCasesTable .grade-col').forEach(el => {
-        const grade = parseInt(el.getAttribute('data-grade'), 10);
-        if (!visibleGrades.includes(grade)) {
-            el.remove();
-        }
-    });
+// Rebuilds the two-row grouped header (Grade N spanning Male/Female/Total)
+// from visibleGrades. Built fresh every time rather than trimming the
+// static 7-12 markup, since an elementary school's 1-6 columns don't exist
+// in that markup at all.
+function renderGradeHeader() {
+    const theadRows = document.querySelectorAll('#reportCasesTable thead tr');
+    if (theadRows.length < 2) return;
+
+    theadRows[0].innerHTML = `<th>Category of Cases</th>${visibleGrades.map(g =>
+        `<th colspan="3" class="grade-col" data-grade="${g}" style="text-align: center;">Grade ${g}</th>`
+    ).join('')}`;
+
+    theadRows[1].innerHTML = `<th></th>${visibleGrades.map(g =>
+        `<th class="grade-col" data-grade="${g}">Male</th><th class="grade-col" data-grade="${g}">Female</th><th class="grade-col" data-grade="${g}">Total</th>`
+    ).join('')}`;
 }
 
 // Initialize
@@ -39,10 +48,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const user = getCurrentUser();
     currentSchool = (user && user.school_attended) || '';
 
-    visibleGrades = computeVisibleGrades();
-    applyGradeColumnVisibility();
-
     await loadReportData();
+    visibleGrades = computeVisibleGrades();
+    renderGradeHeader();
+
     buildCasesTable();
     populateFilterOptions();
     setupEventListeners();
@@ -67,6 +76,10 @@ async function loadReportData() {
 
         sections = data.sections || [];
         counts = data.counts || {};
+        if (Array.isArray(data.grades) && data.grades.length) {
+            ALL_REPORT_GRADES = data.grades;
+        }
+        isElementarySchool = !!data.isElementary;
     } catch (error) {
         console.error('Error loading case report:', error);
         sections = [];

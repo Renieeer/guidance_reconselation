@@ -4142,6 +4142,17 @@ body.sidebar-open .sidebar-overlay {
     color: #8494a7;
 }
 
+.form-field-hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.form-field-hint i {
+    margin-right: 4px;
+}
+
 /* Tighter, modal-scoped spacing so the form doesn't leave a large empty gap
    above the Save button when no role is selected yet (assignment-person-card
    sections start hidden). */

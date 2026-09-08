@@ -53,6 +53,17 @@
                                     </div>
                                 </div>
 
+                                <div class="form-group">
+                                    <label for="schoolLevel">School Level</label>
+                                    <select id="schoolLevel" name="schoolLevel" required>
+                                        <option value="Secondary">Secondary</option>
+                                        <option value="East">East</option>
+                                        <option value="West">West</option>
+                                        <option value="South">South</option>
+                                    </select>
+                                    <span class="form-field-hint"><i class="bi bi-info-circle"></i> East, West, and South are for elementary schools.</span>
+                                </div>
+
                                 <div id="assignmentRoleHint" class="assignment-role-hint">
                                     <i class="bi bi-info-circle"></i>
                                     <span>Select a role above to enter the account details.</span>
@@ -219,6 +230,6 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="school-management.js"></script>
+    <script src="school-management.js?v=<?php echo filemtime(__DIR__ . '/school-management.js'); ?>"></script>
 </body>
 </html>

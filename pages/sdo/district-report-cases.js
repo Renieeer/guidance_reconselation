@@ -5,7 +5,11 @@
 // falls into a single real "Unassigned" bucket instead of fake per-district
 // numbers.
 
-const ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
+// Mutable: reassigned to [1..6] whenever the selected district/school
+// resolves to elementary schools only (school_level East/West/South) — see
+// api/case-report.php's schools_are_elementary(). Defaults to the usual
+// secondary range until the first fetch comes back.
+let ALL_REPORT_GRADES = [7, 8, 9, 10, 11, 12];
 
 // Sentinel for the "All Districts" selection — every active school, with no
 // need to pick a district or school individually. Kept distinct from any
@@ -111,6 +115,9 @@ async function loadReportData() {
 
         sections = data.sections || [];
         counts = data.counts || {};
+        if (Array.isArray(data.grades) && data.grades.length) {
+            ALL_REPORT_GRADES = data.grades;
+        }
     } catch (error) {
         if (requestId !== reportRequestId) return;
         console.error('Error loading district case report:', error);
@@ -191,7 +198,7 @@ async function fetchSchoolBreakdownData(district, period, start, end) {
 }
 
 // Backs the Division Monthly Monitoring Report export — always every
-// district at once (plus a '__ALL__' division-wide total), never scoped to
+// school_level group at once (Secondary/East/West/South), never scoped to
 // whatever district button is currently selected on screen.
 async function fetchPersonalSocialConcerns(period, start, end) {
     try {
@@ -307,8 +314,20 @@ function rowTotals(row, countsMap = counts) {
     return totals;
 }
 
+// Rebuilds the "Grade N" column headers to match ALL_REPORT_GRADES (1-6 for
+// an elementary selection, 7-12 otherwise) — the static markup only covers
+// the secondary default, so this keeps the header row in sync with
+// whatever range the last fetch resolved to.
+function renderCasesTableHeader() {
+    const headerRow = document.getElementById('reportCasesHeaderRow');
+    if (!headerRow) return;
+    headerRow.innerHTML = `<th>Category of Cases</th>${ALL_REPORT_GRADES.map(g => `<th>Grade ${g}</th>`).join('')}<th>Totals</th>`;
+}
+
 // Render cases table for the selected district
 function renderCasesTable() {
+    renderCasesTableHeader();
+
     const tableBody = document.getElementById('casesTableBody');
     tableBody.innerHTML = '';
 
@@ -359,7 +378,7 @@ function showCaseDetails(rowIndex) {
 
     document.getElementById('caseId').value = `DIST-${districtLabel(currentDistrict).toUpperCase().replace(/\s+/g, '-')}-${row.bucketKey || 'ROW'}`;
     document.getElementById('caseCategory').value = row.label;
-    document.getElementById('caseGrade').value = 'All Grades (7-12)';
+    document.getElementById('caseGrade').value = `All Grades (${ALL_REPORT_GRADES[0]}-${ALL_REPORT_GRADES[ALL_REPORT_GRADES.length - 1]})`;
     document.getElementById('caseStatus').value = 'Active';
     document.getElementById('caseDate').value = new Date().toLocaleDateString();
     document.getElementById('caseNotes').value = ALL_REPORT_GRADES.map(g => `Grade ${g}: ${totals[g] || 0}`).join(' | ');
@@ -937,14 +956,13 @@ const THIN_BORDER = {
     top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
 };
 
-// Fixed 4 columns, matching the official form exactly: "Secondary" (the
-// division-wide total) plus three named regions. schools.district is the
-// only per-school classification field this app has, so a region's count
-// only becomes non-zero once schools are assigned district = exactly
-// "East" / "West" / "South" in School Management — until then those three
-// columns correctly read 0 rather than showing fabricated numbers.
+// Fixed 4 columns, matching the official form exactly: one column per
+// schools.school_level (Secondary/East/West/South — set per-school in
+// School Management's Add School modal), mutually exclusive rather than a
+// division-wide total plus subsets, so each school's cases land in exactly
+// the one column matching its own level.
 const DMMR_GROUPS = [
-    { key: '__ALL__', label: 'Secondary' },
+    { key: 'Secondary', label: 'Secondary' },
     { key: 'East', label: 'East' },
     { key: 'West', label: 'West' },
     { key: 'South', label: 'South' }
