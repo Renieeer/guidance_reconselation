@@ -97,6 +97,56 @@ function schools_in_district(mysqli $conn, string $district): array {
     return $names;
 }
 
+/** Every active school's name, regardless of district — backs the "All
+ *  Districts" view so it doesn't require picking a district at all. */
+function all_active_school_names(mysqli $conn): array {
+    $result = $conn->query("SELECT school_name FROM schools WHERE is_active = 1");
+    $names = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $names[] = $row['school_name'];
+        }
+    }
+    return $names;
+}
+
+/** True if every school in $schoolNames is elementary (school_level
+ *  East/West/South) — false for an empty list, a Secondary school, or a
+ *  mix of levels (a report can only show one grade range at a time, so a
+ *  mixed selection falls back to the standard secondary 7-12 range). */
+function schools_are_elementary(mysqli $conn, array $schoolNames): bool {
+    if (empty($schoolNames)) {
+        return false;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
+    $types = str_repeat('s', count($schoolNames));
+    $stmt = $conn->prepare("SELECT DISTINCT school_level FROM schools WHERE school_name IN ($placeholders)");
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param($types, ...$schoolNames);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $levels = [];
+    while ($row = $result->fetch_assoc()) {
+        $levels[] = $row['school_level'];
+    }
+    $stmt->close();
+
+    if (empty($levels)) {
+        return false;
+    }
+
+    foreach ($levels as $level) {
+        if (!in_array($level, ['East', 'West', 'South'], true)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function zero_grade_buckets(array $gradeKeys): array {
     $buckets = [];
     foreach ($gradeKeys as $gradeKey) {
@@ -105,21 +155,25 @@ function zero_grade_buckets(array $gradeKeys): array {
     return $buckets;
 }
 
-/** SQL fragment + extra bind types/values for filtering counselor_case_scenarios.case_date
- *  by period: 'weekly' (this calendar week), 'monthly' (this calendar month),
- *  'annually' (this calendar year), 'custom' (explicit start/end), or anything
- *  else (no filter — all time). */
-function case_date_condition(string $period, string $start, string $end): array {
+/** SQL fragment + extra bind types/values for filtering a date column by
+ *  period: 'weekly' (this calendar week), 'monthly' (this calendar month),
+ *  'quarterly' (this calendar quarter), 'annually' (this calendar year),
+ *  'custom' (explicit start/end), or anything else (no filter — all time).
+ *  $column defaults to counselor_case_scenarios.case_date; district_summary
+ *  passes referral.date_submitted instead. */
+function case_date_condition(string $period, string $start, string $end, string $column = 'case_date'): array {
     switch ($period) {
         case 'weekly':
-            return [' AND YEARWEEK(case_date, 1) = YEARWEEK(CURDATE(), 1)', '', []];
+            return [" AND YEARWEEK($column, 1) = YEARWEEK(CURDATE(), 1)", '', []];
         case 'monthly':
-            return [' AND YEAR(case_date) = YEAR(CURDATE()) AND MONTH(case_date) = MONTH(CURDATE())', '', []];
+            return [" AND YEAR($column) = YEAR(CURDATE()) AND MONTH($column) = MONTH(CURDATE())", '', []];
+        case 'quarterly':
+            return [" AND YEAR($column) = YEAR(CURDATE()) AND QUARTER($column) = QUARTER(CURDATE())", '', []];
         case 'annually':
-            return [' AND YEAR(case_date) = YEAR(CURDATE())', '', []];
+            return [" AND YEAR($column) = YEAR(CURDATE())", '', []];
         case 'custom':
             if ($start !== '' && $end !== '') {
-                return [' AND case_date BETWEEN ? AND ?', 'ss', [$start, $end]];
+                return [" AND $column BETWEEN ? AND ?", 'ss', [$start, $end]];
             }
             return ['', '', []];
         default:
@@ -137,7 +191,6 @@ if ($action === 'categories') {
     $school = trim((string)($_GET['school'] ?? ''));
     $district = trim((string)($_GET['district'] ?? ''));
     $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
-    $gradeKeys = ['7', '8', '9', '10', '11', '12'];
 
     $period = trim((string)($_GET['period'] ?? 'all'));
     $rangeStart = trim((string)($_GET['start'] ?? ''));
@@ -147,9 +200,16 @@ if ($action === 'categories') {
     $schoolNames = [];
     if ($school !== '') {
         $schoolNames = [$school];
+    } elseif (strcasecmp($district, 'all') === 0) {
+        $schoolNames = all_active_school_names($conn);
     } elseif ($district !== '') {
         $schoolNames = schools_in_district($conn, $district);
     }
+
+    // East/West/South (elementary) schools report grades 1-6 instead of the
+    // usual secondary 7-12 — see schools_are_elementary().
+    $isElementary = schools_are_elementary($conn, $schoolNames);
+    $gradeKeys = $isElementary ? ['1', '2', '3', '4', '5', '6'] : ['7', '8', '9', '10', '11', '12'];
 
     $sections = fetch_sections($conn);
 
@@ -216,7 +276,7 @@ if ($action === 'categories') {
                     $studentResult = $studentStmt->get_result();
                     while ($srow = $studentResult->fetch_assoc()) {
                         $studentInfo[$srow['StudentId']] = [
-                            'grade' => normalize_grade_number($srow['Grade']),
+                            'grade' => normalize_grade_number($srow['Grade'], $isElementary),
                             'sex' => (string)($srow['Sex'] ?? '')
                         ];
                     }
@@ -259,6 +319,7 @@ if ($action === 'categories') {
     send_json(200, [
         'success' => true,
         'grades' => array_map('intval', $gradeKeys),
+        'isElementary' => $isElementary,
         'sections' => $sections,
         'counts' => $counts
     ]);
@@ -292,6 +353,8 @@ if ($action === 'list') {
     } elseif ($district !== '') {
         $schoolNames = schools_in_district($conn, $district);
     }
+
+    $isElementary = schools_are_elementary($conn, $schoolNames);
 
     $rows = [];
 
@@ -363,7 +426,7 @@ if ($action === 'list') {
                     $studentResult = $studentStmt->get_result();
                     while ($srow = $studentResult->fetch_assoc()) {
                         $studentInfo[$srow['StudentId']] = [
-                            'grade' => normalize_grade_number($srow['Grade']),
+                            'grade' => normalize_grade_number($srow['Grade'], $isElementary),
                             'sex' => (string)($srow['Sex'] ?? '')
                         ];
                     }
@@ -438,11 +501,120 @@ if ($action === 'districts') {
     send_json(200, ['success' => true, 'districts' => $districts, 'hasUnassigned' => $hasUnassigned]);
 }
 
+/* ── PER-SCHOOL CASE + GENDER BREAKDOWN ──
+   Backs the district report's "one row per school" view: for a specific
+   district, or every active school when district=all ("All Districts" —
+   no need to pick each district/school individually), return each school's
+   total case count and Male/Female split. Same counting rule as
+   'categories' (one primary student per case = one count) but summed per
+   school instead of per category/grade. */
+if ($action === 'school_breakdown') {
+    $district = trim((string)($_GET['district'] ?? ''));
+    $period = trim((string)($_GET['period'] ?? 'all'));
+    $rangeStart = trim((string)($_GET['start'] ?? ''));
+    $rangeEnd = trim((string)($_GET['end'] ?? ''));
+    [$dateSql, $dateTypes, $dateValues] = case_date_condition($period, $rangeStart, $rangeEnd);
+
+    $schools = [];
+    if ($district !== '' && strcasecmp($district, 'all') !== 0) {
+        $districtLabel = strcasecmp($district, 'Unassigned') === 0 ? 'Unassigned' : $district;
+        foreach (schools_in_district($conn, $district) as $name) {
+            $schools[$name] = ['school' => $name, 'district' => $districtLabel, 'total' => 0, 'male' => 0, 'female' => 0];
+        }
+    } else {
+        $result = $conn->query("SELECT school_name, COALESCE(NULLIF(district, ''), 'Unassigned') AS district FROM schools WHERE is_active = 1 ORDER BY district ASC, school_name ASC");
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $schools[$row['school_name']] = ['school' => $row['school_name'], 'district' => $row['district'], 'total' => 0, 'male' => 0, 'female' => 0];
+            }
+        }
+    }
+
+    $schoolNames = array_keys($schools);
+
+    if (table_exists($conn, 'counselor_case_scenarios') && !empty($schoolNames)) {
+        $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
+        $types = str_repeat('s', count($schoolNames));
+        $stmt = $conn->prepare("
+            SELECT school_attended, students_json
+            FROM counselor_case_scenarios
+            WHERE school_attended IN ($placeholders)$dateSql
+        ");
+
+        if ($stmt) {
+            $bindTypes = $types . $dateTypes;
+            $bindValues = array_merge($schoolNames, $dateValues);
+            $stmt->bind_param($bindTypes, ...$bindValues);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $caseRows = [];
+            $studentIds = [];
+            while ($row = $result->fetch_assoc()) {
+                $students = json_decode((string)$row['students_json'], true) ?: [];
+                $ids = [];
+                foreach ($students as $s) {
+                    $role = trim((string)($s['role'] ?? ''));
+                    if ($role !== '' && $role !== 'Primary student') {
+                        continue;
+                    }
+                    $sid = trim((string)($s['id'] ?? $s['StudentId'] ?? $s['studentId'] ?? ''));
+                    if ($sid !== '') {
+                        $ids[] = $sid;
+                        $studentIds[$sid] = true;
+                    }
+                }
+                $caseRows[] = ['school' => $row['school_attended'], 'studentIds' => $ids];
+            }
+            $stmt->close();
+
+            $studentSex = [];
+            if (!empty($studentIds)) {
+                $idList = array_keys($studentIds);
+                $idPlaceholders = implode(',', array_fill(0, count($idList), '?'));
+                $idTypes = str_repeat('s', count($idList));
+                $studentStmt = $conn->prepare("SELECT StudentId, Sex FROM student_table WHERE StudentId IN ($idPlaceholders)");
+                if ($studentStmt) {
+                    $studentStmt->bind_param($idTypes, ...$idList);
+                    $studentStmt->execute();
+                    $studentResult = $studentStmt->get_result();
+                    while ($srow = $studentResult->fetch_assoc()) {
+                        $studentSex[$srow['StudentId']] = (string)($srow['Sex'] ?? '');
+                    }
+                    $studentStmt->close();
+                }
+            }
+
+            foreach ($caseRows as $caseRow) {
+                if (!isset($schools[$caseRow['school']])) {
+                    continue;
+                }
+                foreach ($caseRow['studentIds'] as $sid) {
+                    $sex = $studentSex[$sid] ?? '';
+                    $schools[$caseRow['school']]['total']++;
+                    if ($sex === 'Male') {
+                        $schools[$caseRow['school']]['male']++;
+                    } elseif ($sex === 'Female') {
+                        $schools[$caseRow['school']]['female']++;
+                    }
+                }
+            }
+        }
+    }
+
+    send_json(200, ['success' => true, 'schools' => array_values($schools)]);
+}
+
 /* ── PER-DISTRICT ROLLUP ── (schools, staff headcounts, referrals, resolution)
    Real source: schools.district joined against users_tables/referral by
    school name — replaces the old Math.random() comparative tables in
    pages/sdo/analytics.js and pages/sdo/school-reports.js. */
 if ($action === 'district_summary') {
+    $period = trim((string)($_GET['period'] ?? 'all'));
+    $rangeStart = trim((string)($_GET['start'] ?? ''));
+    $rangeEnd = trim((string)($_GET['end'] ?? ''));
+    [$dateSql, $dateTypes, $dateValues] = case_date_condition($period, $rangeStart, $rangeEnd, 'r.date_submitted');
+
     $staffQuery = $conn->query("
         SELECT
             COALESCE(NULLIF(s.district, ''), 'Unassigned') AS district,
@@ -473,7 +645,13 @@ if ($action === 'district_summary') {
         }
     }
 
-    $referralQuery = $conn->query("
+    // Joined on a single resolved school per referral (the student's own
+    // school, falling back to the referring staff's school) rather than
+    // "school_attended = ? OR student_school = ?" — with a plain equality
+    // that OR would have matched two different schools.rows for the same
+    // referral whenever those two columns disagree, double-counting it
+    // into two districts.
+    $referralSql = "
         SELECT
             COALESCE(NULLIF(s.district, ''), 'Unassigned') AS district,
             COUNT(r.ReferralID) AS referral_count,
@@ -481,10 +659,19 @@ if ($action === 'district_summary') {
             SUM(CASE WHEN COALESCE(r.stage, 1) = 6 THEN 1 ELSE 0 END) AS resolved_count,
             MAX(COALESCE(r.updated_at, r.date_submitted)) AS last_activity
         FROM schools s
-        LEFT JOIN referral r ON (r.school_attended = s.school_name OR r.student_school = s.school_name)
+        LEFT JOIN referral r ON COALESCE(NULLIF(r.student_school, ''), r.school_attended) = s.school_name$dateSql
         WHERE s.is_active = 1
         GROUP BY district
-    ");
+    ";
+    $referralStmt = $conn->prepare($referralSql);
+    $referralQuery = false;
+    if ($referralStmt) {
+        if ($dateTypes !== '') {
+            $referralStmt->bind_param($dateTypes, ...$dateValues);
+        }
+        $referralStmt->execute();
+        $referralQuery = $referralStmt->get_result();
+    }
 
     if ($referralQuery) {
         while ($row = $referralQuery->fetch_assoc()) {
@@ -510,6 +697,92 @@ if ($action === 'district_summary') {
     }
 
     send_json(200, ['success' => true, 'districts' => array_values($districts)]);
+}
+
+/* ── PERSONAL-SOCIAL CONCERNS, PER SCHOOL LEVEL ──
+   Backs the "Division Monthly Monitoring Report of Learners' Personal-Social
+   Concerns" export. Same section/category set as 'categories' (every real
+   section and category — plus one "uncategorized" bucket per section for
+   cases whose category hasn't been chosen yet — so the report covers 100%
+   of case data, not a curated subset) and the same "one count per primary
+   student" counting rule as 'categories'/'school_breakdown', but bucketed
+   by the case's school's school_level (Secondary/East/West/South — set
+   per-school in School Management's Add School modal) instead of by grade.
+   The four columns are mutually exclusive: a school's cases land in exactly
+   the one column matching its own level, never also into a division-wide
+   total. */
+if ($action === 'personal_social_concerns') {
+    $period = trim((string)($_GET['period'] ?? 'all'));
+    $rangeStart = trim((string)($_GET['start'] ?? ''));
+    $rangeEnd = trim((string)($_GET['end'] ?? ''));
+    [$dateSql, $dateTypes, $dateValues] = case_date_condition($period, $rangeStart, $rangeEnd);
+
+    $groups = ['Secondary', 'East', 'West', 'South'];
+
+    $schoolLevel = [];
+    $result = $conn->query("SELECT school_name, COALESCE(NULLIF(school_level, ''), 'Secondary') AS school_level FROM schools WHERE is_active = 1");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $schoolLevel[$row['school_name']] = $row['school_level'];
+        }
+    }
+
+    $sections = fetch_sections($conn);
+
+    // Seed every real category (+ one uncategorized bucket per section) at
+    // zero for every group, so the frontend always gets a complete,
+    // predictable shape covering every category — not just the ones that
+    // happen to already have cases.
+    $counts = [];
+    foreach ($groups as $g) {
+        $counts[$g] = [];
+    }
+    foreach (array_keys($counts) as $groupKey) {
+        foreach ($sections as $section) {
+            foreach ($section['categories'] as $cat) {
+                $counts[$groupKey][$cat['categoryId']] = 0;
+            }
+            $counts[$groupKey]['section-' . $section['sectionId'] . '-uncategorized'] = 0;
+        }
+    }
+
+    if (table_exists($conn, 'counselor_case_scenarios')) {
+        $stmt = $conn->prepare("SELECT school_attended, section_id, category_id, students_json FROM counselor_case_scenarios WHERE 1=1$dateSql");
+        if ($stmt) {
+            if ($dateTypes !== '') {
+                $stmt->bind_param($dateTypes, ...$dateValues);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            while ($row = $result->fetch_assoc()) {
+                $level = $schoolLevel[$row['school_attended']] ?? null;
+                if ($level === null || !in_array($level, $groups, true)) {
+                    continue; // school not active / not in schools table — skip
+                }
+
+                $categoryId = trim((string)$row['category_id']);
+                $bucketKey = $categoryId !== '' ? $categoryId : ('section-' . $row['section_id'] . '-uncategorized');
+
+                $students = json_decode((string)$row['students_json'], true) ?: [];
+                $primaryCount = 0;
+                foreach ($students as $s) {
+                    $role = trim((string)($s['role'] ?? ''));
+                    if ($role === '' || $role === 'Primary student') {
+                        $primaryCount++;
+                    }
+                }
+                if ($primaryCount === 0) {
+                    continue;
+                }
+
+                $counts[$level][$bucketKey] = ($counts[$level][$bucketKey] ?? 0) + $primaryCount;
+            }
+            $stmt->close();
+        }
+    }
+
+    send_json(200, ['success' => true, 'districts' => $groups, 'sections' => $sections, 'counts' => $counts]);
 }
 
 send_json(400, ['success' => false, 'message' => 'Unknown action.']);

@@ -160,6 +160,11 @@ function initSchoolAssignmentModal() {
             closeModal('schoolAssignmentModal');
         }
     });
+
+    const schoolLevelSelect = document.getElementById('schoolLevel');
+    if (schoolLevelSelect) {
+        schoolLevelSelect.addEventListener('change', refreshAssignmentGradeOptions);
+    }
 }
 
 function initSchoolFoldersToolbar() {
@@ -274,6 +279,12 @@ function resetAssignmentModal() {
         assignType.disabled = false;
     }
 
+    const schoolLevelSelect = document.getElementById('schoolLevel');
+    if (schoolLevelSelect) {
+        schoolLevelSelect.disabled = false;
+    }
+    refreshAssignmentGradeOptions();
+
     const intro = document.getElementById('schoolAssignmentIntro');
     if (intro) {
         intro.textContent = 'Add a school and assign a coordinator, counselor, or both.';
@@ -288,6 +299,7 @@ function resetAssignmentModal() {
 function openAssignRoleModal(btn) {
     const role = btn.getAttribute('data-assign-role');
     const schoolName = btn.getAttribute('data-school-name') || '';
+    const schoolLevel = btn.getAttribute('data-school-level') || '';
 
     // This button can live inside the school detail modal — close it first
     // so the two floating panels don't stack.
@@ -305,6 +317,16 @@ function openAssignRoleModal(btn) {
     if (assignType && role) {
         assignType.value = role;
         assignType.disabled = true;
+    }
+
+    // The school already has a level set — lock it here so assigning an
+    // additional account to it can't accidentally reset it back to the
+    // default (Secondary) on submit.
+    const schoolLevelSelect = document.getElementById('schoolLevel');
+    if (schoolLevelSelect && schoolLevel) {
+        schoolLevelSelect.value = schoolLevel;
+        schoolLevelSelect.disabled = true;
+        refreshAssignmentGradeOptions();
     }
 
     const intro = document.getElementById('schoolAssignmentIntro');
@@ -325,6 +347,7 @@ async function handleSchoolAssignmentSubmit(event) {
 
     const schoolName = document.getElementById('schoolName')?.value.trim() || '';
     const assignType = document.getElementById('assignType')?.value || '';
+    const schoolLevel = document.getElementById('schoolLevel')?.value || 'Secondary';
 
     if (submitBtn) {
         submitBtn.disabled = true;
@@ -335,6 +358,7 @@ async function handleSchoolAssignmentSubmit(event) {
         const payload = {
             schoolName,
             assignType,
+            schoolLevel,
             coordinator: getRolePayload('coordinator'),
             counselor: getRolePayload('counselor'),
             combined: getRolePayload('combined')
@@ -433,20 +457,30 @@ function renderFolderGrid() {
     });
 }
 
-// A grade scope is a comma-separated list of grade numbers 7-12 (mirrors
+// East/West/South schools are elementary (grades 1-6); every other level
+// (Secondary) uses the usual junior/senior high grades 7-12.
+function gradeRangeForLevel(level) {
+    return (level === 'East' || level === 'West' || level === 'South')
+        ? [1, 2, 3, 4, 5, 6]
+        : [7, 8, 9, 10, 11, 12];
+}
+
+// A grade scope is a comma-separated list of grade numbers (mirrors
 // api/grade-scope.php's grade_scope_to_list()); empty means no restriction.
-function parseGradeScope(grade) {
+// `level` picks which range (1-6 vs 7-12) counts as valid for this school.
+function parseGradeScope(grade, level) {
+    const range = gradeRangeForLevel(level);
     return String(grade || '')
         .split(',')
         .map(g => parseInt(g.trim(), 10))
-        .filter(g => g >= 7 && g <= 12);
+        .filter(g => range.includes(g));
 }
 
 // Mirrors api/grade-scope.php's grade_scope_label() so the read-only view
 // reads naturally for any combination the checkboxes can produce, not just
 // the handful of presets the old dropdown offered.
-function gradeDisplayLabel(grade) {
-    const grades = [...new Set(parseGradeScope(grade))].sort((a, b) => a - b);
+function gradeDisplayLabel(grade, level) {
+    const grades = [...new Set(parseGradeScope(grade, level))].sort((a, b) => a - b);
     if (grades.length === 0) return 'All grades';
     if (grades.length === 1) return `Grade ${grades[0]}`;
 
@@ -455,8 +489,6 @@ function gradeDisplayLabel(grade) {
         ? `Grades ${grades[0]}-${grades[grades.length - 1]}`
         : `Grades ${grades.join(', ')}`;
 }
-
-const GRADE_CHECKBOX_VALUES = [7, 8, 9, 10, 11, 12];
 
 // Delegated once for the whole page so it covers both the static
 // coordinator/counselor/combined groups in the Add School form and any
@@ -480,14 +512,18 @@ function initGradeCheckboxGroups() {
     });
 }
 
-function buildGradeCheckboxes(accountId, grade) {
-    const selected = new Set(parseGradeScope(grade));
-    const allSelected = GRADE_CHECKBOX_VALUES.every(g => selected.has(g));
-    const boxes = GRADE_CHECKBOX_VALUES.map(g => `
+function buildGradeCheckboxOptionsHtml(range, selected) {
+    return range.map(g => `
                     <label class="grade-checkbox">
-                        <input type="checkbox" value="${g}" ${selected.has(g) ? 'checked' : ''}>
+                        <input type="checkbox" value="${g}" ${selected && selected.has(g) ? 'checked' : ''}>
                         <span>${g}</span>
                     </label>`).join('');
+}
+
+function buildGradeCheckboxes(accountId, grade, level) {
+    const range = gradeRangeForLevel(level);
+    const selected = new Set(parseGradeScope(grade, level));
+    const allSelected = range.every(g => selected.has(g));
 
     return `
                 <div class="grade-checkbox-group" data-account-id="${accountId}">
@@ -495,9 +531,27 @@ function buildGradeCheckboxes(accountId, grade) {
                         <input type="checkbox" data-select-all ${allSelected ? 'checked' : ''}>
                         <span>All</span>
                     </label>
-                    ${boxes}
+                    ${buildGradeCheckboxOptionsHtml(range, selected)}
                     <span class="grade-checkbox-hint">Leave all unchecked to allow every grade.</span>
                 </div>`;
+}
+
+// Rebuilds the three static "Add School" form grade-checkbox groups
+// (coordinator/counselor/combined) to match the currently selected School
+// Level — 1-6 for East/West/South (elementary), 7-12 for Secondary.
+function refreshAssignmentGradeOptions() {
+    const level = document.getElementById('schoolLevel')?.value || 'Secondary';
+    const range = gradeRangeForLevel(level);
+
+    ['coordinatorGrade', 'counselorGrade', 'combinedGrade'].forEach(id => {
+        const group = document.getElementById(id);
+        if (!group) return;
+
+        group.innerHTML = `
+                    <label class="grade-checkbox grade-checkbox-all"><input type="checkbox" data-select-all><span>All</span></label>
+                    ${buildGradeCheckboxOptionsHtml(range)}
+                    <span class="grade-checkbox-hint">Leave all unchecked to allow every grade.</span>`;
+    });
 }
 
 // One folder card per school: a compact preview (name, fill dots, account
@@ -542,11 +596,11 @@ function buildSchoolDetailContent(item) {
         : '';
 
     return `
-        ${buildRoleSlot('COORDINATOR', item.coordinator, 'coordinator', item.schoolName)}
-        ${buildRoleSlot('COUNSELOR', item.counselor, 'counselor', item.schoolName)}
-        ${buildRoleSlot('COMBINED', item.combined, 'combined', item.schoolName)}
+        ${buildRoleSlot('COORDINATOR', item.coordinator, 'coordinator', item.schoolName, item.schoolLevel)}
+        ${buildRoleSlot('COUNSELOR', item.counselor, 'counselor', item.schoolName, item.schoolLevel)}
+        ${buildRoleSlot('COMBINED', item.combined, 'combined', item.schoolName, item.schoolLevel)}
         <div class="school-folder-footer">
-            <span class="school-folder-id">ID ${escapeHtml(String(item.schoolCode || '').toUpperCase())}</span>
+            <span class="school-folder-id">ID ${escapeHtml(String(item.schoolCode || '').toUpperCase())} &middot; ${escapeHtml(item.schoolLevel || 'Secondary')}</span>
             ${revokeBtn}
         </div>
     `;
@@ -577,10 +631,10 @@ function wireSchoolDetailEvents(container) {
 // Renders one role's block inside the detail modal. View mode: plain
 // read-only text. Edit mode: a grade checkbox group + activate/deactivate,
 // or an "assign an account" shortcut into the Add School modal when empty.
-function buildRoleSlot(label, person, roleKey, schoolName) {
+function buildRoleSlot(label, person, roleKey, schoolName, schoolLevel) {
     if (!person || !person.name) {
         const assignBtn = editMode
-            ? `<button type="button" class="school-role-assign-btn" data-assign-role="${roleKey}" data-school-name="${escapeHtml(schoolName)}">+ Assign an account</button>`
+            ? `<button type="button" class="school-role-assign-btn" data-assign-role="${roleKey}" data-school-name="${escapeHtml(schoolName)}" data-school-level="${escapeHtml(schoolLevel || 'Secondary')}">+ Assign an account</button>`
             : '';
         return `
             <div class="school-role-slot">
@@ -604,12 +658,12 @@ function buildRoleSlot(label, person, roleKey, schoolName) {
         const toggleLabel = isActive ? 'Deactivate' : 'Activate';
         return `
             <div class="school-role-controls">
-                ${buildGradeCheckboxes(person.accountId, person.grade || '')}
+                ${buildGradeCheckboxes(person.accountId, person.grade || '', schoolLevel)}
                 <button type="button" class="btn btn-secondary btn-sm" data-save-grade data-account-id="${person.accountId}">Save</button>
                 <button type="button" class="btn ${toggleBtnClass} btn-sm" data-toggle-active data-account-id="${person.accountId}" data-active="${isActive ? '1' : '0'}">${toggleLabel}</button>
             </div>
         `;
-    })() : `<div class="text-sm text-muted">${gradeDisplayLabel(person.grade)}</div>`;
+    })() : `<div class="text-sm text-muted">${gradeDisplayLabel(person.grade, schoolLevel)}</div>`;
 
     return `
         <div class="school-role-slot">

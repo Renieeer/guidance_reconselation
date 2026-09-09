@@ -34,23 +34,25 @@ try {
         }
 
         $sql = "SELECT
-                    AccountID AS id,
-                    First_name,
-                    Last_name,
-                    email,
-                    Type,
-                    school_attended,
-                    Grade,
-                    created_at,
-                    is_active
-                FROM users_tables
-                WHERE school_attended = ?";
+                    u.AccountID AS id,
+                    u.First_name,
+                    u.Last_name,
+                    u.email,
+                    u.Type,
+                    u.school_attended,
+                    u.Grade,
+                    u.created_at,
+                    u.is_active,
+                    st.Age AS Age
+                FROM users_tables u
+                LEFT JOIN student_table st ON st.AccountID = u.AccountID
+                WHERE u.school_attended = ?";
 
         $types = 's';
         $params = [$school];
 
         if ($search !== '') {
-            $sql .= " AND (First_name LIKE ? OR Last_name LIKE ? OR email LIKE ?)";
+            $sql .= " AND (u.First_name LIKE ? OR u.Last_name LIKE ? OR u.email LIKE ?)";
             $searchTerm = '%' . $search . '%';
             $types .= 'sss';
             $params[] = $searchTerm;
@@ -62,10 +64,10 @@ try {
         // the default view — only "Show inactive students" surfaces them.
         // Staff account status is managed by the SDO, not scoped here.
         if (!$includeInactive) {
-            $sql .= " AND (Type != 'student' OR is_active = 1)";
+            $sql .= " AND (u.Type != 'student' OR u.is_active = 1)";
         }
 
-        $sql .= " ORDER BY created_at DESC";
+        $sql .= " ORDER BY u.created_at DESC";
 
         $stmt = $conn->prepare($sql);
         if (!$stmt) {

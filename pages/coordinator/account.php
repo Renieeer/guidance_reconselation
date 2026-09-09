@@ -60,6 +60,9 @@
                             <button class="btn btn-primary" onclick="searchAccounts()">
                                 <i class="bi bi-search"></i> Search
                             </button>
+                            <button class="btn btn-success" id="exportAccountsExcelBtn" onclick="exportStudentAccountsToExcel()">
+                                <i class="bi bi-file-earmark-excel"></i> Export Excel
+                            </button>
                         </div>
                     </div>
 
@@ -183,6 +186,7 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="account.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="account.js?v=<?php echo filemtime(__DIR__ . '/account.js'); ?>"></script>
 </body>
 </html>

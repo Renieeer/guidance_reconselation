@@ -4,16 +4,16 @@ require_once __DIR__ . '/conn.php';
 
 function getDefaultSchoolSeeds(): array {
     return [
-        ['school_code' => 'personas', 'school_name' => 'Personas National High School', 'assignment_type' => 'both'],
-        ['school_code' => 'community-vocational', 'school_name' => 'Community Vocational High Schools', 'assignment_type' => 'both'],
-        ['school_code' => 'oriental-mindoro', 'school_name' => 'Oriental Mindoro National High School', 'assignment_type' => 'both'],
-        ['school_code' => 'ceriaco-abes', 'school_name' => 'Ceriaco A. Abes Memorial National High School', 'assignment_type' => 'both'],
-        ['school_code' => 'nag-iba', 'school_name' => 'Nag-iba National High School', 'assignment_type' => 'both'],
-        ['school_code' => 'pedro-panaligan', 'school_name' => 'Pedro V Panaligan National High School', 'assignment_type' => 'both'],
-        ['school_code' => 'parang', 'school_name' => 'Parang National High School', 'assignment_type' => 'both'],
-        ['school_code' => 'managpi', 'school_name' => 'Managpi National High School', 'assignment_type' => 'both'],
-        ['school_code' => 'buvayao', 'school_name' => 'Buvayao National High School', 'assignment_type' => 'both'],
-        ['school_code' => 'canubing', 'school_name' => 'Canubing National High School', 'assignment_type' => 'both']
+        ['school_code' => 'personas', 'school_name' => 'Personas National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'community-vocational', 'school_name' => 'Community Vocational High Schools', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'oriental-mindoro', 'school_name' => 'Oriental Mindoro National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'ceriaco-abes', 'school_name' => 'Ceriaco A. Abes Memorial National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'nag-iba', 'school_name' => 'Nag-iba National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'pedro-panaligan', 'school_name' => 'Pedro V Panaligan National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'parang', 'school_name' => 'Parang National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'managpi', 'school_name' => 'Managpi National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'buvayao', 'school_name' => 'Buvayao National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary'],
+        ['school_code' => 'canubing', 'school_name' => 'Canubing National High School', 'assignment_type' => 'both', 'school_level' => 'Secondary']
     ];
 }
 
@@ -29,6 +29,7 @@ function ensureSchoolsTable(mysqli $conn): void {
     $createTable = "CREATE TABLE IF NOT EXISTS schools (
         school_code varchar(120) NOT NULL,
         school_name varchar(255) NOT NULL,
+        school_level enum('East','West','South','Secondary') NOT NULL DEFAULT 'Secondary',
         assignment_type enum('coordinator','counselor','both') NOT NULL DEFAULT 'both',
         is_active tinyint(1) NOT NULL DEFAULT '1',
         created_at timestamp DEFAULT CURRENT_TIMESTAMP,
@@ -40,22 +41,36 @@ function ensureSchoolsTable(mysqli $conn): void {
 
     $conn->query($createTable);
 
-    // `district` is newer than the original table shape and MySQL 8 has no
-    // "ADD COLUMN IF NOT EXISTS", so existence is checked via SHOW COLUMNS
-    // first (same pattern as api/follow-up.php / api/case-scenario.php).
+    // `district` and `school_level` are newer than the original table shape
+    // and MySQL 8 has no "ADD COLUMN IF NOT EXISTS", so existence is checked
+    // via SHOW COLUMNS first (same pattern as api/follow-up.php / api/case-scenario.php).
     $districtColumn = $conn->query("SHOW COLUMNS FROM schools LIKE 'district'");
     if (!$districtColumn || $districtColumn->num_rows === 0) {
         $conn->query("ALTER TABLE schools ADD COLUMN district VARCHAR(100) DEFAULT NULL");
         $conn->query("ALTER TABLE schools ADD INDEX idx_school_district (district)");
     }
 
-    $stmt = $conn->prepare('INSERT IGNORE INTO schools (school_code, school_name, assignment_type, district, is_active) VALUES (?, ?, ?, ?, 1)');
+    // East/West/South are elementary-only levels; Secondary (the default)
+    // covers every high school seeded/created before this column existed.
+    $levelColumn = $conn->query("SHOW COLUMNS FROM schools LIKE 'school_level'");
+    if (!$levelColumn || $levelColumn->num_rows === 0) {
+        $conn->query("ALTER TABLE schools ADD COLUMN school_level ENUM('East','West','South','Secondary') NOT NULL DEFAULT 'Secondary'");
+    }
+
+    $stmt = $conn->prepare('INSERT IGNORE INTO schools (school_code, school_name, assignment_type, school_level, district, is_active) VALUES (?, ?, ?, ?, ?, 1)');
     if (!$stmt) {
         return;
     }
 
     foreach (getDefaultSchoolSeeds() as $school) {
-        $stmt->bind_param('ssss', $school['school_code'], $school['school_name'], $school['assignment_type'], $school['school_name']);
+        $stmt->bind_param(
+            'sssss',
+            $school['school_code'],
+            $school['school_name'],
+            $school['assignment_type'],
+            $school['school_level'],
+            $school['school_name']
+        );
         $stmt->execute();
     }
 
@@ -85,7 +100,7 @@ function getSchoolList(): array {
 
     ensureSchoolsTable($conn);
 
-    $result = $conn->query('SELECT school_code, school_name, assignment_type, district FROM schools WHERE is_active = 1 ORDER BY school_name ASC');
+    $result = $conn->query('SELECT school_code, school_name, assignment_type, school_level, district FROM schools WHERE is_active = 1 ORDER BY school_name ASC');
     if (!$result) {
         return getDefaultSchoolSeeds();
     }
@@ -96,6 +111,7 @@ function getSchoolList(): array {
             'school_code' => $row['school_code'],
             'school_name' => $row['school_name'],
             'assignment_type' => $row['assignment_type'],
+            'school_level' => $row['school_level'] ?: 'Secondary',
             'district' => $row['district'],
             'availableRoles' => buildAvailableRoles((string)$row['assignment_type'])
         ];
@@ -104,11 +120,12 @@ function getSchoolList(): array {
     return $schools ?: getDefaultSchoolSeeds();
 }
 
-function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignmentType): array {
+function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignmentType, string $schoolLevel = 'Secondary'): array {
     ensureSchoolsTable($conn);
 
     $schoolName = trim($schoolName);
     $assignmentType = in_array($assignmentType, ['coordinator', 'counselor', 'both'], true) ? $assignmentType : 'both';
+    $schoolLevel = in_array($schoolLevel, ['Secondary', 'East', 'West', 'South'], true) ? $schoolLevel : 'Secondary';
 
     $lookup = $conn->prepare('SELECT school_code, school_name FROM schools WHERE school_name = ? OR school_code = ? LIMIT 1');
     if ($lookup) {
@@ -119,9 +136,9 @@ function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignment
         $lookup->close();
 
         if ($existing) {
-            $update = $conn->prepare('UPDATE schools SET assignment_type = ?, is_active = 1, updated_at = NOW() WHERE school_code = ?');
+            $update = $conn->prepare('UPDATE schools SET assignment_type = ?, school_level = ?, is_active = 1, updated_at = NOW() WHERE school_code = ?');
             if ($update) {
-                $update->bind_param('ss', $assignmentType, $existing['school_code']);
+                $update->bind_param('sss', $assignmentType, $schoolLevel, $existing['school_code']);
                 $update->execute();
                 $update->close();
             }
@@ -129,7 +146,8 @@ function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignment
             return [
                 'school_code' => $existing['school_code'],
                 'school_name' => $existing['school_name'],
-                'assignment_type' => $assignmentType
+                'assignment_type' => $assignmentType,
+                'school_level' => $schoolLevel
             ];
         }
     }
@@ -158,12 +176,12 @@ function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignment
     // New schools default their district to their own name so they show up
     // as their own row in per-district reports right away, instead of being
     // lumped into "Unassigned" until someone remembers to set it manually.
-    $insert = $conn->prepare('INSERT INTO schools (school_code, school_name, assignment_type, district, is_active) VALUES (?, ?, ?, ?, 1)');
+    $insert = $conn->prepare('INSERT INTO schools (school_code, school_name, assignment_type, school_level, district, is_active) VALUES (?, ?, ?, ?, ?, 1)');
     if (!$insert) {
         throw new RuntimeException('Failed to prepare school insert statement');
     }
 
-    $insert->bind_param('ssss', $schoolCode, $schoolName, $assignmentType, $schoolName);
+    $insert->bind_param('sssss', $schoolCode, $schoolName, $assignmentType, $schoolLevel, $schoolName);
     if (!$insert->execute()) {
         $insert->close();
         throw new RuntimeException('Failed to save school record');
@@ -174,6 +192,7 @@ function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignment
         'school_code' => $schoolCode,
         'school_name' => $schoolName,
         'assignment_type' => $assignmentType,
+        'school_level' => $schoolLevel,
         'district' => $schoolName
     ];
 }
@@ -188,7 +207,7 @@ function getSchoolConfig(string $school): ?array {
         return null;
     }
 
-    $stmt = $conn->prepare('SELECT school_code, school_name, assignment_type, district FROM schools WHERE school_code = ? OR school_name = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT school_code, school_name, assignment_type, school_level, district FROM schools WHERE school_code = ? OR school_name = ? LIMIT 1');
     if (!$stmt) {
         return null;
     }
@@ -206,6 +225,7 @@ function getSchoolConfig(string $school): ?array {
         'schoolCode' => $row['school_code'],
         'schoolName' => $row['school_name'],
         'assignmentType' => $row['assignment_type'],
+        'schoolLevel' => $row['school_level'] ?: 'Secondary',
         'district' => $row['district'],
         'type' => 'school',
         'availableRoles' => buildAvailableRoles((string)($row['assignment_type'] ?? 'both'))

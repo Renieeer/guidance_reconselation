@@ -346,11 +346,15 @@ function getCurrentGradeScope() {
     return (user && user.grade_scope) ? String(user.grade_scope) : '';
 }
 
-function gradeScopeToList(scope) {
+// isElementary switches the accepted range to 1-6 (East/West/South schools);
+// every existing caller omits it and keeps the original 7-12 behavior.
+function gradeScopeToList(scope, isElementary = false) {
+    const min = isElementary ? 1 : 7;
+    const max = isElementary ? 6 : 12;
     return String(scope || '')
         .split(',')
         .map(part => parseInt(part.trim(), 10))
-        .filter(num => Number.isInteger(num) && num >= 7 && num <= 12);
+        .filter(num => Number.isInteger(num) && num >= min && num <= max);
 }
 
 function normalizeGradeNumber(rawGrade) {

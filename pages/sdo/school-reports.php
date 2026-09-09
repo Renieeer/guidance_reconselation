@@ -6,6 +6,9 @@
     <title>School Reports - Guidance Management System</title>
     <link rel="stylesheet" href="../../css/style.css?v=<?php echo filemtime(__DIR__ . '/../../css/style.css'); ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="main-wrapper">
@@ -28,31 +31,23 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 15px; align-items: end;">
                         <div>
                             <label class="d-block mb-1 fw-500">Select District</label>
-                            <select id="districtSelect" class="form-control">
+                            <select id="districtSelect" class="form-control" onchange="loadSummaryReports()">
                                 <option value="">All Districts</option>
-                                <option value="district1">District 1</option>
-                                <option value="district2">District 2</option>
-                                <option value="district3">District 3</option>
-                                <option value="district4">District 4</option>
-                                <option value="district5">District 5</option>
-                                <option value="district6">District 6</option>
-                                <option value="district7">District 7</option>
-                                <option value="district8">District 8</option>
-                                <option value="district9">District 9</option>
-                                <option value="district10">District 10</option>
-                                <option value="district11">District 11</option>
                             </select>
                         </div>
                         <div>
                             <label class="d-block mb-1 fw-500">Report Period</label>
-                            <select id="periodSelect" class="form-control">
+                            <select id="periodSelect" class="form-control" onchange="loadSummaryReports()">
                                 <option value="current">Current Month</option>
                                 <option value="quarterly">Quarterly</option>
                                 <option value="annual">Annual</option>
                             </select>
                         </div>
                         <button class="btn btn-primary" onclick="generateReport()">Generate</button>
-                        <button class="btn btn-secondary" onclick="exportReport()">Export PDF</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-danger" onclick="exportReport()"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+                            <button class="btn btn-success" onclick="exportReportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+                        </div>
                     </div>
                 </div>
 
@@ -110,6 +105,6 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="school-reports.js"></script>
+    <script src="school-reports.js?v=<?php echo filemtime(__DIR__ . '/school-reports.js'); ?>"></script>
 </body>
 </html>

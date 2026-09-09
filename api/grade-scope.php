@@ -33,6 +33,9 @@ function ensure_users_table_grade_column(mysqli $conn): void {
     $conn->query("ALTER TABLE users_tables ADD COLUMN Grade VARCHAR(45) DEFAULT NULL");
 }
 
+// 7-12 = secondary grade numbers; 1-6 = elementary grade numbers (East/West/
+// South schools, see schools.school_level). Both ranges are valid staff scope
+// values — which one applies depends on the school the account belongs to.
 function grade_scope_to_list(?string $scope): array {
     $scope = trim((string)$scope);
     if ($scope === '') {
@@ -42,7 +45,7 @@ function grade_scope_to_list(?string $scope): array {
     $grades = [];
     foreach (explode(',', $scope) as $part) {
         $num = (int)trim($part);
-        if ($num >= 7 && $num <= 12) {
+        if ($num >= 1 && $num <= 12) {
             $grades[] = $num;
         }
     }
@@ -55,20 +58,29 @@ function grade_legacy_code_map(): array {
     return ['1' => 7, '2' => 8, '3' => 9, '4' => 10, '5' => 11, '6' => 12];
 }
 
-function normalize_grade_number($rawGrade): ?int {
+// $isElementary switches the accepted range to 1-6 (East/West/South schools)
+// and turns off the legacy 1-6-code-means-grade-7-12 mapping, which only
+// makes sense for secondary schools. Every existing caller omits it and
+// keeps the original 7-12 behavior untouched.
+function normalize_grade_number($rawGrade, bool $isElementary = false): ?int {
     $raw = trim((string)$rawGrade);
     if ($raw === '') {
         return null;
     }
 
+    $min = $isElementary ? 1 : 7;
+    $max = $isElementary ? 6 : 12;
+
     if (ctype_digit($raw)) {
         $num = (int)$raw;
-        if ($num >= 7 && $num <= 12) {
+        if ($num >= $min && $num <= $max) {
             return $num;
         }
-        $legacy = grade_legacy_code_map();
-        if (isset($legacy[$raw])) {
-            return $legacy[$raw];
+        if (!$isElementary) {
+            $legacy = grade_legacy_code_map();
+            if (isset($legacy[$raw])) {
+                return $legacy[$raw];
+            }
         }
     }
 
@@ -76,7 +88,7 @@ function normalize_grade_number($rawGrade): ?int {
     // grade-shaped number out of the string rather than requiring an exact match.
     if (preg_match('/grade\s*(\d{1,2})/i', $raw, $m)) {
         $num = (int)$m[1];
-        if ($num >= 7 && $num <= 12) {
+        if ($num >= $min && $num <= $max) {
             return $num;
         }
     }

@@ -27,18 +27,7 @@
                 <div class="card mb-5">
                     <label class="fw-500 mb-2">View District Analytics:</label>
                     <select id="districtFilter" class="form-control" style="max-width: 300px;">
-                        <option value="">All 11 Districts</option>
-                        <option value="district1">District 1</option>
-                        <option value="district2">District 2</option>
-                        <option value="district3">District 3</option>
-                        <option value="district4">District 4</option>
-                        <option value="district5">District 5</option>
-                        <option value="district6">District 6</option>
-                        <option value="district7">District 7</option>
-                        <option value="district8">District 8</option>
-                        <option value="district9">District 9</option>
-                        <option value="district10">District 10</option>
-                        <option value="district11">District 11</option>
+                        <option value="">All Districts</option>
                     </select>
                 </div>
 
@@ -53,7 +42,7 @@
                         </div>
                         <div class="card-content">
                             <div class="card-stats" id="totalReferrals">0</div>
-                            <p>Across all 11 districts</p>
+                            <p>Across all districts</p>
                         </div>
                     </div>
 
@@ -105,10 +94,10 @@
                             <tr>
                                 <th>District</th>
                                 <th>Schools</th>
-                                <th>Total Referrals</th>
-                                <th>Active Cases</th>
-                                <th>Completed Cases</th>
-                                <th>Avg. Resolution Time</th>
+                                <th>Referrals</th>
+                                <th>Resolved</th>
+                                <th>Resolution Rate</th>
+                                <th>Last Activity</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
