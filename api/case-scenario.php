@@ -137,6 +137,7 @@ function ensure_case_scenario_table(mysqli $conn): void {
         CREATE TABLE IF NOT EXISTS counselor_case_scenarios (
             id INT NOT NULL AUTO_INCREMENT,
             case_uid VARCHAR(45) NOT NULL,
+            referral_code VARCHAR(64) DEFAULT NULL,
             counselor_id VARCHAR(45) DEFAULT NULL,
             counselor_name VARCHAR(150) DEFAULT NULL,
             school_attended VARCHAR(150) DEFAULT NULL,
@@ -166,6 +167,23 @@ function ensure_case_scenario_table(mysqli $conn): void {
     if (!$conn->query($sql)) {
         send_json(500, ['success' => false, 'message' => 'Failed creating counselor_case_scenarios table: ' . $conn->error]);
     }
+
+    // Defensive migration for installations where this table already
+    // existed before referral_code was added — the real link to the
+    // referral that created this case, replacing the old "(Linked to
+    // Referral <code>)" text marker that used to be appended to
+    // case_summary. Plain MySQL 8 has no "ADD COLUMN IF NOT EXISTS", so
+    // existence is checked via SHOW COLUMNS/SHOW INDEX first (same pattern
+    // as ensure_follow_up_tables() above).
+    $colResult = $conn->query("SHOW COLUMNS FROM counselor_case_scenarios LIKE 'referral_code'");
+    if ($colResult && $colResult->num_rows === 0) {
+        $conn->query("ALTER TABLE counselor_case_scenarios ADD COLUMN referral_code VARCHAR(64) DEFAULT NULL AFTER case_uid");
+    }
+
+    $idxResult = $conn->query("SHOW INDEX FROM counselor_case_scenarios WHERE Key_name = 'idx_referral_code'");
+    if ($idxResult && $idxResult->num_rows === 0) {
+        $conn->query("ALTER TABLE counselor_case_scenarios ADD INDEX idx_referral_code (referral_code)");
+    }
 }
 
 function read_json_body(): array {
@@ -181,6 +199,7 @@ function read_json_body(): array {
 function normalize_record(array $row): array {
     return [
         'id' => (string)($row['case_uid'] ?? ''),
+        'referralCode' => (string)($row['referral_code'] ?? ''),
         'status' => (string)($row['status'] ?? 'pending'),
         'counselor' => (string)($row['counselor_name'] ?? ''),
         'sectionId' => (string)($row['section_id'] ?? ''),
@@ -360,6 +379,12 @@ $firstAction = trim((string)($record['firstAction'] ?? ''));
 $followUpDate = trim((string)($record['followUpDate'] ?? ''));
 $confidentialityAck = !empty($record['confidentialityAck']) ? 1 : 0;
 $status = trim((string)($record['status'] ?? 'pending'));
+// Real link back to the referral this case was opened from (see
+// openCounselingCaseForReferral() in referral-status.js) — replaces the old
+// "(Linked to Referral <code>)" text marker that used to be appended to
+// case_summary. Blank for a case created directly from the Counseling page
+// with no originating referral.
+$referralCode = trim((string)($record['referralCode'] ?? ''));
 
 $studentsJson = json_encode($students, JSON_UNESCAPED_UNICODE);
 $counselingJson = json_encode($record['counselingRecords'] ?? new stdClass(), JSON_UNESCAPED_UNICODE);
@@ -383,13 +408,14 @@ $stmt = $conn->prepare('
         follow_up_date,
         confidentiality_ack,
         status,
+        referral_code,
         students_json,
         counseling_records_json,
         follow_ups_json
     ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?,
         NULLIF(?, ""), ?, ?, ?,
-        NULLIF(?, ""), ?, ?, ?, ?, ?
+        NULLIF(?, ""), ?, ?, NULLIF(?, ""), ?, ?, ?
     )
 ');
 
@@ -398,7 +424,7 @@ if (!$stmt) {
 }
 
 $stmt->bind_param(
-    'ssssssssssssssissss',
+    'ssssssssssssssisssss',
     $caseUid,
     $counselorId,
     $counselor,
@@ -415,6 +441,7 @@ $stmt->bind_param(
     $followUpDate,
     $confidentialityAck,
     $status,
+    $referralCode,
     $studentsJson,
     $counselingJson,
     $followUpsJson

@@ -399,6 +399,9 @@ function shBuildTimelineEntry(record) {
         actorLine = `<strong>${esc(c.counselor_name || 'A counselor')}</strong> ${resolved ? 'resolved counseling case' : 'logged a counseling session'} — <strong>${esc(c.case_title || c.section_name || 'Counseling Case')}</strong>`;
         dateVal = c.created_at || c.case_date;
         detailBody = `
+            ${c.referral_code ? `
+            <div class="sh-detail-row"><div class="sh-detail-label">Created from Referral</div><div class="sh-detail-value"><a href="referral-status.php?id=${encodeURIComponent(c.referral_code)}">#${esc(c.referral_code)}</a></div></div>
+            ` : ''}
             <div class="sh-detail-row"><div class="sh-detail-label">Summary</div><div class="sh-detail-value">${esc(shStripReferralLinkTag(c.case_summary)) || '—'}</div></div>
             <div class="sh-detail-row"><div class="sh-detail-label">Objective</div><div class="sh-detail-value">${esc(c.case_objective) || '—'}</div></div>
             <div class="sh-detail-row"><div class="sh-detail-label">First Action Taken</div><div class="sh-detail-value">${esc(c.first_action) || '—'}</div></div>
@@ -630,7 +633,7 @@ function shBuildCaseThreadEntry(c, followUpsRaw) {
                 <div class="sh-referral-row-main">
                     <div class="sh-referral-row-eyebrow">Counseling</div>
                     <div class="sh-referral-row-title">${c.case_uid ? `Case #${esc(c.case_uid)} &middot; ` : ''}${esc(c.case_title || c.section_name || 'Counseling Case')}</div>
-                    <div class="sh-referral-row-sub">${esc(c.category_name || 'Counseling')} &middot; Handled by ${counselorName}</div>
+                    <div class="sh-referral-row-sub">${esc(c.category_name || 'Counseling')} &middot; Handled by ${counselorName}${c.referral_code ? ` &middot; <span class="sh-linked-tag">From Referral #${esc(c.referral_code)}</span>` : ''}</div>
                 </div>
                 <div class="sh-referral-row-meta">
                     <div class="sh-referral-row-dates">${esc(dateLabel)}</div>
@@ -659,7 +662,14 @@ function shBuildCaseThreadEntry(c, followUpsRaw) {
    follow-up or update. Every referral renders this way now, even one with
    no screenings yet (just a single "Day 1 — Submitted" entry), instead of
    the old flat field list. */
-function shBuildReferralThreadEntry(r) {
+// linkedCase (optional) is the counseling case whose referral_code matches
+// this referral's own code — looked up client-side in shRenderTimeline(),
+// since both referrals and counseling cases are already loaded together
+// there and there's no server-side join between the two tables. Shown in
+// the collapsed subtitle so the connection is visible without expanding
+// either card (see the matching "From Referral #..." tag added to
+// shBuildCaseThreadEntry() above).
+function shBuildReferralThreadEntry(r, linkedCase) {
     const events = [{
         rawDate: r.date_submitted,
         title: 'Referral submitted',
@@ -712,6 +722,25 @@ function shBuildReferralThreadEntry(r) {
             pill: isClosed ? 'CLOSED' : (advanced ? 'UPDATED' : 'NOTE')
         });
     });
+
+    // The counseling case opened from this referral (matched by
+    // referral_code in shRenderTimeline() and passed in as linkedCase) gets
+    // its own step here, right around when it actually happened, instead of
+    // only showing up as a "Linked Counseling Case #..." tag on the
+    // collapsed header above — so it's clear in the stage-by-stage story
+    // exactly when the referral turned into a real counseling session, not
+    // just that it eventually did.
+    if (linkedCase) {
+        const caseLabel = `Case #${linkedCase.case_uid}${linkedCase.case_title ? ` &middot; ${linkedCase.case_title}` : ''}`;
+        events.push({
+            rawDate: linkedCase.created_at || linkedCase.case_date,
+            title: `Counseling case created — ${caseLabel}`,
+            stage: 5,
+            by: linkedCase.counselor_name || 'A counselor',
+            note: `Opened a counseling case for this referral — ${caseLabel}.`,
+            pill: 'UPDATED'
+        });
+    }
 
     events.sort((a, b) => (shParseDate(a.rawDate) || new Date(0)) - (shParseDate(b.rawDate) || new Date(0)));
 
@@ -784,7 +813,8 @@ function shBuildReferralThreadEntry(r) {
         r.referral_code ? `Referral #${esc(r.referral_code)}` : '',
         `Referred by ${esc(r.teacher_name || 'a teacher')}`,
         urgencyLabel ? `Urgency: ${esc(urgencyLabel)}` : '',
-        esc(stageLabel)
+        esc(stageLabel),
+        linkedCase ? `<span class="sh-linked-tag">Linked Counseling Case #${esc(linkedCase.case_uid)}</span>` : ''
     ].filter(Boolean).join(' &middot; ');
 
     const html = `
@@ -832,6 +862,16 @@ function shRenderTimeline(grouped, hasActiveFilters) {
     const threadedCaseUids = new Set();
     const entries = [];
 
+    // Client-side lookup from a referral's own code to whichever counseling
+    // case was opened from it (see referral_code on both records — api/
+    // case-scenario.php and api/student-history.php) — referrals and
+    // counseling cases come from two separate queries with no server-side
+    // join between them, but both are already loaded here together.
+    const caseByReferralCode = {};
+    grouped.counseling.forEach(c => {
+        if (c.raw.referral_code) caseByReferralCode[c.raw.referral_code] = c.raw;
+    });
+
     grouped.counseling.forEach(c => {
         const caseUid = c.raw.case_uid || '';
         const linkedFollowUps = caseUid ? followUpsByCase[caseUid] : null;
@@ -852,7 +892,8 @@ function shRenderTimeline(grouped, hasActiveFilters) {
     });
 
     grouped.referrals.forEach(r => {
-        entries.push(shBuildReferralThreadEntry(r.raw));
+        const linkedCase = r.raw.referral_code ? caseByReferralCode[r.raw.referral_code] : null;
+        entries.push(shBuildReferralThreadEntry(r.raw, linkedCase));
     });
 
     grouped.appointments.forEach(a => {

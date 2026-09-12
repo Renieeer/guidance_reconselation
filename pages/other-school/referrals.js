@@ -398,7 +398,13 @@ function checkExistingCounselingCase(referral) {
         .then(response => response.json())
         .then(result => {
             if (!result.success) return;
-            const linkedCase = (result.data || []).find(c => (c.caseSummary || '').includes(marker));
+            // referralCode is a real column now (counselor_case_scenarios.
+            // referral_code — see api/case-scenario.php) and is matched
+            // first. The old "(Linked to Referral <code>)" text marker in
+            // caseSummary is kept only as a fallback, for cases created
+            // before that column existed that haven't been backfilled.
+            const linkedCase = (result.data || []).find(c => c.referralCode === referralCode)
+                || (result.data || []).find(c => (c.caseSummary || '').includes(marker));
             if (!linkedCase) return;
 
             renderLinkedCasePanel(referral, linkedCase);
@@ -430,10 +436,13 @@ function renderLinkedCasePanel(referral, linkedCase) {
         </div>
     `).join('') : '<p class="text-muted" style="margin:0 0 12px;">No follow-up sessions logged yet.</p>';
 
+    const linkedReferralCode = linkedCase.referralCode || referral.referral_code || '';
+
     statusEl.innerHTML = `
         <div class="bg-light rounded p-3" style="margin-bottom: 16px;">
-            <p style="margin:0 0 8px;"><i class="bi bi-link-45deg"></i> A counseling case is already linked to this referral.</p>
-            <p style="margin:0 0 10px;"><strong>${escapeHtml(linkedCase.id)}</strong> — <span class="badge ${statusClass}">${statusLabel}</span></p>
+            <p style="margin:0 0 8px;"><i class="bi bi-link-45deg"></i> This referral created a counseling session.</p>
+            <p style="margin:0 0 10px;"><strong>Case #${escapeHtml(linkedCase.id)}</strong>${linkedCase.caseTitle ? ` &middot; ${escapeHtml(linkedCase.caseTitle)}` : ''} — <span class="badge ${statusClass}">${statusLabel}</span></p>
+            ${linkedReferralCode ? `<p class="text-muted" style="margin:0 0 10px;">Created from Referral #${escapeHtml(linkedReferralCode)}</p>` : ''}
             <a href="counseling.php?case_id=${encodeURIComponent(linkedCase.id)}" class="btn btn-secondary btn-sm">
                 <i class="bi bi-box-arrow-up-right"></i> View Counseling Case
             </a>

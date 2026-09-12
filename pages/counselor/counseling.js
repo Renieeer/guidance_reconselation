@@ -52,14 +52,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Holds the "(Linked to Referral <code>)" tag between prefill and save —
-// kept out of the #caseSummary textarea entirely (see applyReferralPrefill()
-// and collectCaseData() below) so the counselor never sees this bookkeeping
-// text mixed into the actual clinical notes, while it's still appended to
-// the stored case_summary at save time for checkExistingCounselingCase()
-// (referral-status.js) to find later. There's no referral_id column on
-// counselor_case_scenarios to link them for real, hence the text marker.
-let pendingReferralLinkTag = '';
+// Holds the originating referral's code between prefill and save — sent as
+// a real referral_code column value (see collectCaseData() below and the
+// counselor_case_scenarios.referral_code column in api/case-scenario.php)
+// instead of being stuffed into case_summary as a "(Linked to Referral
+// <code>)" text marker, which is how this used to work.
+let pendingReferralCode = '';
 
 // Arriving from a Stage 4 referral's "Open Counseling Case" button (see
 // openCounselingCaseForReferral() in referral-status.js) — opens the
@@ -83,9 +81,9 @@ function applyReferralPrefill() {
     }
 
     const referralIntervention = params.get('referral_intervention') || '';
-    // Notes shows only the Stage 1 Interview/Background note — the link tag
-    // is held in pendingReferralLinkTag instead of being written in here,
-    // so it never appears in what the counselor reads/edits.
+    // Notes shows only the Stage 1 Interview/Background note — the
+    // referral's code is held in pendingReferralCode instead of being
+    // written in here, so it never appears in what the counselor reads/edits.
     const referralInterview = params.get('referral_interview') || '';
     const referralCode = params.get('referral_code') || '';
 
@@ -93,7 +91,7 @@ function applyReferralPrefill() {
     if (summaryInput) {
         summaryInput.value = referralInterview;
     }
-    pendingReferralLinkTag = referralCode ? `(Linked to Referral ${referralCode})` : '';
+    pendingReferralCode = referralCode;
 
     // "Initial Actions Taken" on the referral is the same idea as this
     // form's "Initial action plan" — what's already been tried before
@@ -615,13 +613,14 @@ function collectCaseData() {
         // Title should represent the case section/range.
         caseTitle,
         caseDate:         document.getElementById('caseDate').value,
-        // pendingReferralLinkTag (if any) rides along here, invisibly to
-        // the counselor — see applyReferralPrefill() above.
-        caseSummary:      [document.getElementById('caseSummary').value.trim(), pendingReferralLinkTag].filter(Boolean).join('\n\n'),
+        caseSummary:      document.getElementById('caseSummary').value.trim(),
         caseObjective:    document.getElementById('caseObjective').value.trim(),
         firstAction:      document.getElementById('firstAction').value.trim(),
         followUpDate:     document.getElementById('followUpDate').value,
         confidentialityAck: document.getElementById('confidentialityAck').checked,
+        // Real column now (counselor_case_scenarios.referral_code) — see
+        // applyReferralPrefill() above and api/case-scenario.php.
+        referralCode:     pendingReferralCode,
         students:         [...caseStudents],
         createdAt:        new Date().toISOString()
     };
@@ -873,6 +872,17 @@ function renderRecentCases() {
                         </div>
 
                         <div class="drawer-case-summary">
+                            ${record.referralCode ? `
+                            <div class="drawer-case-field">
+                                <span class="drawer-case-label">Linked referral</span>
+                                <span class="drawer-case-value">
+                                    Created from #${escapeHtml(record.referralCode)}
+                                    <a href="referral-status.php?id=${encodeURIComponent(record.referralCode)}" class="btn btn-outline btn-sm" style="margin-left:8px;">
+                                        <i class="bi bi-box-arrow-up-right"></i> View Referral
+                                    </a>
+                                </span>
+                            </div>
+                            ` : ''}
                             <div class="drawer-case-field">
                                 <span class="drawer-case-label">Section</span>
                                 <span class="drawer-case-value">${escapeHtml(record.sectionName || '—')}</span>
@@ -923,7 +933,7 @@ function resetForm() {
     caseStudents = [];
     // Only ever meant for the one case just saved (or abandoned) — never
     // carry it over to the next case opened in this same page session.
-    pendingReferralLinkTag = '';
+    pendingReferralCode = '';
     document.getElementById('assignedCounselor').value = getCurrentUser()?.name || 'Assigned counselor';
     setTodayDate('caseDate');
     const followUpDate = document.getElementById('followUpDate');

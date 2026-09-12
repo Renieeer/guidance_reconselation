@@ -273,6 +273,7 @@ if ($hasCaseTable) {
 
                 $counseling[] = [
                     'case_uid' => $row['case_uid'] ?? '',
+                    'referral_code' => $row['referral_code'] ?? '',
                     'case_title' => $row['case_title'] ?? '',
                     'section_name' => $row['section_name'] ?? '',
                     'category_name' => $row['category_name'] ?? ($recordsMap[$studentId]['categoryName'] ?? ''),

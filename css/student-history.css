@@ -1049,6 +1049,16 @@
     margin-top: 2px;
 }
 
+/* Marks the referral<->counseling-case connection in each other's collapsed
+   subtitle (see shBuildCaseThreadEntry()'s "From Referral #..." and
+   shBuildReferralThreadEntry()'s "Linked Counseling Case #..." in
+   student-history.js) — colored distinctly from the rest of the subtitle
+   so the link is visible at a glance without expanding either card. */
+.sh-linked-tag {
+    color: #1a4c88;
+    font-weight: 600;
+}
+
 .sh-referral-row-meta {
     text-align: right;
     flex-shrink: 0;
