@@ -142,6 +142,20 @@ if ($method === 'POST') {
     $screeningId = $stmt->insert_id;
     $stmt->close();
 
+    // A referral sits at status 'pending' until real work actually starts
+    // on it — logging the first screening note (Stage 1's interview or
+    // Stage 2's risk assessment) is that first real action, so flip it to
+    // 'in-progress' here rather than leaving it reading "pending" until the
+    // referral's stage number itself changes (which can lag well behind
+    // when work actually began — see confirmAssessmentCompleted() etc.,
+    // which only advance the stage once the *whole* stage is done).
+    $statusStmt = $conn->prepare("UPDATE referral SET status = 'in-progress' WHERE ReferralID = ? AND status = 'pending'");
+    if ($statusStmt) {
+        $statusStmt->bind_param('i', $referralId);
+        $statusStmt->execute();
+        $statusStmt->close();
+    }
+
     send_json(201, [
         'success' => true,
         'message' => 'Screening notes saved.',

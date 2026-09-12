@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student History - Guidance Management System (Other School)</title>
     <link rel="stylesheet" href="../../css/style.css?v=<?php echo filemtime(__DIR__ . '/../../css/style.css'); ?>">
-    <link rel="stylesheet" href="../../css/student-history.css">
+    <link rel="stylesheet" href="../../css/student-history.css?v=<?php echo filemtime(__DIR__ . '/../../css/student-history.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Personal Information is also reachable via the "Personal Info"
@@ -199,6 +199,6 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="student-history.js"></script>
+    <script src="student-history.js?v=<?php echo filemtime(__DIR__ . '/student-history.js'); ?>"></script>
 </body>
 </html>

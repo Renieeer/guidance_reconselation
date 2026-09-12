@@ -62,7 +62,7 @@
                         <hr>
 
                         <!-- Stage Progress -->
-                        <h3 class="text-primary">Referral Progress (6 Stages)</h3>
+                        <h3 class="text-primary">Referral Progress (7 Stages)</h3>
                         <p class="text-muted" style="margin-top:-6px;">Click any stage number to review what was recorded there.</p>
                         <div id="detailStagesContainer"></div>
                         <div id="stageViewNote" class="text-muted" style="margin-top: 10px; display: none;">
@@ -82,6 +82,14 @@
                                 <p><strong>Description:</strong> <span id="detDescription"></span></p>
                             </div>
                         </div>
+
+                        <!-- Always-visible mirror of the Stage 2 assessment document — the
+                             upload form + file list further down only render while viewStage
+                             is 2 (see renderStageSection()), so once the referral moves past
+                             Stage 2 there was no way to see it again without clicking back to
+                             Stage 2 on the progress indicator. This copy stays visible no
+                             matter which stage is currently being viewed. -->
+                        <div id="detAssessmentFileList" style="margin-top: 12px;"></div>
 
                         <hr>
 
@@ -106,7 +114,7 @@
                         <!-- Initial Risk Assessment (Stage 2) -->
                         <div id="screeningFormSection" style="display: none;">
                             <h3 class="text-primary">Initial Risk Assessment (Stage 2)</h3>
-                            <p class="text-muted" style="margin-top:-6px;">Attach the completed assessment document (optional), then confirm whether the student has completed it.</p>
+                            <p class="text-muted" style="margin-top:-6px;">Attaching the completed assessment document is optional, given the confidentiality of its contents — confirming below whether the student has completed it is what actually moves the referral to Stage 3.</p>
 
                             <div id="assessmentFileList" style="margin-bottom: 16px;"></div>
 
@@ -174,21 +182,33 @@
                         <!-- Intervention Activities (Stage 4) -->
                         <div id="interventionFormSection" style="display: none;">
                             <h3 class="text-primary">Intervention (Stage 4)</h3>
-                            <p class="text-muted" style="margin-top:-6px;">Check off which intervention activities were carried out for this student.</p>
+                            <p class="text-muted" style="margin-top:-6px;">Log each intervention session — an intervention plan often takes more than one day, so every save adds a new dated entry instead of replacing the last one.</p>
+
+                            <div id="interventionHistoryList" style="margin-bottom: 16px;"></div>
 
                             <form id="interventionForm">
                                 <div class="form-group">
-                                    <label>Activities Conducted</label>
+                                    <label>Activities Conducted (this session)</label>
                                     <div id="interventionChecklist" class="referral-checklist"></div>
-                                    <textarea id="interventionOtherText" class="referral-reason-other-input" rows="2" placeholder="Specify other activities — one per line, or separate with a comma..." style="display:none;"></textarea>
+                                    <!-- NEW: Reason-based intervention suggestions — replaces the old
+                                         free-text "Other" textarea with a tag/chip input that
+                                         autocompletes from api/intervention-suggestions.php, filtered
+                                         to this referral's own Reason for Referral. -->
+                                    <div id="interventionOtherWrap" class="intervention-other-wrap" style="display:none;">
+                                        <div id="interventionOtherChips" class="intervention-tag-chips"></div>
+                                        <div class="intervention-tag-input-wrap">
+                                            <input type="text" id="interventionOtherInput" class="intervention-tag-input" placeholder="Type an intervention..." autocomplete="off">
+                                            <div id="interventionOtherSuggestions" class="intervention-tag-suggestions" style="display:none;"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="interventionNotes">Additional Notes (optional)</label>
-                                    <textarea id="interventionNotes" name="interventionNotes" placeholder="Any additional details about the intervention..." rows="3"></textarea>
+                                    <label for="interventionNotes">Session Notes (optional)</label>
+                                    <textarea id="interventionNotes" name="interventionNotes" placeholder="Any additional details about this session..." rows="3"></textarea>
                                 </div>
 
-                                <button type="submit" class="btn btn-success">Save Intervention</button>
+                                <button type="submit" class="btn btn-success">Save Intervention Session</button>
                             </form>
 
                             <!-- Shown only when "External Referral" is checked above — DepEd
@@ -269,9 +289,46 @@
                             </div>
                         </div>
 
-                        <!-- Case Closing Acknowledgement (Stage 6) -->
+                        <!-- Student Follow-up (Stage 6) -->
+                        <div id="followUpFormSection" style="display: none;">
+                            <h3 class="text-primary">Student Follow-up (Stage 6)</h3>
+                            <p class="text-muted" style="margin-top:-6px;">Log a dated check-in with the student at the interval you set — each entry shows when the next one is due.</p>
+
+                            <div id="followUpHistoryList" style="margin-bottom: 16px;"></div>
+
+                            <form id="followUpForm">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="followUpInterval">Follow-up Interval</label>
+                                        <select id="followUpInterval">
+                                            <option value="weekly">Weekly</option>
+                                            <option value="biweekly">Biweekly</option>
+                                            <option value="monthly">Monthly</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" id="followUpCustomDaysGroup" style="display:none;">
+                                        <label for="followUpCustomDays">Custom Interval (days)</label>
+                                        <input type="number" id="followUpCustomDays" min="1" value="7">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="followUpDate">Follow-up Date</label>
+                                        <input type="date" id="followUpDate">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="followUpNotes">Notes — student's progress/well-being at this check-in</label>
+                                    <textarea id="followUpNotes" name="followUpNotes" placeholder="What was observed or discussed during this follow-up..."></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-success">Save Follow-up</button>
+                            </form>
+                        </div>
+
+                        <!-- Case Closing Acknowledgement (Stage 7) -->
                         <div id="acknowledgementFormSection" style="display: none;">
-                            <h3 class="text-primary">Case Closing Acknowledgement (Stage 6)</h3>
+                            <h3 class="text-primary">Case Closing Acknowledgement (Stage 7)</h3>
                             <p class="text-muted" style="margin-top:-6px;">Complete this once counseling has ended — it's shown to the referring teacher as a read-only receipt.</p>
 
                             <form id="acknowledgementForm">
@@ -286,6 +343,9 @@
                                 </div>
 
                                 <button type="submit" class="btn btn-success">Save Acknowledgement</button>
+                                <button type="button" class="btn btn-secondary" id="printAcknowledgementBtn" style="display:none;" onclick="printAcknowledgement()">
+                                    <i class="bi bi-printer"></i> Print / Save as PDF
+                                </button>
                             </form>
                         </div>
 
@@ -293,6 +353,12 @@
                              case feature (sidebar) instead of duplicating it here. -->
                         <div id="counselingCtaSection" style="display: none;">
                             <h3 class="text-primary">Counseling (Stage 5)</h3>
+
+                            <!-- Shown by renderConsentStatusNote() (referral-status.js) — the
+                                 Stage 3 student/parent consent answers, so it's clear whether
+                                 this referral actually needs counseling or is only here because
+                                 everyone passes through Stage 4 (Intervention) regardless. -->
+                            <div id="consentStatusNote" style="display: none;"></div>
 
                             <!-- Shown once checkExistingCounselingCase() (referral-status.js)
                                  finds a case already linked to this referral, so it's clear
@@ -313,6 +379,14 @@
                         <h3 class="text-primary">Case Management</h3>
                         <div id="caseActionsContainer"></div>
                     </div>
+
+                    <!-- Printable acknowledgement sheet — sibling of .card for the same
+                         reason as externalReferralPrintSheet below (a display:none
+                         ancestor would hide it too). Hidden on screen, shown only via
+                         @media print (see printAcknowledgement() in referral-status.js).
+                         Mirrors the read-only layout the teacher sees on their own
+                         referral-status page for the same saved acknowledgement. -->
+                    <div id="acknowledgementPrintSheet" class="referral-paper" style="display:none;"></div>
 
                     <!-- Printable Appendix C sheet — deliberately a sibling of .card
                          (not nested inside it) since @media print hides .card entirely;
@@ -615,6 +689,6 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="referral-status.js"></script>
+    <script src="referral-status.js?v=<?php echo filemtime(__DIR__ . '/referral-status.js'); ?>"></script>
 </body>
 </html>

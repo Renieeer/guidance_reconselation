@@ -61,19 +61,19 @@ function loadReferralDetail(referral) {
     document.getElementById('refDescription').textContent = referral.description || 'No description provided';
 
     // Show/hide referral information section based on stage
-    // Hide while counseling is in progress (stages 1-5)
+    // Hide while counseling/follow-up is in progress (stages 4-6)
     const referralInfoSection = document.getElementById('referralInfoSection');
-    if (referral.stage >= 4 && referral.stage < 6) {
+    if (referral.stage >= 4 && referral.stage < 7) {
         referralInfoSection.style.display = 'none';
-    } else if (referral.stage === 6) {
+    } else if (referral.stage === 7) {
         referralInfoSection.style.display = 'none'; // Hide info when showing acknowledgement
     } else {
         referralInfoSection.style.display = 'block'; // Show for stages 1-3
     }
-    
-    // Show acknowledgement form only when stage 6 (counseling complete/closed)
+
+    // Show acknowledgement form only when stage 7 (counseling complete/closed)
     const acknowledgementSection = document.getElementById('acknowledgementSection');
-    if (referral.stage === 6) {
+    if (referral.stage === 7) {
         acknowledgementSection.style.display = 'block';
         generateAcknowledgementForm(referral);
     } else {
@@ -101,7 +101,7 @@ function loadReferralsList() {
             <td>${referral.grade || 'N/A'}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${referral.referral_reason}</td>
-            <td><strong>${referral.stage}/6</strong></td>
+            <td><strong>${referral.stage}/7</strong></td>
             <td>${createBadge(referral.status)}</td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="selectReferral(${referral.id})">View</button>
@@ -216,14 +216,6 @@ function renderAcknowledgementReadOnly(referral, ack) {
                             <span>${escapeHtml(item.label)}</span>
                         </label>
                     `).join('')}
-                    <label class="referral-checklist-item">
-                        <input type="checkbox" disabled>
-                        <span>Number of follow-ups made by the Counselor: <strong>${escapeHtml(ack.follow_up_count) || '—'}</strong></span>
-                    </label>
-                    <label class="referral-checklist-item">
-                        <input type="checkbox" disabled>
-                        <span>Referred to <strong>${escapeHtml(ack.referred_to) || '—'}</strong></span>
-                    </label>
                 </div>
             </div>
 

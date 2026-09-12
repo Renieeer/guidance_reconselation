@@ -106,9 +106,10 @@ function displayProgressOverview(referrals) {
         1: 'Interview/Background',
         2: 'Initial Risk Assessment',
         3: 'Parent Call-up/Consent',
-        4: 'Counseling',
-        5: 'Intervention',
-        6: 'Student Follow-up'
+        4: 'Intervention',
+        5: 'Counseling',
+        6: 'Student Follow-up',
+        7: 'Case Closing'
     };
 
     const stageIcons = {
@@ -117,12 +118,13 @@ function displayProgressOverview(referrals) {
         3: '📅',
         4: '⚙️',
         5: '✅',
-        6: '🎯'
+        6: '🎯',
+        7: '📁'
     };
-    
+
     progressList.innerHTML = referrals.map(referral => {
         const currentStage = parseInt(referral.stage) || 1;
-        const totalStages = 6;
+        const totalStages = 7;
         const progress = (currentStage / totalStages) * 100;
         
         return `
@@ -145,8 +147,8 @@ function displayProgressOverview(referrals) {
                 </div>
                 
                 <!-- Stage Steps -->
-                <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-top: 12px;">
-                    ${[1, 2, 3, 4, 5, 6].map(stage => `
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 12px;">
+                    ${[1, 2, 3, 4, 5, 6, 7].map(stage => `
                         <div style="text-align: center;">
                             <div style="
                                 width: 36px;
@@ -240,14 +242,15 @@ function viewReferral(referralId) {
                     1: 'Phase 1: Interview/Background',
                     2: 'Phase 2: Initial Risk Assessment',
                     3: 'Phase 3: Parent Call-up/Consent',
-                    4: 'Phase 4: Counseling',
-                    5: 'Phase 5: Intervention',
-                    6: 'Phase 6: Student Follow-up'
+                    4: 'Phase 4: Intervention',
+                    5: 'Phase 5: Counseling',
+                    6: 'Phase 6: Student Follow-up',
+                    7: 'Phase 7: Case Closing'
                 };
                 document.getElementById('refPhase').value = phaseLabels[phase] || 'Phase ' + phase;
-                
+
                 // Update progress bar
-                const progress = (phase / 6) * 100;
+                const progress = (phase / 7) * 100;
                 const progressBar = document.getElementById('refProgressBar');
                 progressBar.style.width = progress + '%';
                 progressBar.style.background = getStatusColor(ref.status);

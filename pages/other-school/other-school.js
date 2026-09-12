@@ -47,7 +47,7 @@ function loadReferralStats(school) {
             const referrals = result.data || [];
 
             // Calculate statistics
-            const active = referrals.filter(r => r.stage >= 3 && r.stage < 6).length;
+            const active = referrals.filter(r => r.stage >= 3 && r.stage < 7).length;
             const followUps = referrals.filter(r => r.stage === 3 || r.stage === 4).length;
             const assignedReferrals = referrals.filter(r => r.stage >= 3);
             const totalStudents = assignedReferrals.length;
@@ -118,7 +118,7 @@ function loadRecentReferrals(referrals) {
             <td>${escapeHtml(referral.student_name)}</td>
             <td>${escapeHtml(referral.referral_reason)}</td>
             <td>${escapeHtml(referral.teacher_name || 'N/A')}</td>
-            <td>${createBadge(getStatusLabel(referral.stage))}</td>
+            <td>${createBadge(referral.status || getStatusLabel(referral.stage))}</td>
             <td>
                 <a href="referrals.php?id=${encodeURIComponent(referral.id)}" class="btn btn-sm btn-primary">View</a>
             </td>

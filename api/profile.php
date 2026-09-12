@@ -20,16 +20,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'conn.php';
 require_once 'profile-schema.php';
 
-// Profile photos live outside webroot execution reach via
-// uploads/profile-images/.htaccess (blocks script execution + directory
-// listing) and are renamed on disk so the original filename never controls
-// a path — mirrors uploads/consent-forms/ in api/referral-consent.php.
-$avatarUploadDir = __DIR__ . '/../uploads/profile-images/';
-// Relative (not root-relative) so it resolves correctly whether the app is
-// served from a subfolder or its own vhost root — every page that renders
-// this lives two levels down at pages/<role>/*.php.
-$avatarPublicPath = '../../uploads/profile-images/';
+// Profile photos live in users_tables.profile_image_data (a BLOB) — see
+// ensure_users_table_profile_image_blob_columns() — and are streamed back
+// out by api/avatar.php. profile_image itself now just holds an opaque
+// token (still the old stored-filename shape) reused as a cache-busting
+// value in that URL; mirrors referral_assessment/referral_consent's own
+// move to DB storage in api/referral-assessment.php / referral-consent.php.
 $avatarAllowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+$avatarAllowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 $avatarMaxBytes = 3 * 1024 * 1024; // 3 MB
 
 function send_json(int $statusCode, array $payload): void {
@@ -60,13 +58,16 @@ function fetch_profile(mysqli $conn, int $id): ?array {
         // Root-relative (no "../../") — every consumer (this page's own JS,
         // and the sidebar avatar rendered from every pages/<role>/*.php)
         // prepends its own path prefix, so the stored/transmitted value
-        // stays depth-agnostic. See renderSidebarAvatar() in js/utils.js.
-        'profileImage' => $row['profile_image'] ? ('uploads/profile-images/' . $row['profile_image']) : null
+        // stays depth-agnostic. See userAvatarUrl() in js/utils.js. The
+        // actual bytes live in profile_image_data — this just points at
+        // api/avatar.php, with profile_image reused as a cache-busting token.
+        'profileImage' => $row['profile_image'] ? ('api/avatar.php?id=' . $row['AccountID'] . '&v=' . urlencode($row['profile_image'])) : null
     ];
 }
 
 try {
     ensure_users_table_profile_image_column($conn);
+    ensure_users_table_profile_image_blob_columns($conn);
 
     $method = $_SERVER['REQUEST_METHOD'];
 
@@ -90,7 +91,7 @@ try {
             send_json(400, ['success' => false, 'message' => 'id is required']);
         }
 
-        $stmt = $conn->prepare("SELECT profile_image FROM users_tables WHERE AccountID = ?");
+        $stmt = $conn->prepare("SELECT AccountID FROM users_tables WHERE AccountID = ?");
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $existing = $stmt->get_result()->fetch_assoc();
@@ -99,8 +100,6 @@ try {
         if (!$existing) {
             send_json(404, ['success' => false, 'message' => 'Account not found']);
         }
-
-        $oldImage = $existing['profile_image'];
 
         // Name (+ optional password) update — both name fields are required
         // together so a request can't blank one out.
@@ -138,14 +137,10 @@ try {
 
         // Remove photo
         if (($_POST['remove_image'] ?? '') === '1') {
-            if ($oldImage) {
-                @unlink($avatarUploadDir . $oldImage);
-            }
-            $stmt = $conn->prepare("UPDATE users_tables SET profile_image = NULL WHERE AccountID = ?");
+            $stmt = $conn->prepare("UPDATE users_tables SET profile_image = NULL, profile_image_data = NULL, profile_image_mime = NULL WHERE AccountID = ?");
             $stmt->bind_param('i', $id);
             $stmt->execute();
             $stmt->close();
-            $oldImage = null;
         }
 
         // Photo upload
@@ -169,25 +164,27 @@ try {
                 send_json(400, ['success' => false, 'message' => 'Only JPG, PNG, GIF, and WEBP images are allowed.']);
             }
 
-            if (!is_dir($avatarUploadDir)) {
-                mkdir($avatarUploadDir, 0755, true);
+            // Detected from the file's actual bytes, not the client-supplied
+            // extension/Content-Type — that's what api/avatar.php serves back
+            // as the image's real Content-Type.
+            $mime = @mime_content_type($file['tmp_name']) ?: 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext);
+            if (!in_array($mime, $avatarAllowedMime, true)) {
+                send_json(400, ['success' => false, 'message' => 'Only JPG, PNG, GIF, and WEBP images are allowed.']);
             }
 
-            $storedFilename = 'avatar_' . $id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-            if (!move_uploaded_file($file['tmp_name'], $avatarUploadDir . $storedFilename)) {
-                send_json(500, ['success' => false, 'message' => 'Failed to save the uploaded image']);
+            $imageData = file_get_contents($file['tmp_name']);
+            if ($imageData === false) {
+                send_json(500, ['success' => false, 'message' => 'Failed to read the uploaded image']);
             }
 
-            $stmt = $conn->prepare("UPDATE users_tables SET profile_image = ? WHERE AccountID = ?");
-            $stmt->bind_param('si', $storedFilename, $id);
+            // Just an opaque token now — api/avatar.php?id=X ignores it beyond
+            // using it as a cache-busting ?v= value (see fetch_profile()).
+            $token = 'avatar_' . $id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+
+            $stmt = $conn->prepare("UPDATE users_tables SET profile_image = ?, profile_image_data = ?, profile_image_mime = ? WHERE AccountID = ?");
+            $stmt->bind_param('sssi', $token, $imageData, $mime, $id);
             $stmt->execute();
             $stmt->close();
-
-            // Only delete the old file after the new one is safely saved and
-            // the DB row is pointing at it.
-            if ($oldImage && $oldImage !== $storedFilename) {
-                @unlink($avatarUploadDir . $oldImage);
-            }
         }
 
         $profile = fetch_profile($conn, $id);

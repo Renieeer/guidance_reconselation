@@ -33,8 +33,22 @@ const INTERVENTION_ACTIVITY_ITEMS = [
 // Whether "External Referral" is currently checked, and whether its
 // Appendix C form has been saved — loadCaseActions() reads both to decide
 // whether "Advance to Next Stage" is allowed while at Stage 4.
+// Intervention is now a multi-session log (see loadIntervention()), so the
+// live checkbox alone isn't enough — once any past session has flagged it,
+// externalReferralEverFlagged keeps the gate (and the Appendix C section)
+// in place even after the form resets for the next session.
 let externalReferralRequired = false;
 let externalReferralCompleted = false;
+let externalReferralEverFlagged = false;
+
+// NEW: Reason-based intervention suggestions — interventionOtherTags is the
+// current session's chosen "Other" chips (what actually gets saved as
+// checklist.other_interventions); interventionSuggestions is this referral's
+// suggestion list from api/intervention-suggestions.php (fetched once per
+// loadIntervention(), filtered client-side as the counselor types). See
+// renderInterventionChecklist(), loadInterventionSuggestions() below.
+let interventionOtherTags = [];
+let interventionSuggestions = [];
 
 function loadReferralStatus() {
     initPage();
@@ -111,14 +125,19 @@ function loadDetailView(referral) {
     document.getElementById('detStudentGradeSection').textContent = (referral.grade || 'N/A') + ' - ' + (referral.section || 'N/A');
     document.getElementById('detDateSubmitted').textContent = formatDate(referral.date_submitted);
     document.getElementById('detUrgency').textContent = referral.urgency || 'normal';
-    document.getElementById('detStatus').innerHTML = createBadge(getStatusLabel(referral.stage));
-    document.getElementById('detStage').textContent = referral.stage + '/6';
+    document.getElementById('detStatus').innerHTML = createBadge(referral.status || getStatusLabel(referral.stage));
+    document.getElementById('detStage').textContent = referral.stage + '/7';
     document.getElementById('detStageNote').textContent = referral.stage_note ? ` — ${referral.stage_note}` : '';
 
     // Referral Information
     document.getElementById('detDescription').textContent = referral.description || 'Not provided';
     document.getElementById('detIntervention').textContent = referral.intervention_attempts || 'Not provided';
     document.getElementById('ovReason').textContent = referral.referral_reason || 'Not provided';
+
+    // Assessment document, shown here too (not just while viewing Stage 2
+    // itself — see renderStageSection()) so it stays visible no matter which
+    // stage the referral has since moved on to.
+    loadAssessmentFiles(referral.id);
 
     // Referred By (the teacher, not the student's family)
     document.getElementById('detTeacherName').textContent = referral.teacher_name || 'Not provided';
@@ -196,8 +215,14 @@ function renderStageSection(referral, viewStage) {
         document.getElementById('consentUploadForm').onsubmit = submitConsentUpload;
         const consentStudentAgreeEl = document.getElementById('consentStudentAgree');
         const consentParentAgreeEl = document.getElementById('consentParentAgree');
-        consentStudentAgreeEl.value = '';
-        consentParentAgreeEl.value = '';
+        // Show what was actually recorded when this stage was confirmed —
+        // reviewing Stage 3 after the referral has moved on used to always
+        // blank these back to "Select answer", losing the answer that's
+        // right there in referral.consent_student/consent_parent. Only a
+        // referral that's never actually been through this gate has neither
+        // set, so that case still starts blank.
+        consentStudentAgreeEl.value = referral.consent_student || '';
+        consentParentAgreeEl.value = referral.consent_parent || '';
         consentStudentAgreeEl.classList.remove('field-error');
         consentParentAgreeEl.classList.remove('field-error');
         // Clears the red highlight as soon as an answer is picked, rather
@@ -218,6 +243,7 @@ function renderStageSection(referral, viewStage) {
         // never briefly leak into this one while its own data is fetched.
         externalReferralRequired = false;
         externalReferralCompleted = false;
+        externalReferralEverFlagged = false;
         renderInterventionChecklist();
         document.getElementById('interventionForm').onsubmit = submitIntervention;
         document.getElementById('saveExternalReferralBtn').onclick = saveExternalReferral;
@@ -226,10 +252,28 @@ function renderStageSection(referral, viewStage) {
         interventionSection.style.display = 'none';
     }
 
-    // Show the case-closing acknowledgement form for stage 6 — filled out
+    // Show the Student Follow-up log for stage 6 — a dated, repeatable
+    // check-in at whatever interval the counselor sets (weekly/biweekly/
+    // monthly/custom), unlike the one-shot forms on the other stages.
+    const followUpSection = document.getElementById('followUpFormSection');
+    if (viewStage === 6) {
+        followUpSection.style.display = 'block';
+        const followUpDateEl = document.getElementById('followUpDate');
+        if (!followUpDateEl.value) {
+            followUpDateEl.value = new Date().toISOString().split('T')[0];
+        }
+        document.getElementById('followUpInterval').onchange = updateFollowUpCustomDaysVisibility;
+        updateFollowUpCustomDaysVisibility();
+        document.getElementById('followUpForm').onsubmit = submitFollowUp;
+        loadFollowUpHistory(referral.id);
+    } else {
+        followUpSection.style.display = 'none';
+    }
+
+    // Show the case-closing acknowledgement form for stage 7 — filled out
     // here by the counselor, then shown read-only to the referring teacher.
     const acknowledgementSection = document.getElementById('acknowledgementFormSection');
-    if (viewStage === 6) {
+    if (viewStage === 7) {
         acknowledgementSection.style.display = 'block';
         renderAcknowledgementChecklist();
         document.getElementById('acknowledgementForm').onsubmit = submitAcknowledgement;
@@ -246,6 +290,7 @@ function renderStageSection(referral, viewStage) {
     if (viewStage === 5) {
         counselingCtaSection.style.display = 'block';
         document.getElementById('openCounselingCaseBtn').onclick = () => openCounselingCaseForReferral(referral);
+        renderConsentStatusNote(referral);
         checkExistingCounselingCase(referral);
     } else {
         counselingCtaSection.style.display = 'none';
@@ -293,6 +338,39 @@ async function openCounselingCaseForReferral(referral) {
     window.location.href = `counseling.php?${params.toString()}`;
 }
 
+// Everyone passes through Stage 4 (Intervention) before reaching Stage 5
+// regardless of the Stage 3 consent answers (see confirmConsentDecision()),
+// so arriving at Stage 5 doesn't by itself mean counseling is actually
+// warranted. consent_student/consent_parent are set once at Stage 3 and
+// persist independently of stage_note (which the next transition
+// overwrites/clears), so this can still show the original answer here.
+function renderConsentStatusNote(referral) {
+    const el = document.getElementById('consentStatusNote');
+    if (!el) return;
+
+    const student = String(referral.consent_student || '').toLowerCase();
+    const parent = String(referral.consent_parent || '').toLowerCase();
+
+    if (!student && !parent) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+    }
+
+    const bothAgreed = student === 'yes' && parent === 'yes';
+    const color = bothAgreed ? '#1b7f5a' : '#a15c00';
+    const icon = bothAgreed ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+    const label = (v) => v === 'yes' ? 'agreed' : (v === 'no' ? 'did not agree' : 'not recorded');
+
+    el.innerHTML = `
+        <div class="bg-light rounded p-3" style="margin-bottom:16px; border-left:4px solid ${color};">
+            <p style="margin:0 0 4px; color:${color};"><i class="bi ${icon}"></i> <strong>${bothAgreed ? 'Consent was given for counseling' : 'Consent was not fully given'}</strong></p>
+            <p style="margin:0; font-size:13px;">At Stage 3: student ${escapeHtml(label(student))}, parent/guardian ${escapeHtml(label(parent))}.${bothAgreed ? '' : ' Review whether opening a counseling case is still appropriate before proceeding.'}</p>
+        </div>
+    `;
+    el.style.display = 'block';
+}
+
 // Cases and referrals aren't linked by a real foreign key — a case created
 // from a referral just carries a "(Linked to Referral <code>)" tag appended
 // after its Notes (see applyReferralPrefill() in counseling.js). This looks
@@ -323,21 +401,94 @@ function checkExistingCounselingCase(referral) {
             const linkedCase = (result.data || []).find(c => (c.caseSummary || '').includes(marker));
             if (!linkedCase) return;
 
-            const statusLabel = linkedCase.status === 'closed' ? 'Ended' : 'In progress';
-            const statusClass = linkedCase.status === 'closed' ? 'badge-completed' : 'badge-pending';
-            statusEl.innerHTML = `
-                <div class="bg-light rounded p-3" style="margin-bottom: 16px;">
-                    <p style="margin:0 0 8px;"><i class="bi bi-link-45deg"></i> A counseling case is already linked to this referral.</p>
-                    <p style="margin:0 0 10px;"><strong>${escapeHtml(linkedCase.id)}</strong> — <span class="badge ${statusClass}">${statusLabel}</span></p>
-                    <a href="counseling.php?case_id=${encodeURIComponent(linkedCase.id)}" class="btn btn-secondary btn-sm">
-                        <i class="bi bi-box-arrow-up-right"></i> View Counseling Case
-                    </a>
-                </div>
-            `;
-            statusEl.style.display = 'block';
-            promptEl.style.display = 'none';
+            renderLinkedCasePanel(referral, linkedCase);
         })
         .catch(() => {});
+}
+
+// Once a referral has grown into a counseling case, everything about that
+// case — its follow-up sessions and any appointments booked for the same
+// student — renders right here inside the referral view too, not just a
+// link out to the separate Counseling page. So the referral reads as the
+// full, accurate story of what happened, without anyone having to remember
+// to also go check the case page for the rest of it.
+function renderLinkedCasePanel(referral, linkedCase) {
+    const statusEl = document.getElementById('linkedCaseStatus');
+    const promptEl = document.getElementById('openCounselingCasePrompt');
+
+    const statusLabel = linkedCase.status === 'closed' ? 'Ended' : 'In progress';
+    const statusClass = linkedCase.status === 'closed' ? 'badge-completed' : 'badge-pending';
+
+    const sessions = (linkedCase.followUps || [])
+        .slice()
+        .sort((a, b) => new Date(a.followUpDate || a.recordedAt || 0) - new Date(b.followUpDate || b.recordedAt || 0));
+
+    const sessionsHtml = sessions.length ? sessions.map((f, i) => `
+        <div class="bg-light rounded p-3" style="margin-bottom:8px;">
+            <p style="margin:0 0 4px;"><strong>Session ${i + 1}</strong>${f.categoryName ? ` — ${escapeHtml(f.categoryName)}` : ''} &middot; ${escapeHtml(formatDate(f.followUpDate || f.recordedAt))}</p>
+            <p style="margin:0;">${escapeHtml(f.initialAction || 'No notes recorded.')}</p>
+        </div>
+    `).join('') : '<p class="text-muted" style="margin:0 0 12px;">No follow-up sessions logged yet.</p>';
+
+    statusEl.innerHTML = `
+        <div class="bg-light rounded p-3" style="margin-bottom: 16px;">
+            <p style="margin:0 0 8px;"><i class="bi bi-link-45deg"></i> A counseling case is already linked to this referral.</p>
+            <p style="margin:0 0 10px;"><strong>${escapeHtml(linkedCase.id)}</strong> — <span class="badge ${statusClass}">${statusLabel}</span></p>
+            <a href="counseling.php?case_id=${encodeURIComponent(linkedCase.id)}" class="btn btn-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right"></i> View Counseling Case
+            </a>
+        </div>
+        <h4 class="text-primary" style="font-size:15px; margin:0 0 10px;">Counseling Sessions</h4>
+        <div id="linkedCaseSessions">${sessionsHtml}</div>
+        <h4 class="text-primary" style="font-size:15px; margin:16px 0 10px;">Scheduled Appointments</h4>
+        <div id="linkedCaseAppointments"><p class="text-muted" style="margin:0;">Loading…</p></div>
+    `;
+    statusEl.style.display = 'block';
+    promptEl.style.display = 'none';
+
+    loadLinkedCaseAppointments(referral);
+}
+
+// appointment_requests has no case_uid — it's booked per student (see
+// submitAppointments() in counseling.js), so the only reliable way to tie
+// one back to this referral is by matching student_id, the same student
+// this referral and its linked case both share.
+function loadLinkedCaseAppointments(referral) {
+    const apptEl = document.getElementById('linkedCaseAppointments');
+    if (!apptEl) return;
+
+    const school = referral.school_attended || referral.student_school || '';
+    const studentId = String(referral.student_id || '').trim();
+    if (!school || !studentId) {
+        apptEl.innerHTML = '<p class="text-muted" style="margin:0;">No appointments on record.</p>';
+        return;
+    }
+
+    fetch(`../../api/appointment-request.php?school=${encodeURIComponent(school)}`)
+        .then(response => response.json())
+        .then(result => {
+            const el = document.getElementById('linkedCaseAppointments');
+            if (!el) return;
+            if (!result.success) {
+                el.innerHTML = '<p class="text-muted" style="margin:0;">Unable to load appointments.</p>';
+                return;
+            }
+            const matches = (result.data || []).filter(a => String(a.student_id) === studentId);
+            if (!matches.length) {
+                el.innerHTML = '<p class="text-muted" style="margin:0;">No appointments on record.</p>';
+                return;
+            }
+            el.innerHTML = matches.map(a => `
+                <div class="bg-light rounded p-3" style="margin-bottom:8px;">
+                    <p style="margin:0 0 4px;"><strong>${escapeHtml(formatDate(a.preferred_date))}</strong>${a.preferred_time ? ` &middot; ${escapeHtml(a.preferred_time)}` : ''} — ${createBadge(a.status || 'pending')}</p>
+                    <p style="margin:0;">${escapeHtml(a.reason || 'Counseling session')}</p>
+                </div>
+            `).join('');
+        })
+        .catch(() => {
+            const el = document.getElementById('linkedCaseAppointments');
+            if (el) el.innerHTML = '<p class="text-muted" style="margin:0;">Unable to load appointments.</p>';
+        });
 }
 
 function renderInterventionChecklist() {
@@ -358,53 +509,209 @@ function renderInterventionChecklist() {
         toggleExternalReferralForm(e.target.checked);
     });
 
-    // "Other" reveals a free-text field when checked — same pattern as the
-    // teacher's Reason-for-Referral checklist (referral-form.js), so an
-    // activity outside the fixed list isn't silently uncapturable.
+    // "Other" reveals the tag/autocomplete input when checked — same
+    // trigger pattern as the teacher's Reason-for-Referral checklist
+    // (referral-form.js), so an activity outside the fixed list isn't
+    // silently uncapturable.
     const otherCheck = document.getElementById('interventionOtherCheck');
-    const otherText = document.getElementById('interventionOtherText');
+    const otherWrap = document.getElementById('interventionOtherWrap');
     otherCheck.addEventListener('change', () => {
-        otherText.style.display = otherCheck.checked ? '' : 'none';
-        if (otherCheck.checked) otherText.focus();
+        otherWrap.style.display = otherCheck.checked ? '' : 'none';
+        if (otherCheck.checked) document.getElementById('interventionOtherInput').focus();
     });
+
+    setupInterventionOtherTagInput();
+}
+
+// NEW: Reason-based intervention suggestions — wires the Other Intervention
+// tag input once per renderInterventionChecklist() call (i.e. once per
+// Stage 4 view). Typing filters interventionSuggestions (already scoped to
+// this referral's Reason for Referral by loadInterventionSuggestions())
+// down to a dropdown; Enter or clicking a suggestion adds a chip; an
+// unmatched typed value is offered as "Add ..." so a genuinely new
+// intervention can still be entered.
+function setupInterventionOtherTagInput() {
+    const input = document.getElementById('interventionOtherInput');
+    const dropdown = document.getElementById('interventionOtherSuggestions');
+
+    input.addEventListener('input', () => renderOtherInterventionSuggestions(input.value));
+    input.addEventListener('focus', () => renderOtherInterventionSuggestions(input.value));
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const value = input.value.trim();
+            if (value) addOtherInterventionTag(value);
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+        }
+    });
+    // Delay so a click on a suggestion (which also blurs the input) still
+    // registers before the dropdown disappears.
+    input.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
+}
+
+function renderOtherInterventionSuggestions(query) {
+    const dropdown = document.getElementById('interventionOtherSuggestions');
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const matches = interventionSuggestions.filter(s =>
+        !interventionOtherTags.some(tag => tag.toLowerCase() === s.name.toLowerCase()) &&
+        (normalizedQuery === '' || s.name.toLowerCase().includes(normalizedQuery))
+    );
+
+    const exactMatch = interventionSuggestions.some(s => s.name.toLowerCase() === normalizedQuery);
+    const showAddOption = normalizedQuery !== '' && !exactMatch &&
+        !interventionOtherTags.some(tag => tag.toLowerCase() === normalizedQuery);
+
+    if (matches.length === 0 && !showAddOption) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    dropdown.innerHTML = matches.slice(0, 8).map(s => `
+        <div class="intervention-tag-suggestion" data-name="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
+    `).join('') + (showAddOption ? `
+        <div class="intervention-tag-suggestion intervention-tag-suggestion-add" data-name="${escapeHtml(query.trim())}">Add "${escapeHtml(query.trim())}"</div>
+    ` : '');
+
+    dropdown.querySelectorAll('.intervention-tag-suggestion').forEach(el => {
+        el.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // keeps the input's blur from firing before this click
+            addOtherInterventionTag(el.dataset.name);
+        });
+    });
+
+    dropdown.style.display = 'block';
+}
+
+function addOtherInterventionTag(name) {
+    name = name.trim();
+    if (!name || interventionOtherTags.some(tag => tag.toLowerCase() === name.toLowerCase())) return;
+    interventionOtherTags.push(name);
+    renderOtherInterventionChips();
+
+    const input = document.getElementById('interventionOtherInput');
+    input.value = '';
+    document.getElementById('interventionOtherSuggestions').style.display = 'none';
+    input.focus();
+}
+
+function removeOtherInterventionTag(name) {
+    interventionOtherTags = interventionOtherTags.filter(tag => tag !== name);
+    renderOtherInterventionChips();
+}
+
+function renderOtherInterventionChips() {
+    const container = document.getElementById('interventionOtherChips');
+    container.innerHTML = interventionOtherTags.map(tag => `
+        <span class="intervention-tag-chip">
+            ${escapeHtml(tag)}
+            <button type="button" data-name="${escapeHtml(tag)}" aria-label="Remove">&times;</button>
+        </span>
+    `).join('');
+
+    container.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => removeOtherInterventionTag(btn.dataset.name));
+    });
+}
+
+// Fetched once per Stage 4 view (see loadIntervention()) — already scoped
+// server-side to this referral's own Reason for Referral, sorted by
+// UsageCount DESC, so the most commonly used interventions for these
+// reasons surface first as the counselor types.
+function loadInterventionSuggestions(referralId) {
+    fetch(`../../api/intervention-suggestions.php?referral_id=${referralId}`)
+        .then(response => response.json())
+        .then(result => {
+            interventionSuggestions = result.success ? (result.data || []) : [];
+        })
+        .catch(() => {
+            interventionSuggestions = [];
+        });
 }
 
 // Single place that flips the Appendix C form's visibility and updates the
 // gate flag — called both from the live checkbox (above) and from
-// loadIntervention() when restoring a previously saved checklist, so the
-// two never disagree about whether the form should be showing.
+// loadIntervention() when restoring history, so the two never disagree
+// about whether the form should be showing. Once any session has ever
+// flagged External Referral (externalReferralEverFlagged), the section
+// stays visible and the gate stays required even while the current
+// (freshly reset) session's checkbox is unchecked.
 function toggleExternalReferralForm(show) {
-    externalReferralRequired = show;
-    document.getElementById('externalReferralFormSection').style.display = show ? 'block' : 'none';
+    const required = show || externalReferralEverFlagged;
+    externalReferralRequired = required;
+    document.getElementById('externalReferralFormSection').style.display = required ? 'block' : 'none';
     loadCaseActions();
 }
 
+function interventionActivityLabel(key) {
+    if (key === 'other') return 'Other';
+    return INTERVENTION_ACTIVITY_ITEMS.find(item => item.key === key)?.label || key;
+}
+
+function renderInterventionHistory(rows) {
+    const container = document.getElementById('interventionHistoryList');
+    if (!container) return;
+
+    if (rows.length === 0) {
+        container.innerHTML = '<p class="text-muted">No intervention sessions logged yet.</p>';
+        return;
+    }
+
+    container.innerHTML = rows.map(row => {
+        const checklist = row.checklist || {};
+        const activities = Object.keys(checklist)
+            .filter(key => key !== 'other_text' && key !== 'other_interventions' && checklist[key])
+            .map(key => {
+                if (key !== 'other') return escapeHtml(interventionActivityLabel(key));
+                // NEW: other_interventions (tag array) is what current sessions
+                // save; other_text (a single string) is kept read-only here for
+                // sessions saved before this feature existed.
+                if (Array.isArray(checklist.other_interventions) && checklist.other_interventions.length) {
+                    return `Other: ${escapeHtml(checklist.other_interventions.join(', '))}`;
+                }
+                if (checklist.other_text) return `Other: ${escapeHtml(checklist.other_text)}`;
+                return escapeHtml(interventionActivityLabel(key));
+            });
+
+        return `
+        <div style="background:#f9fafb; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <strong>${escapeHtml(row.counselor_name || 'Counselor')}</strong>
+                <small class="text-muted">${formatDate(row.created_at)}</small>
+            </div>
+            ${activities.length ? `<div>${activities.join(', ')}</div>` : '<div class="text-muted">No activities checked</div>'}
+            ${row.notes ? `<div style="margin-top:4px;">${escapeHtml(row.notes)}</div>` : ''}
+        </div>
+        `;
+    }).join('');
+}
+
 function loadIntervention(referralId) {
+    // NEW: Reason-based intervention suggestions — fetched once per Stage 4
+    // view, scoped to this referral's own Reason for Referral.
+    loadInterventionSuggestions(referralId);
+
     fetch(`../../api/referral-intervention.php?referral_id=${referralId}`)
         .then(response => response.json())
         .then(result => {
             if (!result.success) throw new Error(result.message || 'Failed to load intervention activities');
 
+            const rows = result.data || [];
+            renderInterventionHistory(rows);
+
+            // Every session's checklist is independent — the form always
+            // starts blank, ready for a new session, rather than pre-filling
+            // from a previous one.
             document.getElementById('interventionForm').reset();
-            const otherText = document.getElementById('interventionOtherText');
-            otherText.value = '';
-            otherText.style.display = 'none';
+            interventionOtherTags = [];
+            renderOtherInterventionChips();
+            document.getElementById('interventionOtherInput').value = '';
+            document.getElementById('interventionOtherWrap').style.display = 'none';
+            document.getElementById('interventionOtherSuggestions').style.display = 'none';
 
-            const data = result.data;
-            const checklist = data?.checklist || {};
-
-            if (data) {
-                document.getElementById('interventionNotes').value = data.notes || '';
-                document.querySelectorAll('#interventionChecklist input[type="checkbox"]').forEach(cb => {
-                    cb.checked = Boolean(checklist[cb.value]);
-                });
-                if (checklist.other) {
-                    otherText.value = checklist.other_text || '';
-                    otherText.style.display = '';
-                }
-            }
-
-            toggleExternalReferralForm(Boolean(checklist['external_referral']));
+            externalReferralEverFlagged = rows.some(row => Boolean(row.checklist?.external_referral));
+            toggleExternalReferralForm(false);
         })
         .catch(error => {
             console.error('Error loading intervention activities:', error);
@@ -554,6 +861,7 @@ function printExternalReferral() {
 
 window.addEventListener('afterprint', () => {
     document.body.classList.remove('print-external-referral');
+    document.body.classList.remove('print-acknowledgement');
 });
 
 function submitIntervention(e) {
@@ -567,7 +875,10 @@ function submitIntervention(e) {
         checklist[cb.value] = cb.checked;
     });
     if (checklist.other) {
-        checklist.other_text = document.getElementById('interventionOtherText').value.trim();
+        // NEW: Reason-based intervention suggestions — the chip list, not a
+        // single free-text string. api/referral-intervention.php's POST
+        // handler is what actually learns from these (record_intervention_usage()).
+        checklist.other_interventions = interventionOtherTags.slice();
     }
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -588,11 +899,105 @@ function submitIntervention(e) {
     })
     .then(response => response.json())
     .then(result => {
-        if (!result.success) throw new Error(result.message || 'Failed to save intervention activities');
-        showAlert('Intervention activities saved.', 'success');
+        if (!result.success) throw new Error(result.message || 'Failed to save intervention session');
+        showAlert('Intervention session saved.', 'success');
+        // Reloads from the server (now including this session), which
+        // resets the form, re-renders history, and re-derives the External
+        // Referral gate from the full set of sessions.
+        loadIntervention(currentReferral.id);
     })
     .catch(error => {
-        showAlert(error.message || 'Failed to save intervention activities.', 'error');
+        showAlert(error.message || 'Failed to save intervention session.', 'error');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
+}
+
+const FOLLOW_UP_INTERVAL_DAYS = { weekly: 7, biweekly: 14, monthly: 30 };
+
+function updateFollowUpCustomDaysVisibility() {
+    const isCustom = document.getElementById('followUpInterval').value === 'custom';
+    document.getElementById('followUpCustomDaysGroup').style.display = isCustom ? '' : 'none';
+}
+
+function followUpIntervalDays() {
+    const label = document.getElementById('followUpInterval').value;
+    if (label === 'custom') {
+        return Math.max(1, parseInt(document.getElementById('followUpCustomDays').value, 10) || 1);
+    }
+    return FOLLOW_UP_INTERVAL_DAYS[label] || 7;
+}
+
+function loadFollowUpHistory(referralId) {
+    const container = document.getElementById('followUpHistoryList');
+    if (!container) return;
+    container.innerHTML = '<p class="text-muted">Loading follow-up history...</p>';
+
+    fetch(`../../api/referral-follow-up.php?referral_id=${referralId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load follow-up history');
+            const rows = result.data || [];
+            if (rows.length === 0) {
+                container.innerHTML = '<p class="text-muted">No follow-up check-ins recorded yet.</p>';
+                return;
+            }
+
+            const intervalLabels = { weekly: 'Weekly', biweekly: 'Biweekly', monthly: 'Monthly', custom: 'Custom' };
+            container.innerHTML = rows.map(row => `
+                <div style="background:#f9fafb; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <strong>${formatDate(row.follow_up_date)}</strong>
+                        <small class="text-muted">${intervalLabels[row.interval_label] || row.interval_label} (${row.interval_days}d) — next due ${formatDate(row.next_follow_up_date)}</small>
+                    </div>
+                    ${row.notes ? `<div>${escapeHtml(row.notes)}</div>` : ''}
+                    <div style="margin-top:6px;"><small class="text-muted">Recorded by ${escapeHtml(row.counselor_name || 'Counselor')}</small></div>
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
+        });
+}
+
+function submitFollowUp(e) {
+    e.preventDefault();
+
+    const user = getCurrentUser();
+    const intervalLabel = document.getElementById('followUpInterval').value;
+    const intervalDays = followUpIntervalDays();
+    const followUpDate = document.getElementById('followUpDate').value;
+    const notes = document.getElementById('followUpNotes').value.trim();
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    fetch('../../api/referral-follow-up.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || '',
+            interval_label: intervalLabel,
+            interval_days: intervalDays,
+            follow_up_date: followUpDate,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) throw new Error(result.message || 'Failed to save follow-up');
+        showAlert('Follow-up saved.', 'success');
+        document.getElementById('followUpNotes').value = '';
+        loadFollowUpHistory(currentReferral.id);
+    })
+    .catch(error => {
+        showAlert(error.message || 'Failed to save follow-up.', 'error');
     })
     .finally(() => {
         submitBtn.disabled = false;
@@ -633,6 +1038,7 @@ function loadAcknowledgement(referralId) {
             document.getElementById('acknowledgementForm').reset();
             syncAckChecklistExclusivity(document.getElementById('ackChecklist'));
             const data = result.data;
+            document.getElementById('printAcknowledgementBtn').style.display = data ? '' : 'none';
             if (!data) return;
 
             document.getElementById('ackAttendedBy').value = data.attended_by || '';
@@ -679,6 +1085,7 @@ function submitAcknowledgement(e) {
     .then(result => {
         if (!result.success) throw new Error(result.message || 'Failed to save acknowledgement');
         showAlert('Acknowledgement saved.', 'success');
+        document.getElementById('printAcknowledgementBtn').style.display = '';
     })
     .catch(error => {
         showAlert(error.message || 'Failed to save acknowledgement.', 'error');
@@ -689,10 +1096,96 @@ function submitAcknowledgement(e) {
     });
 }
 
+// Same read-only "referral-sheet" layout the teacher sees on their own
+// referral-status page for this exact saved acknowledgement (see
+// renderAcknowledgementReadOnly() in teacher/referral-status.js) — rendered
+// here too so the counselor who filled it out can get a printed/PDF copy
+// without needing the teacher's account. Re-fetches rather than trusting
+// whatever's currently sitting in the form fields, so the printed copy
+// always matches what's actually saved.
+function printAcknowledgement() {
+    fetch(`../../api/referral-acknowledgement.php?referral_id=${currentReferral.id}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success || !result.data) {
+                showAlert('Save the acknowledgement before printing it.', 'warning');
+                return;
+            }
+            renderAcknowledgementPrintSheet(currentReferral, result.data);
+            document.body.classList.add('print-acknowledgement');
+            window.print();
+        })
+        .catch(() => {
+            showAlert('Unable to load the acknowledgement to print.', 'error');
+        });
+}
+
+function renderAcknowledgementPrintSheet(referral, ack) {
+    const sheet = document.getElementById('acknowledgementPrintSheet');
+    const studentName = escapeHtml(referral.student_name);
+    const checklist = ack.checklist || {};
+    const savedDate = formatDate(ack.updated_at || ack.created_at);
+
+    sheet.innerHTML = `
+        <div class="referral-sheet">
+            <div class="referral-sheet-title">Counseling Referral Acknowledgement Form</div>
+            <div class="referral-sheet-intro">Completed by the counselor</div>
+
+            <div class="referral-table-row">
+                <div class="referral-label">To</div>
+                <div class="referral-field">${studentName}</div>
+            </div>
+            <div class="referral-table-row">
+                <div class="referral-label">Referring Person / Unit</div>
+                <div class="referral-field">${escapeHtml(referral.teacher_name || 'Teacher')}</div>
+            </div>
+            <div class="referral-table-row">
+                <div class="referral-label">Designation / Department</div>
+                <div class="referral-field">Teaching Staff</div>
+            </div>
+
+            <div class="referral-sheet-section">
+                This is to confirm that <strong>${studentName}</strong>, whom you referred to us on
+                <strong>${escapeHtml(formatDate(referral.date_submitted))}</strong>, has started his/her session
+                and is being attended by <strong>${escapeHtml(ack.attended_by) || '—'}</strong>
+            </div>
+
+            <div class="referral-sheet-section">
+                <div class="referral-checklist-heading">Status of the case at hand</div>
+                <div class="referral-checklist">
+                    ${ACKNOWLEDGEMENT_CHECKLIST_ITEMS.map(item => `
+                        <label class="referral-checklist-item">
+                            <input type="checkbox" disabled ${checklist[item.key] ? 'checked' : ''}>
+                            <span>${escapeHtml(item.label)}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="referral-sheet-thanks">
+                <p>Thank you.</p>
+                <p>Always for the welfare of students,</p>
+            </div>
+
+            <div class="referral-sheet-signature">
+                <p class="referral-signature-title">Attending Guidance Counselor</p>
+                <div class="referral-signature-line"></div>
+                <p class="referral-signature-date">${escapeHtml(ack.counselor_name) || ''}</p>
+                <p class="referral-signature-date">Date: <strong>${savedDate}</strong></p>
+            </div>
+        </div>
+    `;
+}
+
+// Renders into both #assessmentFileList (the Stage 2 section, visible only
+// while viewStage === 2) and #detAssessmentFileList (the always-visible
+// mirror in Referral Information) — whichever of the two exist on the page.
 function loadAssessmentFiles(referralId) {
-    const container = document.getElementById('assessmentFileList');
-    if (!container) return;
-    container.innerHTML = '<p class="text-muted">Loading uploaded documents...</p>';
+    const containers = ['assessmentFileList', 'detAssessmentFileList']
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+    if (containers.length === 0) return;
+    containers.forEach(c => { c.innerHTML = '<p class="text-muted">Loading uploaded documents...</p>'; });
 
     fetch(`../../api/referral-assessment.php?referral_id=${referralId}`)
         .then(response => response.json())
@@ -700,20 +1193,30 @@ function loadAssessmentFiles(referralId) {
             if (!result.success) throw new Error(result.message || 'Failed to load assessment documents');
             const rows = result.data || [];
             if (rows.length === 0) {
-                container.innerHTML = '<p class="text-muted">No assessment document uploaded yet.</p>';
+                containers.forEach(c => { c.innerHTML = '<p class="text-muted">No assessment document uploaded yet.</p>'; });
                 return;
             }
-            container.innerHTML = rows.map(row => `
-                <div style="display:flex; justify-content:space-between; align-items:center; background:#f9fafb; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
-                    <div>
-                        <a href="${row.url}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-check"></i> ${escapeHtml(row.fileName)}</a>
-                        <div><small class="text-muted">${((row.fileSize || 0) / 1024).toFixed(1)} KB • Uploaded by ${escapeHtml(row.uploadedBy || 'Unknown')} on ${formatDate(row.uploadedAt)}</small></div>
-                    </div>
+            const html = rows.map(row => {
+                const ext = String(row.fileName || '').split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+                // this.closest('a').nextElementSibling is the .file-chip fallback
+                // right after the thumbnail link below — swapped in if the
+                // image itself 404s, so a missing/broken file still reads as
+                // a clean row instead of a broken-image icon.
+                const preview = isImage
+                    ? `<a href="${row.url}" target="_blank" rel="noopener" class="file-thumb-link"><img src="${row.url}" alt="${escapeHtml(row.fileName)}" class="file-thumb" onerror="this.closest('a').style.display='none'; this.closest('a').nextElementSibling.style.display='inline-flex';"></a><a href="${row.url}" target="_blank" rel="noopener" class="file-chip" style="display:none;"><i class="bi bi-file-earmark-image"></i> ${escapeHtml(row.fileName)}</a>`
+                    : `<a href="${row.url}" target="_blank" rel="noopener" class="file-chip"><i class="bi bi-file-earmark-check"></i> ${escapeHtml(row.fileName)}</a>`;
+                return `
+                <div style="background:#f9fafb; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
+                    ${preview}
+                    <div><small class="text-muted">${((row.fileSize || 0) / 1024).toFixed(1)} KB • Uploaded by ${escapeHtml(row.uploadedBy || 'Unknown')} on ${formatDate(row.uploadedAt)}</small></div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
+            containers.forEach(c => { c.innerHTML = html; });
         })
         .catch(error => {
-            container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
+            containers.forEach(c => { c.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`; });
         });
 }
 
@@ -829,6 +1332,15 @@ function submitInterviewNotes(e) {
         document.getElementById('cancelInterviewEditBtn').style.display = 'none';
         document.getElementById('interviewForm').reset();
         loadInterviewHistory(currentReferral.id);
+        // A brand-new note is the first real work on this referral — matches
+        // the status flip api/referral-screening.php's POST handler just made
+        // in the database, so reflect it here immediately instead of waiting
+        // for the next full reload.
+        if (!isEditing && currentReferral.status === 'pending') {
+            currentReferral.status = 'in-progress';
+            const statusEl = document.getElementById('detStatus');
+            if (statusEl) statusEl.innerHTML = createBadge(currentReferral.status);
+        }
     })
     .catch(error => {
         showAlert(error.message || 'Failed to save interview notes.', 'error');
@@ -870,6 +1382,11 @@ function submitAssessmentUpload(e) {
         showAlert('Assessment document uploaded.', 'success');
         document.getElementById('assessmentUploadForm').reset();
         loadAssessmentFiles(currentReferral.id);
+        if (currentReferral.status === 'pending') {
+            currentReferral.status = 'in-progress';
+            const statusEl = document.getElementById('detStatus');
+            if (statusEl) statusEl.innerHTML = createBadge(currentReferral.status);
+        }
     })
     .catch(error => {
         showAlert(error.message || 'Failed to upload file.', 'error');
@@ -882,7 +1399,10 @@ function submitAssessmentUpload(e) {
 
 // The Stage 2 completion gate — a "Yes" answer is itself the advancement
 // action (no separate "Advance to Next Stage" click needed), same
-// underlying update-referral.php call the generic advanceStage() uses.
+// underlying update-referral.php call the generic advanceStage() uses. The
+// assessment document itself is optional (confidentiality of its contents),
+// so this doesn't require one on file — the counselor's own confirmation
+// here is what actually gates the advance.
 function confirmAssessmentCompleted() {
     if (!confirm('Confirm the student has completed the assessment? This will move the referral to Stage 3.')) {
         return;
@@ -983,13 +1503,13 @@ function loadCaseActions() {
     // Referral" is checked and its Appendix C form hasn't been saved yet.
     const externalReferralBlocking = currentReferral.stage === 4 && externalReferralRequired && !externalReferralCompleted;
 
-    if (currentReferral.stage < 6 && !GATED_STAGES.includes(currentReferral.stage) && !externalReferralBlocking) {
+    if (currentReferral.stage < 7 && !GATED_STAGES.includes(currentReferral.stage) && !externalReferralBlocking) {
         html += `<button class="btn btn-primary" onclick="advanceStage()">Advance to Next Stage</button>`;
     } else if (externalReferralBlocking) {
         html += `<p class="text-muted" style="font-style: italic;">Complete the External Referral form above before advancing to the next stage.</p>`;
     }
 
-    if (currentReferral.stage === 6) {
+    if (currentReferral.stage === 7) {
         html += `<p style="color: #999; font-style: italic;">This case is closed.</p>`;
     }
 
@@ -1003,8 +1523,8 @@ function loadCaseActions() {
 // "Current Stage" in the Referral Overview. Omitting it clears any existing
 // note, since a note set by a gated stage shouldn't linger after a later,
 // ungated advance has moved past it.
-function setReferralStage(newStage, stageNote) {
-    const newStatus = newStage === 6 ? 'completed' : 'in-progress';
+function setReferralStage(newStage, stageNote, extraFields) {
+    const newStatus = newStage === 7 ? 'completed' : 'in-progress';
     const user = getCurrentUser();
 
     fetch('../../api/update-referral.php', {
@@ -1012,14 +1532,14 @@ function setReferralStage(newStage, stageNote) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
+        body: JSON.stringify(Object.assign({
             referral_id: currentReferral.id,
             stage: newStage,
             status: newStatus,
             stage_note: stageNote || '',
             counselor_id: user?.id || '',
             counselor_name: user?.name || ''
-        })
+        }, extraFields || {}))
     })
     .then(response => response.json())
     .then(result => {
@@ -1063,7 +1583,11 @@ function confirmConsentDecision() {
     const stageNote = bothAgree ? 'Both agreed to counseling' : 'Did not agree to counseling';
 
     if (!confirm('The referral will move to Stage 4 (Intervention). Continue?')) return;
-    setReferralStage(4, stageNote);
+    // Persisted separately from stageNote (which the next transition
+    // overwrites/clears) so Stage 5 can still tell whether the student/
+    // parent actually consented, long after the referral has moved past
+    // Stage 3-4 — see renderConsentStatusNote().
+    setReferralStage(4, stageNote, { consent_student: studentAgree, consent_parent: parentAgree });
 }
 
 function closeCase() {
@@ -1078,7 +1602,7 @@ function closeCase() {
             },
             body: JSON.stringify({
                 referral_id: currentReferral.id,
-                stage: 6,
+                stage: 7,
                 status: 'completed',
                 stage_note: 'Case closed',
                 counselor_id: user?.id || '',
@@ -1127,8 +1651,8 @@ function renderReferralRows(list) {
             <td>${escapeHtml(referral.referral_reason)}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${escapeHtml(referral.urgency || 'normal')}</td>
-            <td>${referral.stage}/6</td>
-            <td>${createBadge(getStatusLabel(referral.stage))}</td>
+            <td>${referral.stage}/7</td>
+            <td>${createBadge(referral.status || getStatusLabel(referral.stage))}</td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="selectReferral(${referral.id})">View</button>
             </td>
@@ -1179,7 +1703,8 @@ function getStatusLabel(stage) {
         3: 'in-progress',
         4: 'in-progress',
         5: 'in-progress',
-        6: 'completed'
+        6: 'in-progress',
+        7: 'completed'
     };
     return labels[stage] || 'pending';
 }

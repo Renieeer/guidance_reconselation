@@ -1,5 +1,6 @@
 <?php
-// Deletes a document's DB row and its file on disk together — see
+// Deletes a document's row — the file itself lives in that row's
+// file_data column, so this is the whole deletion. See
 // api/list-documents.php for the shared table shape.
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -41,7 +42,7 @@ try {
         send_json(403, ['success' => false, 'message' => 'Only guidance staff can delete documents']);
     }
 
-    $stmt = $conn->prepare('SELECT stored_filename, school_attended FROM documents WHERE document_id = ?');
+    $stmt = $conn->prepare('SELECT school_attended FROM documents WHERE document_id = ?');
     if (!$stmt) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }
@@ -57,17 +58,14 @@ try {
         send_json(403, ['success' => false, 'message' => "This document isn't from your school"]);
     }
 
+    // The file lives in this row's own file_data column (a BLOB), not on
+    // disk, so deleting the row is the whole deletion.
     $deleteStmt = $conn->prepare('DELETE FROM documents WHERE document_id = ?');
     $deleteStmt->bind_param('i', $documentId);
     if (!$deleteStmt->execute()) {
         send_json(500, ['success' => false, 'message' => 'Failed to delete document record: ' . $deleteStmt->error]);
     }
     $deleteStmt->close();
-
-    $filePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'documents' . DIRECTORY_SEPARATOR . $row['stored_filename'];
-    if (is_file($filePath)) {
-        @unlink($filePath);
-    }
 
     send_json(200, ['success' => true, 'message' => 'Document deleted successfully']);
 } catch (Throwable $e) {

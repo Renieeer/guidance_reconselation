@@ -50,8 +50,8 @@ function loadTeacherDashboard() {
 
             // Calculate statistics
             const total = teacherReferrals.length;
-            const approved = teacherReferrals.filter(r => r.stage >= 3 && r.stage < 6).length;
-            const closed = teacherReferrals.filter(r => r.stage === 6).length;
+            const approved = teacherReferrals.filter(r => r.stage >= 3 && r.stage < 7).length;
+            const closed = teacherReferrals.filter(r => r.stage === 7).length;
 
             // Update stats
             document.getElementById('totalReferrals').textContent = total;

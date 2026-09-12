@@ -134,15 +134,16 @@ function createActionButtons(id, canEdit = true, canDelete = true) {
     return html;
 }
 
-// Referral stages — mirrors the guidance office's official 6-step case
-// management flow (Interview/Background -> ... -> Student Follow-up).
+// Referral stages — mirrors the guidance office's official 7-step case
+// management flow (Interview/Background -> ... -> Student Follow-up -> Case Closing).
 const referralStages = [
     { id: 1, name: 'Interview/Background', description: 'Initial interview with the student to gather background information (walk-in, or referred by the adviser, subject teacher, or student).' },
     { id: 2, name: 'Initial Risk Assessment', description: 'Initial risk assessment by the counselor using tools such as GAD-7, PHQ, Columbia Suicide Severity Rating Scale, HEEADSSS, etc.' },
     { id: 3, name: 'Parent Call-up/Consent', description: 'Parent called and consent obtained for further assessment and interventions.' },
     { id: 4, name: 'Intervention', description: 'Intervention plan carried out — support measures and coping strategies put in place.' },
     { id: 5, name: 'Counseling', description: 'Counseling sessions with the student — discussion of findings and next steps.' },
-    { id: 6, name: 'Student Follow-up', description: 'Follow-up with the student to monitor progress and well-being after intervention.' }
+    { id: 6, name: 'Student Follow-up', description: 'Follow-up with the student at a set interval to monitor progress and well-being after intervention.' },
+    { id: 7, name: 'Case Closing', description: 'Case closing acknowledgement — final status of the case on record.' }
 ];
 
 // Get stage info
@@ -301,8 +302,10 @@ function userInitials(user) {
 
 // `user.profile_image` (from js/auth.js on login, or refreshed by
 // pages/<role>/profile.php after an upload) is stored root-relative, e.g.
-// "uploads/profile-images/x.jpg" — every page that renders this lives two
-// levels down at pages/<role>/*.php, so "../../" always resolves correctly.
+// "api/avatar.php?id=5&v=x.jpg" — the photo itself lives in the database
+// (see api/avatar.php), this is just its URL. Every page that renders this
+// lives two levels down at pages/<role>/*.php, so "../../" always resolves
+// correctly.
 function userAvatarUrl(user) {
     if (!user || !user.profile_image) return null;
     return `../../${user.profile_image}`;

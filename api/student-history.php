@@ -42,6 +42,14 @@ if ($studentId === '') {
     send_json(400, ['success' => false, 'message' => 'student_id is required']);
 }
 
+// The Stage 2 assessment document is confidential — staff (counselor,
+// other-school, coordinator) see it in the history timeline, the student
+// it's about never does. pages/student/appointment-history.js and
+// pages/student/dashboard.js pass role=student; every staff caller omits
+// role, so the default is to include it.
+$callerRole = strtolower(trim((string)($_GET['role'] ?? '')));
+$includeAssessments = $callerRole !== 'student';
+
 $studentStmt = $conn->prepare('
     SELECT s.StudentId, s.AccountID, s.LRN, s.FirstName, s.MiddleName, s.LastName, s.Nickname, s.Sex, s.Age, s.Grade, s.Section,
            s.EmailAccount, s.CellphoneNumber, s.DateOfBirth, s.PlaceOfBirth, s.ReligionFromBirth, s.CurrentReligion,
@@ -105,6 +113,7 @@ if (table_exists($conn, 'referral')) {
                     'date_submitted' => $row['date_submitted'] ?? null,
                     'updated_at' => $row['updated_at'] ?? null,
                     'screenings' => [],
+                    'assessments' => [],
                     'stage_log' => []
                 ];
             }
@@ -144,6 +153,45 @@ if (table_exists($conn, 'referral')) {
                 }
                 foreach ($referrals as &$ref) {
                     $ref['screenings'] = $screeningsByReferral[$ref['id']] ?? [];
+                }
+                unset($ref);
+            }
+            $stmt->close();
+        }
+    }
+
+    // The Stage 2 assessment document itself (see api/referral-assessment.php)
+    // — staff-only, per $includeAssessments above.
+    if ($includeAssessments && !empty($referrals) && table_exists($conn, 'referral_assessment')) {
+        $ids = array_column($referrals, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = str_repeat('i', count($ids));
+        $stmt = $conn->prepare("
+            SELECT assessment_id, referral_id, original_filename, file_size, uploaded_by, uploaded_at
+            FROM referral_assessment
+            WHERE referral_id IN ($placeholders)
+            ORDER BY uploaded_at ASC, assessment_id ASC
+        ");
+        if ($stmt) {
+            $stmt->bind_param($types, ...$ids);
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                $assessmentsByReferral = [];
+                while ($row = $result->fetch_assoc()) {
+                    $assessmentsByReferral[(int)$row['referral_id']][] = [
+                        'assessment_id' => (int)$row['assessment_id'],
+                        'file_name' => $row['original_filename'] ?? '',
+                        'file_size' => (int)($row['file_size'] ?? 0),
+                        'uploaded_by' => $row['uploaded_by'] ?? '',
+                        'uploaded_at' => $row['uploaded_at'] ?? null,
+                        // The bytes live in referral_assessment.file_data (a BLOB) —
+                        // this points at api/referral-assessment.php's own streaming
+                        // endpoint instead of a static uploads/ path.
+                        'url' => '../../api/referral-assessment.php?view=' . (int)$row['assessment_id']
+                    ];
+                }
+                foreach ($referrals as &$ref) {
+                    $ref['assessments'] = $assessmentsByReferral[$ref['id']] ?? [];
                 }
                 unset($ref);
             }

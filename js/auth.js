@@ -78,8 +78,9 @@ document.getElementById('loginForm')?.addEventListener('submit', async function(
                 // Comma-separated grade numbers this counselor/coordinator is
                 // scoped to (e.g. "7", "11,12"). Empty means no restriction.
                 grade_scope: data.user.grade || '',
-                // Root-relative path (e.g. "uploads/profile-images/x.jpg") or
-                // null. See renderSidebarAvatar() in js/utils.js.
+                // Root-relative path (e.g. "api/avatar.php?id=5&v=x.jpg") or
+                // null — the photo itself lives in the database, this just
+                // points at it. See userAvatarUrl() in js/utils.js.
                 profile_image: data.user.profileImage || null
             };
 

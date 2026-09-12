@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'conn.php';
+require_once 'intervention-suggestions-schema.php';
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
@@ -18,9 +19,11 @@ function send_json(int $statusCode, array $payload): void {
 }
 
 // Stage 4 (Intervention) — which intervention activities were carried out
-// for this referral, same shape/pattern as Stage 6's
-// referral_acknowledgement.php. One row per referral (uniq_referral_id):
-// saving again updates the same row instead of creating a new one.
+// for this referral. Append-only log (one row per session): an
+// intervention plan often can't be carried out in a single day, so each
+// save creates a new dated entry instead of overwriting the last one —
+// same shape/pattern as Stage 6's referral-follow-up.php, not the older
+// single-row-per-referral pattern referral-acknowledgement.php still uses.
 function ensure_referral_intervention_table(mysqli $conn): void {
     $conn->query("
         CREATE TABLE IF NOT EXISTS referral_intervention (
@@ -33,12 +36,23 @@ function ensure_referral_intervention_table(mysqli $conn): void {
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (intervention_id),
-            UNIQUE KEY uniq_referral_id (referral_id)
+            KEY idx_referral_id (referral_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     ");
+
+    // Defensive migration for installations where this table already exists
+    // from before intervention became a multi-entry log — the old
+    // uniq_referral_id constraint would silently block a second session
+    // from ever being inserted (ON DUPLICATE KEY UPDATE would just overwrite
+    // the first one instead).
+    $result = $conn->query("SHOW INDEX FROM referral_intervention WHERE Key_name = 'uniq_referral_id'");
+    if ($result && $result->num_rows > 0) {
+        $conn->query("ALTER TABLE referral_intervention DROP INDEX uniq_referral_id");
+    }
 }
 
 ensure_referral_intervention_table($conn);
+ensure_intervention_suggestions_tables($conn);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -52,7 +66,7 @@ if ($method === 'GET') {
         SELECT intervention_id, referral_id, counselor_id, counselor_name, checklist_json, notes, created_at, updated_at
         FROM referral_intervention
         WHERE referral_id = ?
-        LIMIT 1
+        ORDER BY created_at DESC, intervention_id DESC
     ');
     if (!$stmt) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
@@ -62,19 +76,18 @@ if ($method === 'GET') {
         send_json(500, ['success' => false, 'message' => 'Execute failed: ' . $stmt->error]);
     }
 
-    $row = $stmt->get_result()->fetch_assoc();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $row['intervention_id'] = (int)$row['intervention_id'];
+        $row['referral_id'] = (int)$row['referral_id'];
+        $row['checklist'] = json_decode((string)($row['checklist_json'] ?? '{}'), true) ?: new stdClass();
+        unset($row['checklist_json']);
+        $rows[] = $row;
+    }
     $stmt->close();
 
-    if (!$row) {
-        send_json(200, ['success' => true, 'data' => null]);
-    }
-
-    $row['intervention_id'] = (int)$row['intervention_id'];
-    $row['referral_id'] = (int)$row['referral_id'];
-    $row['checklist'] = json_decode((string)($row['checklist_json'] ?? '{}'), true) ?: new stdClass();
-    unset($row['checklist_json']);
-
-    send_json(200, ['success' => true, 'data' => $row]);
+    send_json(200, ['success' => true, 'data' => $rows]);
 }
 
 if ($method === 'POST') {
@@ -95,17 +108,17 @@ if ($method === 'POST') {
         send_json(400, ['success' => false, 'message' => 'referral_id is required']);
     }
 
+    $hasActivity = array_filter($checklist, fn($v) => $v);
+    if (empty($hasActivity) && $notes === '') {
+        send_json(400, ['success' => false, 'message' => 'Check at least one activity or add a note before saving']);
+    }
+
     $checklistJson = json_encode($checklist, JSON_UNESCAPED_UNICODE);
 
     $stmt = $conn->prepare('
         INSERT INTO referral_intervention (
             referral_id, counselor_id, counselor_name, checklist_json, notes
         ) VALUES (?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-            counselor_id = VALUES(counselor_id),
-            counselor_name = VALUES(counselor_name),
-            checklist_json = VALUES(checklist_json),
-            notes = VALUES(notes)
     ');
     if (!$stmt) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
@@ -114,9 +127,36 @@ if ($method === 'POST') {
     if (!$stmt->execute()) {
         send_json(500, ['success' => false, 'message' => 'Failed to save intervention: ' . $stmt->error]);
     }
+    $interventionId = $stmt->insert_id;
     $stmt->close();
 
-    send_json(200, ['success' => true, 'message' => 'Intervention activities saved.']);
+    // NEW: Reason-based intervention suggestions — every "Other" chip
+    // (checklist.other_interventions, set by the counselor typing/picking
+    // one in referral-status.js) is recorded against intervention_suggestions
+    // (creating it on first use, bumping UsageCount after that) and linked to
+    // this referral's own Reason for Referral, so the same list of reasons
+    // suggests it again next time — see api/intervention-suggestions.php.
+    $otherInterventions = is_array($checklist['other_interventions'] ?? null) ? $checklist['other_interventions'] : [];
+    if (!empty($otherInterventions)) {
+        $referralStmt = $conn->prepare('SELECT Reason FROM referral WHERE ReferralID = ?');
+        $referralStmt->bind_param('i', $referralId);
+        $referralStmt->execute();
+        $referralRow = $referralStmt->get_result()->fetch_assoc();
+        $referralStmt->close();
+
+        $reasons = split_referral_reasons($referralRow['Reason'] ?? '');
+        foreach ($otherInterventions as $interventionName) {
+            if (is_string($interventionName) && trim($interventionName) !== '') {
+                record_intervention_usage($conn, $interventionName, $reasons);
+            }
+        }
+    }
+
+    send_json(201, [
+        'success' => true,
+        'message' => 'Intervention session saved.',
+        'data' => ['intervention_id' => $interventionId]
+    ]);
 }
 
 send_json(405, ['success' => false, 'message' => 'Method not allowed']);

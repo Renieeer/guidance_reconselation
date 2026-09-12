@@ -37,7 +37,7 @@ try {
         send_json_error(403, 'Only guidance staff can view documents');
     }
 
-    $stmt = $conn->prepare('SELECT stored_filename, mime_type, original_filename, school_attended FROM documents WHERE document_id = ?');
+    $stmt = $conn->prepare('SELECT file_data, mime_type, original_filename, school_attended FROM documents WHERE document_id = ?');
     if (!$stmt) {
         send_json_error(500, 'Prepare failed: ' . $conn->error);
     }
@@ -52,17 +52,15 @@ try {
     if ($row['school_attended'] !== $school) {
         send_json_error(403, "This document isn't from your school");
     }
-
-    $filePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'documents' . DIRECTORY_SEPARATOR . $row['stored_filename'];
-    if (!is_file($filePath)) {
+    if ($row['file_data'] === null) {
         send_json_error(404, 'File is missing from storage');
     }
 
     header('Content-Type: ' . $row['mime_type']);
-    header('Content-Length: ' . filesize($filePath));
+    header('Content-Length: ' . strlen($row['file_data']));
     header('Content-Disposition: inline; filename="' . addslashes($row['original_filename']) . '"');
     header('Cache-Control: private, max-age=3600');
-    readfile($filePath);
+    echo $row['file_data'];
     exit;
 } catch (Throwable $e) {
     send_json_error(500, 'Server error: ' . $e->getMessage());

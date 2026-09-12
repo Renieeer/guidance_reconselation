@@ -60,6 +60,12 @@ try {
     // below still keeps a permanent copy of it either way.
     $stageNote = isset($payload['stage_note']) ? trim((string)$payload['stage_note']) : '';
     $changedBy = trim((string)($payload['counselor_name'] ?? ''));
+    // Set once, by confirmConsentDecision() at Stage 3 — every other caller
+    // (a plain "Advance to Next Stage" click, Stage 2's gate, etc.) omits
+    // these, and the COALESCE below leaves whatever was already on file
+    // untouched rather than blanking it out on every unrelated update.
+    $consentStudent = trim((string)($payload['consent_student'] ?? ''));
+    $consentParent = trim((string)($payload['consent_parent'] ?? ''));
 
     if ($referralId === '' || $stage <= 0 || $status === '') {
         send_json(400, ['success' => false, 'message' => 'Missing required fields']);
@@ -87,12 +93,21 @@ try {
     $resolvedReferralId = (int)$currentRow['ReferralID'];
     $fromStage = (int)$currentRow['stage'];
 
-    $stmt = $conn->prepare("UPDATE referral SET stage = ?, status = ?, stage_note = NULLIF(?, ''), updated_at = NOW() WHERE ReferralID = ? OR referral_code = ?");
+    $stmt = $conn->prepare("
+        UPDATE referral SET
+            stage = ?,
+            status = ?,
+            stage_note = NULLIF(?, ''),
+            consent_student = COALESCE(NULLIF(?, ''), consent_student),
+            consent_parent = COALESCE(NULLIF(?, ''), consent_parent),
+            updated_at = NOW()
+        WHERE ReferralID = ? OR referral_code = ?
+    ");
     if (!$stmt) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }
 
-    $stmt->bind_param('issss', $stage, $status, $stageNote, $referralId, $referralCode);
+    $stmt->bind_param('issssss', $stage, $status, $stageNote, $consentStudent, $consentParent, $referralId, $referralCode);
 
     if (!$stmt->execute()) {
         send_json(500, ['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
@@ -113,7 +128,7 @@ try {
         $logStmt->close();
     }
 
-    $fetch = $conn->prepare('SELECT ReferralID AS id, referral_code, student_name, StudentID AS student_id, Grade AS grade, section, age, gender, Reason AS referral_reason, description, intervention_attempts, observed_behaviors, parent_guardian, parent_contact, parent_email, family_background, urgency, TeacherID AS teacher_id, teacher_name, teacher_contact, school_attended, student_school, stage, status, stage_note, date_submitted, updated_at FROM referral WHERE ReferralID = ? OR referral_code = ? LIMIT 1');
+    $fetch = $conn->prepare('SELECT ReferralID AS id, referral_code, student_name, StudentID AS student_id, Grade AS grade, section, age, gender, Reason AS referral_reason, description, intervention_attempts, observed_behaviors, parent_guardian, parent_contact, parent_email, family_background, urgency, TeacherID AS teacher_id, teacher_name, teacher_contact, school_attended, student_school, stage, status, stage_note, consent_student, consent_parent, date_submitted, updated_at FROM referral WHERE ReferralID = ? OR referral_code = ? LIMIT 1');
     if (!$fetch) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }

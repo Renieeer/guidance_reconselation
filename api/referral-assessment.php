@@ -1,8 +1,14 @@
 <?php
+// Streaming a single file (?view=<id>) bypasses the JSON header below —
+// it needs to send the file's own Content-Type instead.
+$isView = $_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['view']);
+
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
-header('Content-Type: application/json');
+if (!$isView) {
+    header('Content-Type: application/json');
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -19,18 +25,13 @@ function send_json(int $statusCode, array $payload): void {
 
 // Stage 2 (Initial Risk Assessment) uploads — the completed assessment
 // document a counselor attaches for a referral, same shape as Stage 3's
-// referral_consent.php but a separate table/folder since they belong to
-// different stages. Files live outside webroot execution reach via
-// uploads/assessment-documents/.htaccess (blocks script execution +
-// directory listing, written out below if missing) and are re-named on
-// disk so the original filename never controls a path.
-$assessmentUploadDir = __DIR__ . '/../uploads/assessment-documents/';
-// Relative (not root-relative) so it resolves correctly regardless of
-// whether the app is served from a /guidancemanagment/ subfolder or its
-// own vhost root — every page that renders this link lives two levels
-// down at pages/<role>/*.php.
-$assessmentPublicPath = '../../uploads/assessment-documents/';
+// referral_consent.php but a separate table since they belong to different
+// stages. Lives in file_data (a BLOB) rather than on disk — a plain
+// uploads/ folder turned out to not reliably survive on this host, silently
+// orphaning every row that pointed at a now-missing file. stored_filename
+// is kept only as a legacy/reference column, no longer where the bytes live.
 $assessmentAllowedExt = ['pdf', 'jpg', 'jpeg', 'png'];
+$assessmentAllowedMime = ['application/pdf', 'image/jpeg', 'image/png'];
 $assessmentMaxBytes = 5 * 1024 * 1024; // 5 MB
 
 function ensure_referral_assessment_table(mysqli $conn): void {
@@ -41,26 +42,55 @@ function ensure_referral_assessment_table(mysqli $conn): void {
             original_filename VARCHAR(255) NOT NULL,
             stored_filename VARCHAR(255) NOT NULL,
             file_size INT DEFAULT NULL,
+            file_data LONGBLOB DEFAULT NULL,
+            mime_type VARCHAR(100) DEFAULT NULL,
             uploaded_by VARCHAR(150) DEFAULT NULL,
             uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (assessment_id),
             KEY idx_referral_id (referral_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     ");
+
+    // Defensive migration for installations where this table already
+    // existed before file_data/mime_type were added.
+    foreach (['file_data' => 'LONGBLOB DEFAULT NULL', 'mime_type' => 'VARCHAR(100) DEFAULT NULL'] as $col => $def) {
+        $result = $conn->query("SHOW COLUMNS FROM referral_assessment LIKE '$col'");
+        if ($result && $result->num_rows === 0) {
+            $conn->query("ALTER TABLE referral_assessment ADD COLUMN $col $def");
+        }
+    }
 }
 
 ensure_referral_assessment_table($conn);
 
-if (!is_dir($assessmentUploadDir)) {
-    mkdir($assessmentUploadDir, 0755, true);
-}
-
-$assessmentHtaccess = $assessmentUploadDir . '.htaccess';
-if (!file_exists($assessmentHtaccess)) {
-    file_put_contents($assessmentHtaccess, "Options -Indexes\n\n<FilesMatch \"\\.(php|phtml|php3|php4|php5|pl|py|jsp|asp|aspx|sh|cgi|exe)$\">\n    <IfModule mod_authz_core.c>\n        Require all denied\n    </IfModule>\n    <IfModule !mod_authz_core.c>\n        Order allow,deny\n        Deny from all\n    </IfModule>\n</FilesMatch>\n");
-}
-
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Streams one file's bytes back out — this is what every 'url' below
+// actually points at, instead of a static uploads/ path.
+if ($isView) {
+    $assessmentId = (int)($_GET['view'] ?? 0);
+    if ($assessmentId <= 0) {
+        http_response_code(400);
+        exit;
+    }
+
+    $stmt = $conn->prepare('SELECT original_filename, file_data, mime_type FROM referral_assessment WHERE assessment_id = ?');
+    $stmt->bind_param('i', $assessmentId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row || $row['file_data'] === null) {
+        http_response_code(404);
+        exit;
+    }
+
+    header('Content-Type: ' . ($row['mime_type'] ?: 'application/octet-stream'));
+    header('Content-Length: ' . strlen($row['file_data']));
+    header('Content-Disposition: inline; filename="' . addslashes($row['original_filename']) . '"');
+    echo $row['file_data'];
+    exit;
+}
 
 if ($method === 'GET') {
     $referralId = (int)($_GET['referral_id'] ?? 0);
@@ -69,7 +99,7 @@ if ($method === 'GET') {
     }
 
     $stmt = $conn->prepare('
-        SELECT assessment_id, referral_id, original_filename, stored_filename, file_size, uploaded_by, uploaded_at
+        SELECT assessment_id, referral_id, original_filename, file_size, uploaded_by, uploaded_at
         FROM referral_assessment
         WHERE referral_id = ?
         ORDER BY uploaded_at DESC, assessment_id DESC
@@ -92,7 +122,7 @@ if ($method === 'GET') {
             'fileSize' => (int)$row['file_size'],
             'uploadedBy' => $row['uploaded_by'],
             'uploadedAt' => $row['uploaded_at'],
-            'url' => $assessmentPublicPath . rawurlencode($row['stored_filename'])
+            'url' => '../../api/referral-assessment.php?view=' . (int)$row['assessment_id']
         ];
     }
     $stmt->close();
@@ -133,28 +163,47 @@ if ($method === 'POST') {
         send_json(400, ['success' => false, 'message' => 'Only PDF, JPG, and PNG files are allowed.']);
     }
 
-    $storedFilename = 'assessment_' . $referralId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-    $destination = $assessmentUploadDir . $storedFilename;
+    // Detected from the file's actual bytes, not the client-supplied
+    // extension — this is what gets served back as the real Content-Type.
+    $mime = @mime_content_type($file['tmp_name']) ?: 'application/octet-stream';
+    if (!in_array($mime, $assessmentAllowedMime, true)) {
+        send_json(400, ['success' => false, 'message' => 'Only PDF, JPG, and PNG files are allowed.']);
+    }
 
-    if (!move_uploaded_file($file['tmp_name'], $destination)) {
-        send_json(500, ['success' => false, 'message' => 'Failed to save the uploaded file']);
+    $fileData = file_get_contents($file['tmp_name']);
+    if ($fileData === false) {
+        send_json(500, ['success' => false, 'message' => 'Failed to read the uploaded file']);
     }
 
     $fileSize = (int)$file['size'];
+    // Legacy-shaped reference value — nothing reads this off disk anymore,
+    // it's just kept so existing rows/reports that show a filename-like
+    // value keep looking the same.
+    $storedFilename = 'assessment_' . $referralId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
 
     $stmt = $conn->prepare('
-        INSERT INTO referral_assessment (referral_id, original_filename, stored_filename, file_size, uploaded_by)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO referral_assessment (referral_id, original_filename, stored_filename, file_size, file_data, mime_type, uploaded_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ');
     if (!$stmt) {
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }
-    $stmt->bind_param('issis', $referralId, $originalName, $storedFilename, $fileSize, $uploadedBy);
+    $stmt->bind_param('ississs', $referralId, $originalName, $storedFilename, $fileSize, $fileData, $mime, $uploadedBy);
     if (!$stmt->execute()) {
         send_json(500, ['success' => false, 'message' => 'Failed to record upload: ' . $stmt->error]);
     }
     $assessmentId = $stmt->insert_id;
     $stmt->close();
+
+    // Same "first real action flips status" rule as api/referral-screening.php —
+    // uploading the Stage 2 assessment document is real work on this referral,
+    // so it shouldn't still read "pending" afterward.
+    $statusStmt = $conn->prepare("UPDATE referral SET status = 'in-progress' WHERE ReferralID = ? AND status = 'pending'");
+    if ($statusStmt) {
+        $statusStmt->bind_param('i', $referralId);
+        $statusStmt->execute();
+        $statusStmt->close();
+    }
 
     send_json(201, [
         'success' => true,
@@ -164,7 +213,7 @@ if ($method === 'POST') {
             'fileName' => $originalName,
             'fileSize' => $fileSize,
             'uploadedBy' => $uploadedBy,
-            'url' => $assessmentPublicPath . rawurlencode($storedFilename)
+            'url' => '../../api/referral-assessment.php?view=' . $assessmentId
         ]
     ]);
 }

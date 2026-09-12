@@ -51,8 +51,8 @@ function renderCoordinatorDashboard(referrals) {
     // Calculate statistics
     const total = referrals.length;
     const pending = referrals.filter(r => r.stage === 1 || r.stage === 2).length;
-    const active = referrals.filter(r => r.stage >= 3 && r.stage < 6).length;
-    const closed = referrals.filter(r => r.stage === 6).length;
+    const active = referrals.filter(r => r.stage >= 3 && r.stage < 7).length;
+    const closed = referrals.filter(r => r.stage === 7).length;
 
     // Update stats
     document.getElementById('totalReferrals').textContent = total;
@@ -66,7 +66,7 @@ function renderCoordinatorDashboard(referrals) {
     document.getElementById('stageFollowUp').textContent = referrals.filter(r => r.stage === 3).length;
     document.getElementById('stageCounseling').textContent = referrals.filter(r => r.stage === 5).length;
     document.getElementById('stageProgress').textContent = referrals.filter(r => r.stage === 4).length;
-    document.getElementById('stageClosed').textContent = referrals.filter(r => r.stage === 6).length;
+    document.getElementById('stageClosed').textContent = referrals.filter(r => r.stage === 7).length;
 
     // Already sorted newest-first by the API (date_submitted DESC).
     loadRecentReferrals(referrals.slice(0, 5));
@@ -88,7 +88,7 @@ function loadRecentReferrals(referrals) {
             <td>${escapeHtml(referral.student_name)}</td>
             <td>${escapeHtml(referral.referral_reason)}</td>
             <td>${escapeHtml(referral.teacher_name)}</td>
-            <td>${createBadge(getStatusLabel(referral.stage))}</td>
+            <td>${createBadge(referral.status || getStatusLabel(referral.stage))}</td>
             <td>
                 <a href="referrals.php?id=${encodeURIComponent(referral.id)}" class="btn btn-sm btn-primary">Review</a>
             </td>

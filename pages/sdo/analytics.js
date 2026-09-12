@@ -36,8 +36,8 @@ function renderAnalytics(referrals) {
     // Status stats
     const sub = referrals.filter(r => r.stage === 1).length;
     const review = referrals.filter(r => r.stage === 2).length;
-    const inProcess = referrals.filter(r => r.stage >= 3 && r.stage < 6).length;
-    const completed = referrals.filter(r => r.stage === 6).length;
+    const inProcess = referrals.filter(r => r.stage >= 3 && r.stage < 7).length;
+    const completed = referrals.filter(r => r.stage === 7).length;
 
     document.getElementById('statusSub').textContent = sub;
     document.getElementById('statusReview').textContent = review;
@@ -47,7 +47,7 @@ function renderAnalytics(referrals) {
     document.getElementById('monthlyAvg').textContent = Math.ceil(total / 12) + ' referrals/month';
 
     const resolutionDays = referrals
-        .filter(r => r.stage === 6 && r.date_submitted && r.updated_at)
+        .filter(r => r.stage === 7 && r.date_submitted && r.updated_at)
         .map(r => Math.max(0, Math.floor((new Date(r.updated_at) - new Date(r.date_submitted)) / (1000 * 60 * 60 * 24))));
     document.getElementById('avgResTime').textContent = resolutionDays.length > 0
         ? Math.round(resolutionDays.reduce((sum, d) => sum + d, 0) / resolutionDays.length) + ' days'

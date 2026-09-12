@@ -125,6 +125,15 @@ function ensureReferralSchema(mysqli $conn): void {
         // student/parent agreement routed it to Stage 4 or Stage 5. The
         // stage number alone can't tell those two Stage 5 arrivals apart.
         'stage_note' => 'ALTER TABLE referral ADD COLUMN stage_note VARCHAR(255) NULL AFTER status',
+        // The actual Stage 3 Yes/No answers, kept separately from stage_note
+        // (which the next transition overwrites/clears) so Stage 5 can still
+        // reliably tell whether the student/parent originally consented to
+        // counseling, long after the referral has moved past Stage 3-4. Set
+        // once by confirmConsentDecision() (referral-status.js) via
+        // update-referral.php; NULL for a referral that hasn't reached
+        // Stage 3 yet.
+        'consent_student' => 'ALTER TABLE referral ADD COLUMN consent_student VARCHAR(10) NULL AFTER stage_note',
+        'consent_parent' => 'ALTER TABLE referral ADD COLUMN consent_parent VARCHAR(10) NULL AFTER consent_student',
         'date_submitted' => 'ALTER TABLE referral ADD COLUMN date_submitted DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER status',
         'updated_at' => 'ALTER TABLE referral ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER date_submitted',
         // Multiple people (e.g. an offender and a victim in the same incident)
@@ -428,6 +437,8 @@ try {
                 COALESCE(stage, 1) AS stage,
                 COALESCE(status, 'pending') AS status,
                 stage_note,
+                consent_student,
+                consent_parent,
                 date_submitted,
                 updated_at
             FROM referral

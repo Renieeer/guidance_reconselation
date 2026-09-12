@@ -949,6 +949,97 @@ body.auth-page {
     opacity: 1;
 }
 
+/* NEW: Reason-based intervention suggestions — the Stage 4 "Other"
+   tag/chip input + autocomplete dropdown (see renderInterventionChecklist()
+   in referral-status.js/referrals.js). Reuses the same tokens as
+   .form-group input/textarea above instead of introducing a new look. */
+.intervention-other-wrap {
+    margin-top: 10px;
+}
+
+.intervention-tag-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.intervention-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--info-bg);
+    color: var(--navy-700);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.intervention-tag-chip button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0;
+}
+
+.intervention-tag-input-wrap {
+    position: relative;
+}
+
+.intervention-tag-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e7edf4;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: var(--transition);
+    background-color: #f5f7fa;
+    color: var(--text-color);
+}
+
+.intervention-tag-input:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    background-color: white;
+    box-shadow: 0 0 0 4px rgba(15, 42, 79, 0.1), inset 0 0 0 1px rgba(15, 42, 79, 0.05);
+}
+
+/* Overlays instead of pushing the Session Notes field below it. */
+.intervention-tag-suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e7edf4;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 42, 79, 0.12);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 20;
+}
+
+.intervention-tag-suggestion {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.intervention-tag-suggestion:hover {
+    background: #f5f7fa;
+}
+
+.intervention-tag-suggestion-add {
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+
 .referral-sheet-thanks {
     padding: 26px 24px;
     text-align: center;
@@ -4293,6 +4384,15 @@ tr:hover {
     color: var(--navy-700);
 }
 
+/* Flags a referral-timeline step that's a placeholder, not a real logged
+   event (see the stage-gap fill-in in shBuildReferralThreadEntry) — muted
+   gray so it visually reads as "nothing recorded" rather than as another
+   status like the colored pills around it. */
+.badge-gap {
+    background: #eceff3;
+    color: #5a6b80;
+}
+
 .badge-completed {
     background: var(--ok-bg);
     color: var(--ok);
@@ -4319,6 +4419,51 @@ tr:hover {
 .badge-victim {
     background: var(--info-bg);
     color: var(--info);
+}
+
+/* An uploaded file/picture (assessment document, consent file, etc.) shown
+   as a clean clickable card instead of a raw underlined hyperlink — used
+   wherever a role reviews something a counselor attached (referral-status.js
+   /referrals.js's loadAssessmentFiles(), student-history.js's referral
+   timeline). .file-thumb's onerror swaps to the adjacent .file-chip
+   fallback when the image itself fails to load (e.g. a missing file), so
+   a broken upload still reads as a clean row instead of a broken icon. */
+.file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-color);
+    font-size: 13px;
+    transition: var(--transition);
+}
+
+.file-chip:hover {
+    background: #f9fafb;
+}
+
+.file-chip i {
+    color: #94a3b8;
+}
+
+.file-thumb-link {
+    display: inline-block;
+    margin-top: 8px;
+}
+
+.file-thumb {
+    display: block;
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: 8px;
+    object-fit: contain;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
 }
 
 /* ========== REFERRAL STATUS STAGES ========== */
@@ -7852,6 +7997,37 @@ footer {
 
     body.print-external-referral .main-wrapper,
     body.print-external-referral .main-content {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        width: 100%;
+    }
+
+    /* Same isolation technique as .print-external-referral above, just
+       showing #acknowledgementPrintSheet instead — see printAcknowledgement()
+       in {counselor,other-school}/referral-status.js/referrals.js. Reuses
+       the existing .referral-sheet/.referral-paper styling (already used by
+       the teacher's read-only view of this same saved acknowledgement)
+       rather than a dedicated print stylesheet of its own. */
+    body.print-acknowledgement .card,
+    body.print-acknowledgement .page-hero,
+    body.print-acknowledgement .btn,
+    body.print-acknowledgement .navbar,
+    body.print-acknowledgement .sidebar,
+    body.print-acknowledgement .sidebar-toggle,
+    body.print-acknowledgement .sidebar-overlay,
+    body.print-acknowledgement .alert {
+        display: none !important;
+    }
+
+    body.print-acknowledgement #acknowledgementPrintSheet {
+        display: block !important;
+    }
+
+    body.print-acknowledgement .main-wrapper,
+    body.print-acknowledgement .main-content {
         display: block !important;
         margin: 0 !important;
         padding: 0 !important;

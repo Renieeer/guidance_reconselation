@@ -789,11 +789,11 @@ function renderRecentCases() {
                     <i class="bi bi-people"></i> View
                 </button>
                 ${record.status !== 'closed' ? `
-                <button type="button" class="btn btn-outline btn-sm" onclick="openAppointModal('${record.id}')">
-                    <i class="bi bi-calendar-plus"></i> Appoint
+                <button type="button" class="btn btn-success btn-sm" onclick="openAppointModal('${record.id}')">
+                    <i class="bi bi-calendar-plus"></i> Add Counseling Session
                 </button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="openFollowUpModal('${record.id}')">
-                    <i class="bi bi-chat-dots"></i> Case category
+                <button type="button" class="btn btn-warning btn-sm" onclick="openFollowUpModal('${record.id}')">
+                    <i class="bi bi-chat-dots"></i> Add Student Follow-up
                 </button>
                 <button type="button" class="btn btn-outline btn-sm btn-danger" onclick="endCase('${record.id}')">
                     <i class="bi bi-check-circle"></i> End case
@@ -1181,13 +1181,20 @@ function renderFollowUpNoteTile(record, s, autoExpand) {
     const categories = getCategoriesForRecord(record);
     const lastCategoryId = last?.categoryId || '';
 
+    // Counts every follow-up already on record for this student in this
+    // case, so it's clear at a glance whether this is their first session
+    // or a continuation — matches the "Session N" labeling already used on
+    // the Student History timeline for the same underlying records.
+    const sessionNumber = existing.length + 1;
+    const sessionLabel = sessionNumber === 1 ? 'First session' : `Session ${sessionNumber}`;
+
     return `
     <div class="fu-note-tile ${autoExpand && hasNote ? 'expanded' : ''}">
         <button type="button" class="fu-note-tile-header" onclick="toggleFollowUpNoteTile(this)">
             <div class="fu-student-avatar">${initials(s.name)}</div>
             <div class="fu-note-tile-meta">
                 <span class="fu-note-tile-name">${escapeHtml(s.name)}</span>
-                <span class="fu-note-tile-sub">${escapeHtml(s.grade)}</span>
+                <span class="fu-note-tile-sub">${escapeHtml(s.grade)} &middot; ${sessionLabel}</span>
             </div>
             ${hasNote ? '<span class="fu-recorded-dot" title="Has follow-up"></span>' : ''}
             <i class="bi bi-chevron-down fu-note-tile-caret"></i>
@@ -1200,13 +1207,14 @@ function renderFollowUpNoteTile(record, s, autoExpand) {
                     `<option value="${escapeHtml(c.CaseId)}" data-name="${escapeHtml(c.CategoryName)}" ${lastCategoryId === c.CaseId ? 'selected' : ''}>${escapeHtml(c.CategoryName)}</option>`
                 ).join('')}
             </select>
+            <span class="fu-form-label fu-note-category-label">Comment — behavior or action taken</span>
             <textarea
                 class="fu-form-textarea fu-note-textarea"
                 data-student-id="${escapeHtml(s.id)}"
                 data-student-name="${escapeHtml(s.name)}"
                 rows="3"
-                placeholder="Note for ${escapeHtml(s.name)}…"
-            >${escapeHtml(last?.initialAction || '')}</textarea>
+                placeholder="Describe ${escapeHtml(s.name)}'s behavior or action this session…"
+            ></textarea>
         </div>
     </div>`;
 }

@@ -85,8 +85,8 @@ function loadReferralDetail(referral) {
     document.getElementById('detailGender').textContent = referral.gender || 'N/A';
     document.getElementById('detailDateSubmitted').textContent = formatDate(referral.date_submitted);
     document.getElementById('detailUrgency').textContent = referral.urgency || 'normal';
-    document.getElementById('detailStatus').innerHTML = createBadge(getStatusLabel(referral.stage));
-    document.getElementById('detailStage').textContent = `${referral.stage}/6`;
+    document.getElementById('detailStatus').innerHTML = createBadge(referral.status || getStatusLabel(referral.stage));
+    document.getElementById('detailStage').textContent = `${referral.stage}/7`;
     document.getElementById('detailStageNote').textContent = referral.stage_note ? ` — ${referral.stage_note}` : '';
     document.getElementById('detailDescription').textContent = referral.description || 'Not provided';
     document.getElementById('detailIntervention').textContent = referral.intervention_attempts || 'Not provided';
@@ -100,8 +100,61 @@ function loadReferralDetail(referral) {
     // Load stage progress
     loadStageProgress();
 
+    // Load the Stage 2 assessment document (read-only — coordinators review it,
+    // the counselor is the one who uploads it in referral-status.js/referrals.js).
+    loadAssessmentFiles(referral.id);
+
     // Load coordinator actions
     loadCoordinatorActions();
+}
+
+// Same api/referral-assessment.php data and picture-preview rendering as
+// counselor/referral-status.js and other-school/referrals.js's
+// loadAssessmentFiles() — this copy is read-only, with no upload form.
+function loadAssessmentFiles(referralId) {
+    const container = document.getElementById('assessmentFileList');
+    if (!container) return;
+    container.innerHTML = '<p class="text-muted">Loading uploaded documents...</p>';
+
+    fetch(`../../api/referral-assessment.php?referral_id=${referralId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to load assessment documents');
+            const rows = result.data || [];
+            if (rows.length === 0) {
+                container.innerHTML = '<p class="text-muted">No assessment document uploaded yet.</p>';
+                return;
+            }
+            container.innerHTML = rows.map(row => {
+                const ext = String(row.fileName || '').split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+                // this.closest('a').nextElementSibling is the .file-chip fallback
+                // right after the thumbnail link below — swapped in if the
+                // image itself 404s, so a missing/broken file still reads as
+                // a clean row instead of a broken-image icon.
+                const preview = isImage
+                    ? `<a href="${row.url}" target="_blank" rel="noopener" class="file-thumb-link"><img src="${row.url}" alt="${escapeHtml(row.fileName)}" class="file-thumb" onerror="this.closest('a').style.display='none'; this.closest('a').nextElementSibling.style.display='inline-flex';"></a><a href="${row.url}" target="_blank" rel="noopener" class="file-chip" style="display:none;"><i class="bi bi-file-earmark-image"></i> ${escapeHtml(row.fileName)}</a>`
+                    : `<a href="${row.url}" target="_blank" rel="noopener" class="file-chip"><i class="bi bi-file-earmark-check"></i> ${escapeHtml(row.fileName)}</a>`;
+                return `
+                <div style="background:#f9fafb; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
+                    ${preview}
+                    <div><small class="text-muted">${((row.fileSize || 0) / 1024).toFixed(1)} KB • Uploaded by ${escapeHtml(row.uploadedBy || 'Unknown')} on ${formatDate(row.uploadedAt)}</small></div>
+                </div>
+            `;
+            }).join('');
+        })
+        .catch(error => {
+            container.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`;
+        });
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function loadStageProgress() {
@@ -113,11 +166,11 @@ function loadCoordinatorActions() {
     const container = document.getElementById('coordinatorActionsContainer');
     let html = '';
 
-    if (currentReferral.stage < 6) {
+    if (currentReferral.stage < 7) {
         html += `<button class="btn btn-primary" onclick="openUpdateStageModal()">Update Stage</button>`;
     }
 
-    if (currentReferral.stage === 6) {
+    if (currentReferral.stage === 7) {
         html += `<p style="color: #999; font-style: italic;">This case is closed. No further actions available.</p>`;
     } else {
         html += `<button class="btn btn-secondary" style="margin-left: 10px;" onclick="openRejectModal()">Reject Referral</button>`;
@@ -146,7 +199,7 @@ function saveStageUpdate() {
         body: JSON.stringify({
             referral_id: currentReferral.id,
             stage: newStage,
-            status: newStage === 6 ? 'completed' : (newStage === 1 || newStage === 2 ? 'pending' : 'in-progress'),
+            status: newStage === 7 ? 'completed' : (newStage === 1 || newStage === 2 ? 'pending' : 'in-progress'),
             stage_note: notes,
             counselor_id: user?.id || '',
             counselor_name: user?.name || ''
@@ -181,7 +234,7 @@ function openRejectModal() {
             },
             body: JSON.stringify({
                 referral_id: currentReferral.id,
-                stage: 6,
+                stage: 7,
                 status: 'rejected',
                 stage_note: 'Rejected',
                 counselor_id: user?.id || '',
@@ -230,8 +283,8 @@ function loadReferralsList() {
             <td>${referral.teacher_name || 'Unknown'}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${referral.urgency || 'normal'}</td>
-            <td>${referral.stage}/6</td>
-            <td>${createBadge(getStatusLabel(referral.stage))}</td>
+            <td>${referral.stage}/7</td>
+            <td>${createBadge(referral.status || getStatusLabel(referral.stage))}</td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="selectReferral(${referral.id})">Review</button>
             </td>
@@ -255,7 +308,7 @@ function applyFilters() {
     let filtered = allReferrals;
 
     if (statusFilter) {
-        filtered = filtered.filter(r => getStatusLabel(r.stage) === statusFilter);
+        filtered = filtered.filter(r => (r.status || getStatusLabel(r.stage)) === statusFilter);
     }
 
     if (urgencyFilter) {
@@ -283,8 +336,8 @@ function applyFilters() {
             <td>${referral.teacher_name || 'Unknown'}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${referral.urgency || 'normal'}</td>
-            <td>${referral.stage}/6</td>
-            <td>${createBadge(getStatusLabel(referral.stage))}</td>
+            <td>${referral.stage}/7</td>
+            <td>${createBadge(referral.status || getStatusLabel(referral.stage))}</td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick="selectReferral(${referral.id})">Review</button>
             </td>
@@ -306,7 +359,8 @@ function getStatusLabel(stage) {
         3: 'in-progress',
         4: 'in-progress',
         5: 'in-progress',
-        6: 'completed'
+        6: 'in-progress',
+        7: 'completed'
     };
     return labels[stage] || 'pending';
 }

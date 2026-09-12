@@ -73,8 +73,8 @@ async function loadDistrictOptions() {
 
 function renderOverallStats() {
     const total = sdoReferrals.length;
-    const active = sdoReferrals.filter(r => r.stage >= 3 && r.stage < 6).length;
-    const completed = sdoReferrals.filter(r => r.stage === 6).length;
+    const active = sdoReferrals.filter(r => r.stage >= 3 && r.stage < 7).length;
+    const completed = sdoReferrals.filter(r => r.stage === 7).length;
     const resolutionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
     const schoolsReporting = new Set(
         sdoReferrals.map(r => r.school_attended || r.student_school).filter(Boolean)

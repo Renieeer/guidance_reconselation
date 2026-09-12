@@ -694,7 +694,8 @@ const SH_STAGE_NAMES = {
     3: 'Parent Call-up/Consent',
     4: 'Intervention',
     5: 'Counseling',
-    6: 'Student Follow-up'
+    6: 'Student Follow-up',
+    7: 'Case Closing'
 };
 
 // Turns one referral_stage_log row (see api/update-referral.php) into a
@@ -718,14 +719,19 @@ function shDescribeStageTransition(fromStage, toStage, note) {
         '1-2': 'Completed the Interview/Background check-up and moved to Initial Risk Assessment.',
         '2-3': 'Completed the assessment test and moved to Parent Call-up/Consent.',
         '4-5': 'Completed intervention activities and moved to Counseling.',
-        '5-6': 'Completed counseling sessions and moved to Student Follow-up.'
+        '5-6': 'Completed counseling sessions and moved to Student Follow-up.',
+        '6-7': 'Completed Student Follow-up and closed the case.'
     };
     if (specific[key]) return specific[key];
 
     const fromName = SH_STAGE_NAMES[fromStage] || `Stage ${fromStage}`;
     const toName = SH_STAGE_NAMES[toStage] || `Stage ${toStage}`;
 
-    if (toStage === 6 && fromStage !== 5) {
+    // Case Closing (Stage 7) is the actual last stage now — closeCase()
+    // (referrals.js) can send a referral there from any stage, not just
+    // after Student Follow-up (6), so anything else landing on 7 is an
+    // early close rather than the normal end-of-workflow path above.
+    if (toStage === 7 && fromStage !== 6) {
         return note ? `Case closed early (${note}) while at ${fromName}.` : `Case closed early while at ${fromName}.`;
     }
     return note ? `Moved from ${fromName} to ${toName} — ${note}.` : `Moved from ${fromName} to ${toName}.`;
@@ -880,21 +886,36 @@ function shBuildCaseThreadEntry(c, followUpsRaw) {
    assessment note logged against it (Stage 2's screenings) — as one
    Day 1/2/3... thread of what actually happened, same pattern as a
    counseling case's thread above. No synthetic "current stage" summary is
-   appended — a static 6-stage indicator isn't itself an event, and the
+   appended — a static 7-stage indicator isn't itself an event, and the
    collapsed row's status pill already covers "where things stand"; new
    days only appear here once a coordinator/counselor logs a real
    follow-up or update. Collapses to just its summary header by default
    (.sh-referral-thread, toggled in shInit()'s click delegation) — every
    referral renders this way now, even one with no screenings yet (just a
    single "Day 1 — Submitted" entry), instead of the old flat field list. */
+// Same image-vs-file-link treatment as loadAssessmentFiles() in
+// other-school/referrals.js — an actual picture thumbnail for an image
+// upload, a plain file link for anything else (e.g. a PDF).
+function shRenderStepFilePreview(url, fileName) {
+    const ext = String(fileName || '').split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+    if (!isImage) {
+        return `<a href="${url}" target="_blank" rel="noopener" class="file-chip"><i class="fas fa-file-lines"></i> ${esc(fileName)}</a>`;
+    }
+    // nextElementSibling is the .file-chip fallback right after this link —
+    // swapped in if the image itself 404s (e.g. a missing file), so a
+    // broken upload still reads as a clean row instead of a broken icon.
+    return `<a href="${url}" target="_blank" rel="noopener" class="file-thumb-link"><img src="${url}" alt="${esc(fileName)}" class="file-thumb" onerror="this.closest('a').style.display='none'; this.closest('a').nextElementSibling.style.display='inline-flex';"></a><a href="${url}" target="_blank" rel="noopener" class="file-chip" style="display:none;"><i class="fas fa-image"></i> ${esc(fileName)}</a>`;
+}
+
 function shBuildReferralThreadEntry(r) {
     const day1Parts = [r.referral_reason || 'Referral submitted.'];
     if (r.intervention_attempts) day1Parts.push(`Initial actions taken: ${r.intervention_attempts}`);
     const events = [{
         rawDate: r.date_submitted,
-        label: 'Submitted',
+        title: 'Referral submitted',
+        stage: 1,
         by: r.teacher_name || 'A teacher',
-        verb: 'submitted this referral',
         note: day1Parts.join(' '),
         pill: 'SUBMITTED'
     }];
@@ -910,74 +931,111 @@ function shBuildReferralThreadEntry(r) {
         if (s.observations) parts.push(`Observations: ${s.observations}`);
         events.push({
             rawDate: s.created_at,
-            label: isBackground ? 'Interview/Background' : 'Risk Assessment',
+            title: isBackground ? 'Interview / Background started' : 'Initial Risk Assessment started',
+            stage: isBackground ? 1 : 2,
             by: s.counselor_name || 'A counselor',
-            verb: isBackground ? 'logged an interview / background check-up' : 'logged a risk assessment',
             note: parts.join(' ') || (isBackground ? 'Interview / background check-up recorded.' : 'Risk assessment recorded.'),
             pill: isBackground ? 'INTERVIEWED' : 'ASSESSED'
         });
     });
 
+    // The Stage 2 assessment document itself (see api/referral-assessment.php)
+    // — a separate table from the screening notes above, so it gets its own
+    // step with an inline picture preview (fileUrl/fileName below, rendered
+    // by stepsHtml). Confidential: api/student-history.php omits `assessments`
+    // entirely for role=student callers, so this array is always empty on
+    // the student's own copy of this page (appointment-history.js).
+    (r.assessments || []).forEach(a => {
+        events.push({
+            rawDate: a.uploaded_at,
+            title: 'Assessment document uploaded',
+            stage: 2,
+            by: a.uploaded_by || 'A counselor',
+            note: '',
+            pill: 'DOCUMENT',
+            fileUrl: a.url,
+            fileName: a.file_name
+        });
+    });
+
     // Every stage change this referral has gone through (see
     // api/update-referral.php's referral_stage_log) — narrated in plain
-    // English via shDescribeStageTransition() instead of surfacing the raw
-    // stage_note, so e.g. a Stage 3 disagreement reads as a sentence
-    // explaining what happens next and why, not just "Waiting for
-    // assessment proper".
+    // English via shDescribeStageTransition() for the detail line, and as a
+    // short "{stage that just finished} completed" headline via
+    // SH_STAGE_NAMES for the title — so e.g. a Stage 3 disagreement still
+    // reads as "Parent Call-up/Consent completed" up top, with the sentence
+    // explaining what happens next and why underneath. update-referral.php
+    // logs even a same-stage re-save (e.g. re-confirming a gated decision
+    // without the referral actually moving on) — titling that "completed"
+    // would be wrong since nothing advanced, so those get an honest "update
+    // logged" title instead.
     (r.stage_log || []).forEach(log => {
+        const fromName = SH_STAGE_NAMES[log.from_stage] || `Stage ${log.from_stage}`;
+        const advanced = Number(log.from_stage) !== Number(log.to_stage);
+        const isClosed = Number(log.to_stage) === 7;
         events.push({
             rawDate: log.changed_at,
-            label: `Moved to Stage ${log.to_stage}`,
+            title: isClosed ? 'Case closed' : (advanced ? `${fromName} completed` : `${fromName} — update logged`),
+            stage: log.to_stage,
             by: log.changed_by || 'A counselor',
-            verb: 'updated the referral stage',
             note: shDescribeStageTransition(log.from_stage, log.to_stage, log.note),
-            pill: 'UPDATED'
+            pill: isClosed ? 'CLOSED' : (advanced ? 'UPDATED' : 'NOTE')
         });
     });
 
     events.sort((a, b) => (shParseDate(a.rawDate) || new Date(0)) - (shParseDate(b.rawDate) || new Date(0)));
 
-    // Group events that landed on the same calendar day into one "Day N"
-    // block instead of a new day per event — a referral submitted and
-    // screened the same afternoon is still one day's story, so the day
-    // counter only advances on a real date change, not once per note.
-    const dayKeyOf = (rawDate) => {
-        const d = shParseDate(rawDate);
-        return d ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : String(rawDate || '');
-    };
-    const days = [];
+    // Fill in any stage this referral passed through with nothing logged at
+    // all — e.g. its stage was changed directly in the database, bypassing
+    // update-referral.php's logging, so the events above jump straight from
+    // Stage 1 to Stage 4 with no record of 2-3 ever happening. Rather than
+    // silently skip over that, walk the sorted events tracking the highest
+    // stage confirmed so far and insert a "no record found" placeholder for
+    // every stage number that gets skipped — so every stage 1..current is
+    // represented in the history one way or another.
+    const displayEvents = [];
+    let knownStage = 0;
     events.forEach(ev => {
-        const key = dayKeyOf(ev.rawDate);
-        const current = days[days.length - 1];
-        if (current && current.key === key) {
-            current.events.push(ev);
-        } else {
-            days.push({ key, events: [ev] });
+        const evStage = Number(ev.stage) || knownStage;
+        for (let s = knownStage + 1; s < evStage; s++) {
+            displayEvents.push({
+                rawDate: ev.rawDate,
+                title: `${SH_STAGE_NAMES[s] || `Stage ${s}`} — no record found`,
+                stage: s,
+                by: '—',
+                note: 'Done.',
+                pill: 'GAP'
+            });
         }
+        displayEvents.push(ev);
+        knownStage = Math.max(knownStage, evStage);
     });
 
-    const daysHtml = days.map((day, i) => {
-        const dayNum = i + 1;
-        const headerLabel = [...new Set(day.events.map(ev => ev.label))].join(' + ');
-        const pill = day.events[day.events.length - 1].pill || 'ASSESSED';
-        const notesHtml = day.events.map(ev => `
-            <div class="sh-case-note-row">
-                <span class="sh-case-note-icon"><i class="fas fa-pen"></i></span>
-                <div class="sh-case-note-body">
-                    <div class="sh-case-note-head"><strong>${esc(ev.by)}</strong> ${esc(ev.verb)} &middot; ${esc(shFormatDateTime(ev.rawDate))}</div>
-                    <div class="sh-case-note-text">${esc(ev.note)}</div>
-                </div>
-            </div>`).join('');
+    // UPDATED (a stage actually finished and advanced) reads green like the
+    // rest of the app's "completed" badge; SUBMITTED/INTERVIEWED/ASSESSED/
+    // NOTE are all real work still short of finishing a stage, so they share
+    // the "in-progress" blue; CLOSED/GAP keep their existing red/gray.
+    const PILL_BADGE_CLASS = { GAP: 'badge-gap', CLOSED: 'badge-rejected', UPDATED: 'badge-completed' };
+
+    // Every step logged as its own entry — no merging same-day activity into
+    // one combined "Day N — A + B + C" header (that used to cram, say, a
+    // submission, an interview, and three stage advances made in one
+    // sitting into a single unreadable line). Each step gets its own clear
+    // title, timestamp/actor, and stage/status line instead. The dot marker
+    // is colored to match its pill (see .sh-dot-badge-* in
+    // student-history.css) so the timeline reads at a glance.
+    const stepsHtml = displayEvents.map(ev => {
+        const badgeClass = PILL_BADGE_CLASS[ev.pill] || 'badge-in-progress';
         return `
-        <div class="sh-case-day">
-            <div class="sh-case-day-row">
-                <span class="sh-case-day-badge">${dayNum}</span>
-                <div class="sh-case-day-bar">
-                    <span>Day ${dayNum} — ${esc(headerLabel)}</span>
-                    <span class="sh-case-day-pill">${pill}</span>
-                </div>
+        <div class="sh-referral-step">
+            <span class="sh-referral-step-dot sh-dot-${badgeClass}"></span>
+            <div class="sh-referral-step-body">
+                <div class="sh-referral-step-title">${esc(ev.title)}</div>
+                <div class="sh-referral-step-meta">${esc(shFormatDateTime(ev.rawDate))} &middot; ${esc(ev.by)}</div>
+                <div class="sh-referral-step-stage">Stage ${ev.stage} &middot; <span class="badge ${badgeClass}">${esc(ev.pill)}</span></div>
+                ${ev.note ? `<div class="sh-referral-step-note">${esc(ev.note)}</div>` : ''}
+                ${ev.fileUrl ? shRenderStepFilePreview(ev.fileUrl, ev.fileName) : ''}
             </div>
-            ${notesHtml}
         </div>`;
     }).join('');
 
@@ -996,12 +1054,12 @@ function shBuildReferralThreadEntry(r) {
         parentInfo ? `Parent: ${esc(parentInfo)}` : ''
     ].filter(Boolean).join(' &middot; ');
 
-    // Collapsed-row summary: date of the last activity, plus either an
-    // activity count (once a counselor has actually logged something) or
-    // "Awaiting counselor" for a referral that's just sitting at Day 1.
+    // Collapsed-row summary: date of the last activity, plus either a step
+    // count (once a counselor has actually logged something) or "Awaiting
+    // counselor" for a referral that's just sitting at step 1.
     const dateLabel = shFormatDate(lastEvent.rawDate);
     const summaryLabel = events.length > 1
-        ? `${days.length} day${days.length === 1 ? '' : 's'} &middot; ${events.length} note${events.length === 1 ? '' : 's'}`
+        ? `${events.length} step${events.length === 1 ? '' : 's'} logged`
         : 'Awaiting counselor';
 
     const html = `
@@ -1021,7 +1079,7 @@ function shBuildReferralThreadEntry(r) {
                 <i class="fas fa-chevron-down sh-referral-thread-chevron"></i>
             </div>
             <div class="sh-referral-thread-body">
-                <div class="sh-case-thread-days">${daysHtml}</div>
+                <div class="sh-referral-steps">${stepsHtml}</div>
             </div>
         </div>`;
 

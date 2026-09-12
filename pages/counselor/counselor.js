@@ -47,7 +47,7 @@ function loadReferralStats(school, gradeScope) {
             // (stage >= 3) — earlier stages are still with the teacher/coordinator.
             const assignedReferrals = (result.data || []).filter(r => r.stage >= 3);
 
-            const active = assignedReferrals.filter(r => r.stage >= 4 && r.stage < 6).length;
+            const active = assignedReferrals.filter(r => r.stage >= 4 && r.stage < 7).length;
             const followUps = assignedReferrals.filter(r => r.stage === 3).length;
             const totalStudents = assignedReferrals.length;
 
@@ -117,7 +117,7 @@ function loadRecentReferrals(referrals) {
             <td>${escapeHtml(referral.student_name)}</td>
             <td>${escapeHtml(referral.referral_reason)}</td>
             <td>${formatDate(referral.date_submitted)}</td>
-            <td>${createBadge(getStatusLabel(referral.stage))}</td>
+            <td>${createBadge(referral.status || getStatusLabel(referral.stage))}</td>
             <td>
                 <a href="referral-status.php?id=${encodeURIComponent(referral.id)}" class="btn btn-sm btn-primary">View</a>
             </td>

@@ -115,7 +115,7 @@ try {
         'grade' => $user['Grade'],
         // Root-relative path (no "../../") — see the matching comment on
         // fetch_profile() in api/profile.php for why.
-        'profileImage' => $user['profile_image'] ? ('uploads/profile-images/' . $user['profile_image']) : null
+        'profileImage' => $user['profile_image'] ? ('api/avatar.php?id=' . $user['AccountID'] . '&v=' . urlencode($user['profile_image'])) : null
     ];
 
     // Store in session

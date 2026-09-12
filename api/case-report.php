@@ -228,7 +228,7 @@ if ($action === 'categories') {
         $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
         $types = str_repeat('s', count($schoolNames));
         $stmt = $conn->prepare("
-            SELECT section_id, category_id, students_json
+            SELECT case_uid, section_id, category_id, students_json
             FROM counselor_case_scenarios
             WHERE school_attended IN ($placeholders)$dateSql
         ");
@@ -257,12 +257,56 @@ if ($action === 'categories') {
                     }
                 }
                 $caseRows[] = [
+                    'caseUid' => $row['case_uid'],
                     'sectionId' => (string)$row['section_id'],
                     'categoryId' => trim((string)($row['category_id'] ?? '')),
                     'studentIds' => $ids
                 ];
             }
             $stmt->close();
+
+            // counselor_case_scenarios.category_id is never actually
+            // populated any more — category moved to being recorded per
+            // student, per follow-up (see saveFollowUp() in counseling.js)
+            // instead of once on the case itself — so every case fell into
+            // its section's "uncategorized" bucket here even when its
+            // follow-ups clearly had a category. Backfill each case's
+            // category from its own most recent follow_up row instead,
+            // matching what the counselor's own "Recent drafts" list
+            // already shows (getRecordCategoryNames() in counseling.js).
+            if (!empty($caseRows) && table_exists($conn, 'follow_up')) {
+                $caseUids = array_values(array_unique(array_column($caseRows, 'caseUid')));
+                $uidPlaceholders = implode(',', array_fill(0, count($caseUids), '?'));
+                $uidTypes = str_repeat('s', count($caseUids));
+                $fuStmt = $conn->prepare("
+                    SELECT case_uid, category_id
+                    FROM follow_up
+                    WHERE case_uid IN ($uidPlaceholders) AND category_id IS NOT NULL AND category_id != ''
+                    ORDER BY created_at DESC, Follow_id DESC
+                ");
+                if ($fuStmt) {
+                    $fuStmt->bind_param($uidTypes, ...$caseUids);
+                    $fuStmt->execute();
+                    $fuResult = $fuStmt->get_result();
+                    $latestCategoryByCase = [];
+                    while ($fuRow = $fuResult->fetch_assoc()) {
+                        // First row seen per case_uid is its most recent
+                        // (ORDER BY created_at DESC above) — don't let an
+                        // older follow-up overwrite it.
+                        if (!isset($latestCategoryByCase[$fuRow['case_uid']])) {
+                            $latestCategoryByCase[$fuRow['case_uid']] = (string)$fuRow['category_id'];
+                        }
+                    }
+                    $fuStmt->close();
+
+                    foreach ($caseRows as &$caseRow) {
+                        if ($caseRow['categoryId'] === '' && isset($latestCategoryByCase[$caseRow['caseUid']])) {
+                            $caseRow['categoryId'] = $latestCategoryByCase[$caseRow['caseUid']];
+                        }
+                    }
+                    unset($caseRow);
+                }
+            }
 
             $studentInfo = [];
             if (!empty($studentIds)) {
@@ -403,7 +447,7 @@ if ($action === 'list') {
                     'sectionId' => (string)$row['section_id'],
                     'sectionName' => $row['section_name'],
                     'categoryId' => trim((string)($row['category_id'] ?? '')),
-                    'categoryName' => $row['category_name'] ?: 'Uncategorized',
+                    'categoryName' => trim((string)($row['category_name'] ?? '')),
                     'caseTitle' => $row['case_title'],
                     'caseDate' => $row['case_date'],
                     'summary' => $row['case_summary'],
@@ -413,6 +457,59 @@ if ($action === 'list') {
                 ];
             }
             $stmt->close();
+
+            // counselor_case_scenarios.category_id/category_name are never
+            // actually populated any more — category moved to being
+            // recorded per student, per follow-up (see saveFollowUp() in
+            // counseling.js) instead of once on the case itself — so every
+            // case fell back to "Uncategorized" here even when its
+            // follow-ups clearly had a category. Backfill each case's
+            // category from its own most recent follow_up row instead,
+            // matching what the counselor's own "Recent drafts" list
+            // already shows (getRecordCategoryNames() in counseling.js).
+            if (!empty($caseRows) && table_exists($conn, 'follow_up')) {
+                $caseUids = array_values(array_unique(array_column($caseRows, 'caseUid')));
+                $uidPlaceholders = implode(',', array_fill(0, count($caseUids), '?'));
+                $uidTypes = str_repeat('s', count($caseUids));
+                $fuStmt = $conn->prepare("
+                    SELECT case_uid, category_id, category_name
+                    FROM follow_up
+                    WHERE case_uid IN ($uidPlaceholders) AND category_name IS NOT NULL AND category_name != ''
+                    ORDER BY created_at DESC, Follow_id DESC
+                ");
+                if ($fuStmt) {
+                    $fuStmt->bind_param($uidTypes, ...$caseUids);
+                    $fuStmt->execute();
+                    $fuResult = $fuStmt->get_result();
+                    $latestCategoryByCase = [];
+                    while ($fuRow = $fuResult->fetch_assoc()) {
+                        // First row seen per case_uid is its most recent
+                        // (ORDER BY created_at DESC above) — don't let an
+                        // older follow-up overwrite it.
+                        if (!isset($latestCategoryByCase[$fuRow['case_uid']])) {
+                            $latestCategoryByCase[$fuRow['case_uid']] = [
+                                'id' => (string)$fuRow['category_id'],
+                                'name' => $fuRow['category_name']
+                            ];
+                        }
+                    }
+                    $fuStmt->close();
+
+                    foreach ($caseRows as &$caseRow) {
+                        if ($caseRow['categoryName'] === '' && isset($latestCategoryByCase[$caseRow['caseUid']])) {
+                            $caseRow['categoryId'] = $latestCategoryByCase[$caseRow['caseUid']]['id'];
+                            $caseRow['categoryName'] = $latestCategoryByCase[$caseRow['caseUid']]['name'];
+                        }
+                    }
+                    unset($caseRow);
+                }
+            }
+            foreach ($caseRows as &$caseRow) {
+                if ($caseRow['categoryName'] === '') {
+                    $caseRow['categoryName'] = 'Uncategorized';
+                }
+            }
+            unset($caseRow);
 
             $studentInfo = [];
             if (!empty($studentIds)) {
@@ -555,7 +652,7 @@ if ($action === 'school_breakdown') {
                 $ids = [];
                 foreach ($students as $s) {
                     $role = trim((string)($s['role'] ?? ''));
-                    if ($role !== '' && $role !== 'Primary student') {
+                    if (!case_report_role_is_primary($role)) {
                         continue;
                     }
                     $sid = trim((string)($s['id'] ?? $s['StudentId'] ?? $s['studentId'] ?? ''));
@@ -656,7 +753,7 @@ if ($action === 'district_summary') {
             COALESCE(NULLIF(s.district, ''), 'Unassigned') AS district,
             COUNT(r.ReferralID) AS referral_count,
             COUNT(DISTINCT COALESCE(r.student_id, r.StudentID)) AS students_referred,
-            SUM(CASE WHEN COALESCE(r.stage, 1) = 6 THEN 1 ELSE 0 END) AS resolved_count,
+            SUM(CASE WHEN COALESCE(r.stage, 1) = 7 THEN 1 ELSE 0 END) AS resolved_count,
             MAX(COALESCE(r.updated_at, r.date_submitted)) AS last_activity
         FROM schools s
         LEFT JOIN referral r ON COALESCE(NULLIF(r.student_school, ''), r.school_attended) = s.school_name$dateSql
@@ -747,7 +844,7 @@ if ($action === 'personal_social_concerns') {
     }
 
     if (table_exists($conn, 'counselor_case_scenarios')) {
-        $stmt = $conn->prepare("SELECT school_attended, section_id, category_id, students_json FROM counselor_case_scenarios WHERE 1=1$dateSql");
+        $stmt = $conn->prepare("SELECT case_uid, school_attended, section_id, category_id, students_json FROM counselor_case_scenarios WHERE 1=1$dateSql");
         if ($stmt) {
             if ($dateTypes !== '') {
                 $stmt->bind_param($dateTypes, ...$dateValues);
@@ -755,20 +852,61 @@ if ($action === 'personal_social_concerns') {
             $stmt->execute();
             $result = $stmt->get_result();
 
+            $rows = [];
             while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+            }
+            $stmt->close();
+
+            // counselor_case_scenarios.category_id is never actually
+            // populated any more — category moved to being recorded per
+            // student, per follow-up (see saveFollowUp() in counseling.js)
+            // instead of once on the case itself — so every case fell into
+            // its section's "uncategorized" bucket here even when its
+            // follow-ups clearly had a category. Backfill each case's
+            // category from its own most recent follow_up row instead,
+            // same as the 'categories' action above.
+            $latestCategoryByCase = [];
+            if (!empty($rows) && table_exists($conn, 'follow_up')) {
+                $caseUids = array_values(array_unique(array_column($rows, 'case_uid')));
+                $uidPlaceholders = implode(',', array_fill(0, count($caseUids), '?'));
+                $uidTypes = str_repeat('s', count($caseUids));
+                $fuStmt = $conn->prepare("
+                    SELECT case_uid, category_id
+                    FROM follow_up
+                    WHERE case_uid IN ($uidPlaceholders) AND category_id IS NOT NULL AND category_id != ''
+                    ORDER BY created_at DESC, Follow_id DESC
+                ");
+                if ($fuStmt) {
+                    $fuStmt->bind_param($uidTypes, ...$caseUids);
+                    $fuStmt->execute();
+                    $fuResult = $fuStmt->get_result();
+                    while ($fuRow = $fuResult->fetch_assoc()) {
+                        if (!isset($latestCategoryByCase[$fuRow['case_uid']])) {
+                            $latestCategoryByCase[$fuRow['case_uid']] = (string)$fuRow['category_id'];
+                        }
+                    }
+                    $fuStmt->close();
+                }
+            }
+
+            foreach ($rows as $row) {
                 $level = $schoolLevel[$row['school_attended']] ?? null;
                 if ($level === null || !in_array($level, $groups, true)) {
                     continue; // school not active / not in schools table — skip
                 }
 
                 $categoryId = trim((string)$row['category_id']);
+                if ($categoryId === '') {
+                    $categoryId = $latestCategoryByCase[$row['case_uid']] ?? '';
+                }
                 $bucketKey = $categoryId !== '' ? $categoryId : ('section-' . $row['section_id'] . '-uncategorized');
 
                 $students = json_decode((string)$row['students_json'], true) ?: [];
                 $primaryCount = 0;
                 foreach ($students as $s) {
                     $role = trim((string)($s['role'] ?? ''));
-                    if ($role === '' || $role === 'Primary student') {
+                    if (case_report_role_is_primary($role)) {
                         $primaryCount++;
                     }
                 }
@@ -778,7 +916,6 @@ if ($action === 'personal_social_concerns') {
 
                 $counts[$level][$bucketKey] = ($counts[$level][$bucketKey] ?? 0) + $primaryCount;
             }
-            $stmt->close();
         }
     }
 

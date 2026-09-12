@@ -30,6 +30,7 @@ function ensure_documents_table(mysqli $conn): void {
             stored_filename VARCHAR(255) NOT NULL,
             mime_type VARCHAR(100) NOT NULL,
             file_size INT NOT NULL,
+            file_data LONGBLOB DEFAULT NULL,
             school_attended VARCHAR(100) DEFAULT NULL,
             description TEXT,
             uploaded_by_id INT DEFAULT NULL,
@@ -43,6 +44,15 @@ function ensure_documents_table(mysqli $conn): void {
     ";
     if (!$conn->query($sql)) {
         send_json(500, ['success' => false, 'message' => 'Failed to initialize documents table: ' . $conn->error]);
+    }
+
+    // Defensive migration for installations where this table already
+    // existed before file_data was added — the photo lives in the database
+    // now, not on disk (a plain uploads/ folder turned out to not reliably
+    // survive on this host).
+    $result = $conn->query("SHOW COLUMNS FROM documents LIKE 'file_data'");
+    if ($result && $result->num_rows === 0) {
+        $conn->query("ALTER TABLE documents ADD COLUMN file_data LONGBLOB DEFAULT NULL");
     }
 }
 
@@ -139,43 +149,39 @@ try {
 
     $originalFilename = basename((string)($_FILES['file']['name'] ?? 'document'));
     $extension = ALLOWED_MIME_EXTENSIONS[$detectedMime];
+    // Legacy-shaped reference value — nothing reads this off disk anymore,
+    // the bytes live in file_data below.
     $storedFilename = bin2hex(random_bytes(16)) . '.' . $extension;
 
-    $uploadDir = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'documents';
-    if (!is_dir($uploadDir)) {
-        @mkdir($uploadDir, 0755, true);
-    }
-    $destination = $uploadDir . DIRECTORY_SEPARATOR . $storedFilename;
-
-    if (!move_uploaded_file($tmpPath, $destination)) {
-        send_json(500, ['success' => false, 'message' => 'Failed to save uploaded file']);
+    $fileData = file_get_contents($tmpPath);
+    if ($fileData === false) {
+        send_json(500, ['success' => false, 'message' => 'Failed to read uploaded file']);
     }
 
     $uploaderIdInt = ctype_digit($uploaderId) ? (int)$uploaderId : null;
 
     $stmt = $conn->prepare('
-        INSERT INTO documents (student_id, document_type, original_filename, stored_filename, mime_type, file_size, school_attended, description, uploaded_by_id, uploaded_by_role)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO documents (student_id, document_type, original_filename, stored_filename, mime_type, file_size, file_data, school_attended, description, uploaded_by_id, uploaded_by_role)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     if (!$stmt) {
-        @unlink($destination);
         send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
     }
     $stmt->bind_param(
-        'issssissis',
+        'issssisssis',
         $studentAccountId,
         $documentType,
         $originalFilename,
         $storedFilename,
         $detectedMime,
         $fileSize,
+        $fileData,
         $school,
         $description,
         $uploaderIdInt,
         $userType
     );
     if (!$stmt->execute()) {
-        @unlink($destination);
         send_json(500, ['success' => false, 'message' => 'Failed to save document record: ' . $stmt->error]);
     }
     $documentId = $stmt->insert_id;

@@ -42,7 +42,7 @@ function loadDashboardData() {
         return;
     }
 
-    fetch(`../../api/student-history.php?student_id=${encodeURIComponent(studentId)}`)
+    fetch(`../../api/student-history.php?student_id=${encodeURIComponent(studentId)}&role=student`)
         .then(response => response.json())
         .then(result => {
             if (!result.success) {

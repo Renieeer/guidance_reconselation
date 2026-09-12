@@ -80,6 +80,13 @@
 
                         <hr style="margin: 20px 0;">
 
+                        <!-- Assessment Document (Stage 2) - read-only view of whatever the
+                             counselor uploaded; coordinators review, they don't upload. -->
+                        <h3 class="text-primary">Assessment Document (Stage 2)</h3>
+                        <div id="assessmentFileList" style="margin-bottom: 20px;"></div>
+
+                        <hr style="margin: 20px 0;">
+
                         <!-- Coordinator Actions -->
                         <h3 class="text-primary">Coordinator Actions</h3>
                         <div id="coordinatorActionsContainer"></div>
@@ -119,6 +126,7 @@
                                     <option value="4">Stage 4</option>
                                     <option value="5">Stage 5</option>
                                     <option value="6">Stage 6</option>
+                                    <option value="7">Stage 7</option>
                                 </select>
                             </div>
                             <button class="btn btn-primary" onclick="applyFilters()">Filter</button>
@@ -172,6 +180,7 @@
                         <option value="4">Stage 4: Intervention</option>
                         <option value="5">Stage 5: Counseling</option>
                         <option value="6">Stage 6: Student Follow-up</option>
+                        <option value="7">Stage 7: Case Closing</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -188,6 +197,6 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="referrals.js"></script>
+    <script src="referrals.js?v=<?php echo filemtime(__DIR__ . '/referrals.js'); ?>"></script>
 </body>
 </html>
