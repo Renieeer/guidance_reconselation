@@ -228,7 +228,10 @@
     <script src="../../js/utils.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- ExcelJS — the downloaded .xlsx needs real cell colors/borders/merges,
+         which the free SheetJS "Community Edition" build can't write; see
+         buildReportCasesWorkbook() in report-case.js. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     <script src="report-case.js?v=<?php echo filemtime(__DIR__ . '/report-case.js'); ?>"></script>
 </body>
 </html>

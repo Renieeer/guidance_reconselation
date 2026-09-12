@@ -481,10 +481,12 @@ function submitNewCase() {
     showNotification('Note saved. To log a real case with a category, use Case Management.');
 }
 
-// Two-row grade header (Grade N spanning Male/Female/Total) shared by both
-// exporters, mirroring the on-page table instead of a single row like
-// "Grade 7 - M" — those truncate to identical-looking "Grade 7 -" labels
-// once Excel/PDF column width is narrower than the full text.
+// Two-row grade header (Grade N spanning Male/Female/Total), mirroring the
+// on-page table instead of a single row like "Grade 7 - M" — those truncate
+// to identical-looking "Grade 7 -" labels once column width is narrower
+// than the full text. Feeds the PDF's autotable head directly; the Excel
+// workbook builds its own equivalent header via real merged cells (see
+// buildReportCasesWorkbook()).
 function buildGradeHeaderRows() {
     const pdfHead = [
         [
@@ -494,9 +496,7 @@ function buildGradeHeaderRows() {
         ],
         visibleGrades.flatMap(() => ['Male', 'Female', 'Total'])
     ];
-    const excelRow1 = ['Category of Cases', ...visibleGrades.flatMap(g => [`Grade ${g}`, '', '']), 'Overall Total'];
-    const excelRow2 = ['', ...visibleGrades.flatMap(() => ['Male', 'Female', 'Total']), ''];
-    return { pdfHead, excelRow1, excelRow2 };
+    return { pdfHead };
 }
 
 // Shared table shape used by both the PDF and Excel exporters
@@ -618,9 +618,111 @@ function showExcelPreview(filename, tableEl, onDownload) {
     openModal('excelPreviewModal');
 }
 
+// Generic thin border, reused by every cell in the built workbook.
+const THIN_BORDER = {
+    top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+};
+
+// Real cell colors/borders/merges on the downloaded .xlsx need actual
+// style-writing, which the plain SheetJS build (the free "Community
+// Edition", also loaded on this page for the Excel preview's live-table
+// clone) can't do on write — CE dropped that years ago, which is why the
+// old export came out as unstyled text with no visible header grouping.
+// ExcelJS (ajax/libs/exceljs) still writes real styles, so the downloaded
+// file is built with that instead — same pattern already used by
+// pages/sdo/district-report-cases.js's Category of Cases export.
+function buildReportCasesWorkbook(body, sectionHeaderRows, subtotalRows, title, periodLabel) {
+    const totalCols = 2 + visibleGrades.length * 3; // label + (Male/Female/Total per grade) + Overall Total
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Report Cases');
+
+    sheet.mergeCells(1, 1, 1, totalCols);
+    const titleCell = sheet.getCell(1, 1);
+    titleCell.value = title;
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    sheet.mergeCells(2, 1, 2, totalCols);
+    const periodCell = sheet.getCell(2, 1);
+    periodCell.value = periodLabel;
+    periodCell.font = { size: 10, color: { argb: 'FF666666' } };
+    periodCell.alignment = { horizontal: 'center' };
+
+    const headRow1 = 4;
+    const headRow2 = 5;
+
+    sheet.mergeCells(headRow1, 1, headRow2, 1);
+    sheet.getCell(headRow1, 1).value = 'Category of Cases';
+
+    sheet.mergeCells(headRow1, totalCols, headRow2, totalCols);
+    sheet.getCell(headRow1, totalCols).value = 'Overall Total';
+
+    let col = 2;
+    visibleGrades.forEach(g => {
+        sheet.mergeCells(headRow1, col, headRow1, col + 2);
+        sheet.getCell(headRow1, col).value = `Grade ${g}`;
+        sheet.getCell(headRow2, col).value = 'Male';
+        sheet.getCell(headRow2, col + 1).value = 'Female';
+        sheet.getCell(headRow2, col + 2).value = 'Total';
+        col += 3;
+    });
+
+    for (let r = headRow1; r <= headRow2; r++) {
+        for (let c = 1; c <= totalCols; c++) {
+            const cell = sheet.getCell(r, c);
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D5AA8' } };
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border = THIN_BORDER;
+        }
+    }
+
+    let rowIndex = headRow2 + 1;
+    body.forEach((row, i) => {
+        const isHeader = sectionHeaderRows.includes(i);
+        const isSubtotal = subtotalRows.includes(i);
+
+        if (isHeader) sheet.mergeCells(rowIndex, 1, rowIndex, totalCols);
+
+        row.forEach((value, c) => {
+            if (isHeader && c > 0) return; // merged into the label cell above
+            const cell = sheet.getCell(rowIndex, c + 1);
+            cell.value = value;
+            cell.border = THIN_BORDER;
+            cell.alignment = { vertical: 'middle', horizontal: c === 0 ? 'left' : 'center', wrapText: true };
+            if (isHeader) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                cell.font = { bold: true };
+            } else if (isSubtotal) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                cell.font = { bold: true };
+            }
+        });
+        rowIndex++;
+    });
+
+    sheet.getColumn(1).width = 34;
+    for (let c = 2; c <= totalCols; c++) sheet.getColumn(c).width = 9;
+
+    return workbook;
+}
+
+async function downloadExcelJSWorkbook(workbook, filename) {
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 // Export report as an Excel workbook (.xlsx)
 function exportToExcel() {
-    if (typeof XLSX === 'undefined') {
+    if (typeof ExcelJS === 'undefined') {
         showNotification('Excel export library failed to load.');
         return;
     }
@@ -629,32 +731,13 @@ function exportToExcel() {
     const previewTable = document.getElementById('reportCasesTable').cloneNode(true);
     previewTable.removeAttribute('id');
 
-    showExcelPreview(filename, previewTable, () => {
-        const { body } = buildExportTable();
-        const { excelRow1, excelRow2 } = buildGradeHeaderRows();
-        const titleRows = [
-            [`${reportRoleLabel()} Report Cases - ${currentSchool || 'School'}`],
-            [`Generated: ${new Date().toLocaleDateString()}`],
-            []
-        ];
-        const worksheet = XLSX.utils.aoa_to_sheet([...titleRows, excelRow1, excelRow2, ...body]);
+    showExcelPreview(filename, previewTable, async () => {
+        const { body, sectionHeaderRows, subtotalRows } = buildExportTable();
+        const title = `${reportRoleLabel()} Report Cases - ${currentSchool || 'School'}`;
+        const periodLabel = `Generated: ${new Date().toLocaleDateString()}`;
 
-        const headerRowIndex = titleRows.length;
-        const lastCol = 1 + visibleGrades.length * 3;
-        const merges = [
-            { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } },
-            { s: { r: headerRowIndex, c: lastCol }, e: { r: headerRowIndex + 1, c: lastCol } }
-        ];
-        visibleGrades.forEach((_, i) => {
-            const startCol = 1 + i * 3;
-            merges.push({ s: { r: headerRowIndex, c: startCol }, e: { r: headerRowIndex, c: startCol + 2 } });
-        });
-        worksheet['!merges'] = merges;
-        worksheet['!cols'] = [{ wch: 34 }, ...visibleGrades.flatMap(() => [{ wch: 8 }, { wch: 8 }, { wch: 8 }]), { wch: 14 }];
-
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Report Cases');
-        XLSX.writeFile(workbook, filename);
+        const workbook = buildReportCasesWorkbook(body, sectionHeaderRows, subtotalRows, title, periodLabel);
+        await downloadExcelJSWorkbook(workbook, filename);
         showNotification('Excel report exported successfully!');
     });
 }
