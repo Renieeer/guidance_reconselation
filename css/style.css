@@ -4891,6 +4891,31 @@ tr:hover {
     50% { opacity: 1; }
 }
 
+.district-search-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.district-search-wrap {
+    min-width: 220px;
+    max-width: 280px;
+}
+
+.district-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.district-pagination-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #5a6b80;
+}
+
 /* ========== TABLE ENHANCEMENTS ========== */
 .table-container td.text-center {
     text-align: center;

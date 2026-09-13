@@ -28,10 +28,17 @@
                     <div class="card-header">
                         <div class="card-title">Select District</div>
                     </div>
+                    <div class="district-search-row">
+                        <div class="school-search-wrap district-search-wrap">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="districtSearchInput" placeholder="Search school...">
+                        </div>
+                    </div>
                     <div class="district-nav">
                         <div class="district-buttons" id="districtButtons">
                             <p class="text-muted">Loading districts...</p>
                         </div>
+                        <div class="district-pagination" id="districtPagination" hidden></div>
                     </div>
                 </div>
 
@@ -157,13 +164,15 @@
                                 <label for="exportReportType">Report</label>
                                 <select id="exportReportType">
                                     <option value="cases_by_school">Cases by School</option>
+                                    <option value="division_summary">Division-Wide Summary Case</option>
                                     <option value="dmmr">Division Monthly Monitoring Report of Learners' Personal-Social Concerns</option>
                                 </select>
                             </div>
 
-                            <!-- Cases by School — same period keywords as the on-screen
-                                 filter (weekly/monthly/annually mean "current", no
-                                 specific month/year to pick; custom is an explicit range). -->
+                            <!-- Cases by School / Division-Wide Summary Case — same period
+                                 keywords as the on-screen filter (weekly/monthly/annually
+                                 mean "current", no specific month/year to pick; custom is
+                                 an explicit range). -->
                             <div class="form-group" id="exportCasesPeriodGroup">
                                 <label>Period</label>
                                 <div class="period-buttons" id="exportCasesPeriodButtons">

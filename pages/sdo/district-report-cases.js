@@ -24,6 +24,13 @@ function districtParam(district) {
 
 let districtList = ['Unassigned'];
 let currentDistrict = ALL_DISTRICTS;
+
+// "All Districts" is pinned and always shown regardless of search/page; the
+// rest of districtList is filtered by districtSearchQuery and paginated at
+// DISTRICT_PAGE_SIZE per page once the filtered result grows past it.
+const DISTRICT_PAGE_SIZE = 16;
+let districtSearchQuery = '';
+let districtPage = 1;
 let sections = [];
 let counts = {};
 let displayRows = [];
@@ -55,6 +62,19 @@ async function loadDistrictList() {
     currentDistrict = ALL_DISTRICTS;
 }
 
+// Wires the search input once (its own element persists across re-renders;
+// only the button grid and pagination controls get rebuilt).
+function initDistrictSearch() {
+    const input = document.getElementById('districtSearchInput');
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+        districtSearchQuery = input.value.trim().toLowerCase();
+        districtPage = 1;
+        renderDistrictButtons();
+    });
+}
+
 function renderDistrictButtons() {
     const container = document.getElementById('districtButtons');
     if (!container) return;
@@ -65,22 +85,77 @@ function renderDistrictButtons() {
                 No active schools found.
             </p>
         `;
+        renderDistrictPagination(1);
         return;
     }
 
-    const buttons = [ALL_DISTRICTS, ...districtList];
+    const filtered = districtSearchQuery
+        ? districtList.filter(d => districtLabel(d).toLowerCase().includes(districtSearchQuery))
+        : districtList;
 
-    container.innerHTML = buttons.map((district, i) => `
-        <button class="district-btn ${district === currentDistrict ? 'active' : ''}" style="--i:${i}" data-district="${escapeHtml(district)}">${escapeHtml(districtLabel(district))}</button>
-    `).join('');
+    const totalPages = Math.max(1, Math.ceil(filtered.length / DISTRICT_PAGE_SIZE));
+    if (districtPage > totalPages) districtPage = totalPages;
+    if (districtPage < 1) districtPage = 1;
 
-    container.querySelectorAll('.district-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            container.querySelectorAll('.district-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentDistrict = this.getAttribute('data-district');
-            await refreshReports();
+    const startIndex = (districtPage - 1) * DISTRICT_PAGE_SIZE;
+    const pageItems = filtered.slice(startIndex, startIndex + DISTRICT_PAGE_SIZE);
+
+    if (pageItems.length === 0) {
+        container.innerHTML = `
+            <p class="text-muted" style="margin: 0;">
+                No schools match "${escapeHtml(districtSearchQuery)}".
+            </p>
+        `;
+    } else {
+        // "All Districts" is pinned first — always visible, never filtered
+        // or paginated away, so there's always a quick way back to it.
+        const buttons = [ALL_DISTRICTS, ...pageItems];
+
+        container.innerHTML = buttons.map((district, i) => `
+            <button class="district-btn ${district === currentDistrict ? 'active' : ''}" style="--i:${i}" data-district="${escapeHtml(district)}">${escapeHtml(districtLabel(district))}</button>
+        `).join('');
+
+        container.querySelectorAll('.district-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                container.querySelectorAll('.district-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentDistrict = this.getAttribute('data-district');
+                await refreshReports();
+            });
         });
+    }
+
+    renderDistrictPagination(totalPages);
+}
+
+// Prev/Next controls, only shown once the filtered school list actually
+// spans more than one page (16 schools) — a short list never shows this.
+function renderDistrictPagination(totalPages) {
+    const paginationEl = document.getElementById('districtPagination');
+    if (!paginationEl) return;
+
+    if (totalPages <= 1) {
+        paginationEl.hidden = true;
+        paginationEl.innerHTML = '';
+        return;
+    }
+
+    paginationEl.hidden = false;
+    paginationEl.innerHTML = `
+        <button type="button" class="btn btn-secondary btn-sm" id="districtPrevPage" ${districtPage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i> Prev</button>
+        <span class="district-pagination-label">Page ${districtPage} of ${totalPages}</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="districtNextPage" ${districtPage >= totalPages ? 'disabled' : ''}>Next <i class="bi bi-chevron-right"></i></button>
+    `;
+
+    document.getElementById('districtPrevPage')?.addEventListener('click', () => {
+        if (districtPage > 1) {
+            districtPage--;
+            renderDistrictButtons();
+        }
+    });
+    document.getElementById('districtNextPage')?.addEventListener('click', () => {
+        districtPage++;
+        renderDistrictButtons();
     });
 }
 
@@ -173,10 +248,14 @@ async function fetchCategoryReport(district, period, start, end) {
         const response = await fetch(`../../api/case-report.php?${params.toString()}`);
         const data = await response.json();
         if (!data.success) throw new Error(data.message || 'Failed to load district case report');
-        return { sections: data.sections || [], counts: data.counts || {} };
+        return {
+            sections: data.sections || [],
+            counts: data.counts || {},
+            grades: (Array.isArray(data.grades) && data.grades.length) ? data.grades : ALL_REPORT_GRADES
+        };
     } catch (error) {
         console.error('Error loading district case report:', error);
-        return { sections: [], counts: {} };
+        return { sections: [], counts: {}, grades: ALL_REPORT_GRADES };
     }
 }
 
@@ -266,19 +345,24 @@ function gradeCell(bucketKey, grade, countsMap = counts) {
 // Same flattening as pages/coordinator/report-case.js, minus the M/F split
 // (this table only shows one total per grade) — see that file for the
 // full explanation of the section/category/uncategorized/subtotal shape.
-function buildDisplayRows(sectionsList = sections, countsMap = counts) {
+// gradesList defaults to the on-screen global (every existing call site is
+// unaffected); the export panel passes its own freshly-fetched grade range
+// instead, so a "Division-Wide" export spanning both elementary (1-6) and
+// secondary (7-12) schools shows all 12 columns even when the on-screen
+// table (a single-level selection) is only showing 6.
+function buildDisplayRows(sectionsList = sections, countsMap = counts, gradesList = ALL_REPORT_GRADES) {
     const rows = [];
     const grandTotal = {};
-    ALL_REPORT_GRADES.forEach(g => { grandTotal[g] = 0; });
+    gradesList.forEach(g => { grandTotal[g] = 0; });
 
     sectionsList.forEach(section => {
         rows.push({ type: 'header', label: `${section.sectionCode}. ${section.sectionName}` });
 
         const sectionTotal = {};
-        ALL_REPORT_GRADES.forEach(g => { sectionTotal[g] = 0; });
+        gradesList.forEach(g => { sectionTotal[g] = 0; });
 
         const addToTotals = (bucketKey) => {
-            ALL_REPORT_GRADES.forEach(g => {
+            gradesList.forEach(g => {
                 const cell = gradeCell(bucketKey, g, countsMap);
                 const n = cell.m + cell.f;
                 sectionTotal[g] += n;
@@ -291,9 +375,10 @@ function buildDisplayRows(sectionsList = sections, countsMap = counts) {
             addToTotals(cat.categoryId);
         });
 
-        const uncategorizedKey = `section-${section.sectionId}-uncategorized`;
-        rows.push({ type: 'category', label: 'Uncategorized', bucketKey: uncategorizedKey });
-        addToTotals(uncategorizedKey);
+        // Uncategorized cases (no category chosen yet) still count toward
+        // the section/grand totals below — they just don't get their own
+        // listed row, since "Uncategorized" isn't a real case category.
+        addToTotals(`section-${section.sectionId}-uncategorized`);
 
         rows.push({ type: 'subtotal', label: `Total ${section.sectionCode}: ${section.sectionName}`, totals: sectionTotal });
     });
@@ -302,12 +387,12 @@ function buildDisplayRows(sectionsList = sections, countsMap = counts) {
     return rows;
 }
 
-function rowTotals(row, countsMap = counts) {
+function rowTotals(row, countsMap = counts, gradesList = ALL_REPORT_GRADES) {
     if (row.type === 'subtotal') {
         return row.totals;
     }
     const totals = {};
-    ALL_REPORT_GRADES.forEach(g => {
+    gradesList.forEach(g => {
         const cell = gradeCell(row.bucketKey, g, countsMap);
         totals[g] = cell.m + cell.f;
     });
@@ -454,11 +539,12 @@ function setupPeriodFilter() {
     });
 }
 
-// Shared table shape used by both the PDF and Excel exporters. rows/countsMap
-// default to the on-screen globals; the export panel passes its own
-// freshly-fetched rows/counts for an arbitrary period instead.
-function buildExportTable(rows = displayRows, countsMap = counts) {
-    const header = ['Category of Cases', ...ALL_REPORT_GRADES.map(g => `Grade ${g}`), 'Totals'];
+// Shared table shape used by both the PDF and Excel exporters. rows/
+// countsMap/gradesList default to the on-screen globals; the export panel
+// passes its own freshly-fetched rows/counts/grades for an arbitrary period
+// (and, for the Division-Wide export, a wider combined grade range) instead.
+function buildExportTable(rows = displayRows, countsMap = counts, gradesList = ALL_REPORT_GRADES) {
+    const header = ['Category of Cases', ...gradesList.map(g => `Grade ${g}`), 'Totals'];
     const body = [];
     const sectionHeaderRows = [];
     const subtotalRows = [];
@@ -466,14 +552,14 @@ function buildExportTable(rows = displayRows, countsMap = counts) {
     rows.forEach(row => {
         if (row.type === 'header') {
             sectionHeaderRows.push(body.length);
-            body.push([row.label, ...ALL_REPORT_GRADES.map(() => ''), '']);
+            body.push([row.label, ...gradesList.map(() => ''), '']);
             return;
         }
         if (row.type === 'subtotal') {
             subtotalRows.push(body.length);
         }
-        const totals = rowTotals(row, countsMap);
-        const gradeTotals = ALL_REPORT_GRADES.map(g => totals[g] || 0);
+        const totals = rowTotals(row, countsMap, gradesList);
+        const gradeTotals = gradesList.map(g => totals[g] || 0);
         const total = gradeTotals.reduce((sum, n) => sum + n, 0);
         body.push([row.label, ...gradeTotals, total]);
     });
@@ -634,12 +720,12 @@ function setCasesPeriodMode(mode) {
     if (rangeGroup) rangeGroup.hidden = mode !== 'custom';
 }
 
-// "Cases by School" uses Weekly/Monthly/Annually keywords (same "current
-// week/month/year" meaning as the on-screen filter — no specific date to
-// pick). The Division Monthly Monitoring Report instead needs one specific
-// month+year, since that's what the official form is dated by. Only one of
-// the two period controls is relevant at a time, so show whichever matches
-// the selected report.
+// "Cases by School" and "Division-Wide Summary Case" both use Weekly/
+// Monthly/Annually keywords (same "current week/month/year" meaning as the
+// on-screen filter — no specific date to pick). The Division Monthly
+// Monitoring Report instead needs one specific month+year, since that's
+// what the official form is dated by. Only one of the two period controls
+// is relevant at a time, so show whichever matches the selected report.
 function updateExportPeriodVisibility() {
     const reportType = document.getElementById('exportReportType').value;
     const casesGroup = document.getElementById('exportCasesPeriodGroup');
@@ -822,9 +908,10 @@ async function handleGenerateExport() {
         return;
     }
 
-    // Cases by School — Weekly/Monthly/Annually mean "current", same as the
-    // on-screen filter, so case_date_condition needs just the keyword.
-    // Custom needs an explicit range, validated before the modal closes.
+    // Cases by School / Division-Wide Summary Case — Weekly/Monthly/Annually
+    // mean "current", same as the on-screen filter, so case_date_condition
+    // needs just the keyword. Custom needs an explicit range, validated
+    // before the modal closes.
     const period = casesPeriodMode;
     let start = '', end = '', label = PERIOD_LABELS[period];
 
@@ -843,8 +930,117 @@ async function handleGenerateExport() {
     }
 
     closeModal('exportOptionsModal');
+
+    if (reportType === 'division_summary') {
+        if (format === 'pdf') await generateDivisionSummaryPdf(period, start, end, label);
+        else await generateDivisionSummaryExcel(period, start, end, label);
+        return;
+    }
+
     if (format === 'pdf') await generateCasesBySchoolPdf(period, start, end, label);
     else await generateCasesBySchoolExcel(period, start, end, label);
+}
+
+// Collapses the grade-by-grade breakdown into one number per category — a
+// whole-division rollup combining every grade (1-12: elementary + secondary
+// together) and every school into a single total, rather than a 14-column
+// pivot that doesn't read as a "summary." Section header/subtotal rows keep
+// their place, just narrowed to the same two columns.
+function buildDivisionSummaryTable(rows, countsMap, gradesList) {
+    const header = ['Category of Cases', 'Total Cases'];
+    const body = [];
+    const sectionHeaderRows = [];
+    const subtotalRows = [];
+
+    rows.forEach(row => {
+        if (row.type === 'header') {
+            sectionHeaderRows.push(body.length);
+            body.push([row.label, '']);
+            return;
+        }
+        if (row.type === 'subtotal') {
+            subtotalRows.push(body.length);
+        }
+        const totals = rowTotals(row, countsMap, gradesList);
+        const total = gradesList.reduce((sum, g) => sum + (totals[g] || 0), 0);
+        body.push([row.label, total]);
+    });
+
+    return { header, body, sectionHeaderRows, subtotalRows };
+}
+
+// Division-Wide Summary Case — one Total Cases number per category, summed
+// across every active school in the division (both elementary and
+// secondary) at once, fetched fresh for whatever period this panel was
+// asked for (see fetchCategoryReport above) instead of reusing the
+// on-screen globals — mirrors generateCasesBySchoolPdf/Excel.
+async function generateDivisionSummaryPdf(period, start, end, label) {
+    if (typeof window.jspdf === 'undefined') {
+        showAlert('error', 'PDF export library failed to load.');
+        return;
+    }
+
+    const { sections: divisionSections, counts: divisionCounts, grades: divisionGrades } = await fetchCategoryReport(ALL_DISTRICTS, period, start, end);
+    const rows = buildDisplayRows(divisionSections, divisionCounts, divisionGrades);
+    const { header, body, sectionHeaderRows } = buildDivisionSummaryTable(rows, divisionCounts, divisionGrades);
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(14);
+    doc.text('Division-Wide Summary Case', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+
+    doc.autoTable({
+        head: [header],
+        body,
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', valign: 'middle' },
+        styles: { fontSize: 10, cellPadding: 4, valign: 'middle', overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 130 }, 1: { cellWidth: 40, halign: 'center' } },
+        didParseCell: (data) => {
+            if (data.section === 'body' && sectionHeaderRows.includes(data.row.index)) {
+                data.cell.styles.fillColor = [226, 232, 240];
+                data.cell.styles.fontStyle = 'bold';
+            }
+        }
+    });
+
+    const filename = `Division-Wide-Summary_${label.replace(/\s+/g, '-')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    showPdfPreview(doc, filename);
+}
+
+async function generateDivisionSummaryExcel(period, start, end, label) {
+    if (typeof ExcelJS === 'undefined') {
+        showAlert('error', 'Excel export library failed to load.');
+        return;
+    }
+
+    const { sections: divisionSections, counts: divisionCounts, grades: divisionGrades } = await fetchCategoryReport(ALL_DISTRICTS, period, start, end);
+    const rows = buildDisplayRows(divisionSections, divisionCounts, divisionGrades);
+    const { header, body, sectionHeaderRows, subtotalRows } = buildDivisionSummaryTable(rows, divisionCounts, divisionGrades);
+
+    const title = 'Division-Wide Summary Case';
+    const filename = `Division-Wide-Summary_${label.replace(/\s+/g, '-')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const categoryAoa = [
+        [title],
+        [`Period: ${label}`],
+        [],
+        header,
+        ...body
+    ];
+    const sheets = [
+        { name: 'Division Summary', aoa: categoryAoa, colWidths: [{ wch: 40 }, { wch: 14 }] }
+    ];
+
+    showExcelPreview(filename, sheets, async () => {
+        const workbook = buildCategoryOfCasesWorkbook(header, body, sectionHeaderRows, subtotalRows, title, label);
+        await downloadExcelJSWorkbook(workbook, filename);
+        showAlert('success', 'Excel report exported successfully!');
+    });
 }
 
 // "Cases by School" export — only reachable for "All Districts" (a
@@ -985,13 +1181,15 @@ async function generateCasesBySchoolExcel(period, start, end, label) {
 }
 
 /* ---- Division Monthly Monitoring Report of Learners' Personal-Social
-   Concerns — rows are built live from every real section and case_category
-   (plus one "Uncategorized" row per section, for cases with no category
-   chosen yet), the same complete set 'categories'/fetch_sections() already
-   uses for the on-screen Category of Cases table. No hardcoded issue list:
-   whatever sections/categories exist in the database is exactly what shows
-   up here, so it always covers 100% of real case data, and a category
-   added or renamed later (e.g. via referral setup) appears automatically. ---- */
+   Concerns — rows are built live from every real section and case_category,
+   the same complete set 'categories'/fetch_sections() already uses for the
+   on-screen Category of Cases table. No hardcoded issue list: whatever
+   sections/categories exist in the database is exactly what shows up here,
+   so it always covers every real category, and one added or renamed later
+   (e.g. via referral setup) appears automatically. Cases with no category
+   chosen yet aren't broken out as their own row (matches the official
+   form, which has no "Uncategorized" line), but still count toward
+   whichever totals fold in their section's counts elsewhere on this page. ---- */
 
 // Intervention Provider starts blank on every row — nothing in the schema
 // tracks who actually intervened, so instead of guessing a default per
@@ -1061,7 +1259,6 @@ function buildDmmrTable(sections, countsByGroup) {
         body.push([`${section.sectionCode}. ${section.sectionName}`, ...groups.flatMap(() => ['', ''])]);
 
         section.categories.forEach(cat => pushRow(cat.categoryName, cat.categoryId));
-        pushRow('Uncategorized', `section-${section.sectionId}-uncategorized`);
     });
 
     return { pdfHead, excelRow1, excelRow2, body, sectionHeaderRows, groups };
@@ -1187,7 +1384,6 @@ function buildDmmrWorkbook(sections, countsByGroup, label) {
         rowIndex++;
 
         section.categories.forEach(cat => pushDataRow(cat.categoryName, cat.categoryId));
-        pushDataRow('Uncategorized', `section-${section.sectionId}-uncategorized`);
     });
 
     sheet.getColumn(1).width = 32;
@@ -1244,6 +1440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadDistrictList();
     renderDistrictButtons();
+    initDistrictSearch();
     await refreshReports();
     setupEventListeners();
 });

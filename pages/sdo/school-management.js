@@ -13,6 +13,11 @@ let currentSearch = '';
 let editMode = false;
 let openSchoolCode = null;
 
+// Paginates the folder grid once the filtered result grows past one page —
+// short lists (the common case) never show pagination controls at all.
+const SCHOOL_FOLDER_PAGE_SIZE = 16;
+let schoolFolderPage = 1;
+
 const EDIT_MODE_DESC = 'Add schools, assign coordinator/counselor accounts, and manage staff access.';
 const VIEW_MODE_DESC = "A read-only overview of every school in the district and who's assigned to it. Click Edit to add a school or change staff assignments.";
 
@@ -172,6 +177,7 @@ function initSchoolFoldersToolbar() {
     if (searchInput) {
         searchInput.addEventListener('input', () => {
             currentSearch = searchInput.value.trim().toLowerCase();
+            schoolFolderPage = 1;
             renderFolderGrid();
         });
     }
@@ -185,6 +191,7 @@ function initSchoolFoldersToolbar() {
             filterGroup.querySelectorAll('.school-filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.getAttribute('data-filter') || 'all';
+            schoolFolderPage = 1;
             renderFolderGrid();
         });
     }
@@ -444,16 +451,57 @@ function renderFolderGrid() {
     if (!filtered.length) {
         grid.classList.add('is-empty');
         grid.innerHTML = `<p class="text-center p-5 text-muted">${allAssignments.length ? 'No schools match your search.' : 'No schools yet.'}</p>`;
+        renderSchoolFolderPagination(1);
         return;
     }
 
+    const totalPages = Math.max(1, Math.ceil(filtered.length / SCHOOL_FOLDER_PAGE_SIZE));
+    if (schoolFolderPage > totalPages) schoolFolderPage = totalPages;
+    if (schoolFolderPage < 1) schoolFolderPage = 1;
+
+    const startIndex = (schoolFolderPage - 1) * SCHOOL_FOLDER_PAGE_SIZE;
+    const pageItems = filtered.slice(startIndex, startIndex + SCHOOL_FOLDER_PAGE_SIZE);
+
     grid.classList.remove('is-empty');
-    grid.innerHTML = filtered.map(buildFolderCard).join('');
+    grid.innerHTML = pageItems.map(buildFolderCard).join('');
 
     grid.querySelectorAll('[data-open-school]').forEach(card => {
         card.addEventListener('click', () => {
             openSchoolDetailModal(card.getAttribute('data-open-school'));
         });
+    });
+
+    renderSchoolFolderPagination(totalPages);
+}
+
+// Prev/Next controls, only shown once the filtered school list actually
+// spans more than one page (16 schools) — a short list never shows this.
+function renderSchoolFolderPagination(totalPages) {
+    const paginationEl = document.getElementById('schoolFolderPagination');
+    if (!paginationEl) return;
+
+    if (totalPages <= 1) {
+        paginationEl.hidden = true;
+        paginationEl.innerHTML = '';
+        return;
+    }
+
+    paginationEl.hidden = false;
+    paginationEl.innerHTML = `
+        <button type="button" class="btn btn-secondary btn-sm" id="schoolFolderPrevPage" ${schoolFolderPage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i> Prev</button>
+        <span class="district-pagination-label">Page ${schoolFolderPage} of ${totalPages}</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="schoolFolderNextPage" ${schoolFolderPage >= totalPages ? 'disabled' : ''}>Next <i class="bi bi-chevron-right"></i></button>
+    `;
+
+    document.getElementById('schoolFolderPrevPage')?.addEventListener('click', () => {
+        if (schoolFolderPage > 1) {
+            schoolFolderPage--;
+            renderFolderGrid();
+        }
+    });
+    document.getElementById('schoolFolderNextPage')?.addEventListener('click', () => {
+        schoolFolderPage++;
+        renderFolderGrid();
     });
 }
 

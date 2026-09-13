@@ -110,36 +110,51 @@ function all_active_school_names(mysqli $conn): array {
     return $names;
 }
 
-/** True if every school in $schoolNames is elementary (school_level
- *  East/West/South) — false for an empty list, a Secondary school, or a
- *  mix of levels (a report can only show one grade range at a time, so a
- *  mixed selection falls back to the standard secondary 7-12 range). */
-function schools_are_elementary(mysqli $conn, array $schoolNames): bool {
+/** Map of school_name => school_level ('Secondary'/'East'/'West'/'South')
+ *  for every school in $schoolNames. A name with no matching row (or a
+ *  blank/NULL level) is simply absent — callers treat a missing entry as
+ *  'Secondary', the safe default. */
+function schools_level_map(mysqli $conn, array $schoolNames): array {
     if (empty($schoolNames)) {
-        return false;
+        return [];
     }
 
     $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
     $types = str_repeat('s', count($schoolNames));
-    $stmt = $conn->prepare("SELECT DISTINCT school_level FROM schools WHERE school_name IN ($placeholders)");
+    $stmt = $conn->prepare("SELECT school_name, school_level FROM schools WHERE school_name IN ($placeholders)");
     if (!$stmt) {
-        return false;
+        return [];
     }
     $stmt->bind_param($types, ...$schoolNames);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $levels = [];
+    $map = [];
     while ($row = $result->fetch_assoc()) {
-        $levels[] = $row['school_level'];
+        if (!empty($row['school_level'])) {
+            $map[$row['school_name']] = $row['school_level'];
+        }
     }
     $stmt->close();
 
-    if (empty($levels)) {
+    return $map;
+}
+
+/** True if every school in $schoolNames is elementary (school_level
+ *  East/West/South) — false for an empty list, a Secondary school, or a
+ *  mix of levels. Used by the 'list' action, which (unlike 'categories')
+ *  is never queried across a mixed-level multi-school selection. */
+function schools_are_elementary(mysqli $conn, array $schoolNames): bool {
+    if (empty($schoolNames)) {
         return false;
     }
 
-    foreach ($levels as $level) {
+    $levelMap = schools_level_map($conn, $schoolNames);
+    if (empty($levelMap)) {
+        return false;
+    }
+
+    foreach ($levelMap as $level) {
         if (!in_array($level, ['East', 'West', 'South'], true)) {
             return false;
         }
@@ -206,10 +221,24 @@ if ($action === 'categories') {
         $schoolNames = schools_in_district($conn, $district);
     }
 
-    // East/West/South (elementary) schools report grades 1-6 instead of the
-    // usual secondary 7-12 — see schools_are_elementary().
-    $isElementary = schools_are_elementary($conn, $schoolNames);
-    $gradeKeys = $isElementary ? ['1', '2', '3', '4', '5', '6'] : ['7', '8', '9', '10', '11', '12'];
+    // Each school's own level decides how ITS cases' grades are read —
+    // East/West/South (elementary) schools use 1-6, everything else uses
+    // 7-12. A selection spanning both kinds (e.g. "All Districts") reports
+    // both ranges side by side instead of picking one and silently
+    // dropping the other's cases.
+    $levelMap = schools_level_map($conn, $schoolNames);
+    $levelsPresent = array_unique(array_values($levelMap));
+    $hasElementary = !empty(array_intersect($levelsPresent, ['East', 'West', 'South']));
+    $hasSecondary = in_array('Secondary', $levelsPresent, true) || empty($levelsPresent);
+    $isElementary = $hasElementary && !$hasSecondary;
+
+    $gradeKeys = [];
+    if ($hasElementary) {
+        $gradeKeys = array_merge($gradeKeys, ['1', '2', '3', '4', '5', '6']);
+    }
+    if ($hasSecondary) {
+        $gradeKeys = array_merge($gradeKeys, ['7', '8', '9', '10', '11', '12']);
+    }
 
     $sections = fetch_sections($conn);
 
@@ -228,7 +257,7 @@ if ($action === 'categories') {
         $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
         $types = str_repeat('s', count($schoolNames));
         $stmt = $conn->prepare("
-            SELECT case_uid, section_id, category_id, students_json
+            SELECT case_uid, school_attended, section_id, category_id, students_json
             FROM counselor_case_scenarios
             WHERE school_attended IN ($placeholders)$dateSql
         ");
@@ -258,6 +287,7 @@ if ($action === 'categories') {
                 }
                 $caseRows[] = [
                     'caseUid' => $row['case_uid'],
+                    'school' => (string)$row['school_attended'],
                     'sectionId' => (string)$row['section_id'],
                     'categoryId' => trim((string)($row['category_id'] ?? '')),
                     'studentIds' => $ids
@@ -319,8 +349,14 @@ if ($action === 'categories') {
                     $studentStmt->execute();
                     $studentResult = $studentStmt->get_result();
                     while ($srow = $studentResult->fetch_assoc()) {
+                        // Grade stays raw here — normalizing it depends on
+                        // which school the case referencing this student
+                        // belongs to (a mixed "All Districts" selection can
+                        // have the same student's raw grade text mean
+                        // different things at different schools), so that
+                        // happens per-case below instead of once here.
                         $studentInfo[$srow['StudentId']] = [
-                            'grade' => normalize_grade_number($srow['Grade'], $isElementary),
+                            'gradeRaw' => $srow['Grade'],
                             'sex' => (string)($srow['Sex'] ?? '')
                         ];
                     }
@@ -337,16 +373,23 @@ if ($action === 'categories') {
                     $counts[$bucketKey] = zero_grade_buckets($gradeKeys);
                 }
 
+                $caseIsElementary = in_array($levelMap[$caseRow['school']] ?? 'Secondary', ['East', 'West', 'South'], true);
+
                 foreach ($caseRow['studentIds'] as $sid) {
                     $info = $studentInfo[$sid] ?? null;
-                    if (!$info || $info['grade'] === null) {
-                        continue;
-                    }
-                    if (!empty($gradeScope) && !in_array($info['grade'], $gradeScope, true)) {
+                    if (!$info) {
                         continue;
                     }
 
-                    $gradeKey = (string)$info['grade'];
+                    $grade = normalize_grade_number($info['gradeRaw'], $caseIsElementary);
+                    if ($grade === null) {
+                        continue;
+                    }
+                    if (!empty($gradeScope) && !in_array($grade, $gradeScope, true)) {
+                        continue;
+                    }
+
+                    $gradeKey = (string)$grade;
                     if (!isset($counts[$bucketKey][$gradeKey])) {
                         $counts[$bucketKey][$gradeKey] = ['m' => 0, 'f' => 0];
                     }
