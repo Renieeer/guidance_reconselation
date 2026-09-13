@@ -51,14 +51,19 @@ if (!$referral) {
 
 $reasons = split_referral_reasons($referral['Reason'] ?? '');
 
-if (empty($reasons)) {
-    // No structured reasons to match against (e.g. a referral saved before
-    // the reason checklist existed) — fall back to the overall most-used
-    // suggestions rather than showing nothing.
+// Overall most-used suggestions, regardless of reason — the fallback used
+// both when a referral has no structured reason at all (saved before the
+// reason checklist existed) and when its reason(s) simply have no matched
+// suggestions yet (a reason category nobody has used "Other" on before),
+// so the box never shows empty just because one particular reason is new.
+function fetch_overall_suggestions(mysqli $conn) {
     $stmt = $conn->prepare("SELECT InterventionID, InterventionName, UsageCount FROM intervention_suggestions WHERE Status = 'active' ORDER BY UsageCount DESC, InterventionName ASC LIMIT 50");
     $stmt->execute();
-    $result = $stmt->get_result();
-} else {
+    return $stmt->get_result();
+}
+
+$result = null;
+if (!empty($reasons)) {
     $placeholders = implode(',', array_fill(0, count($reasons), '?'));
     $types = str_repeat('s', count($reasons));
     $stmt = $conn->prepare("
@@ -76,6 +81,11 @@ if (empty($reasons)) {
     $stmt->bind_param($types, ...$reasons);
     $stmt->execute();
     $result = $stmt->get_result();
+    if ($result->num_rows === 0) {
+        $result = fetch_overall_suggestions($conn);
+    }
+} else {
+    $result = fetch_overall_suggestions($conn);
 }
 
 $suggestions = [];
