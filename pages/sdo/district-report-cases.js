@@ -891,8 +891,71 @@ async function generateCasesBySchoolPdf(period, start, end, label) {
     showPdfPreview(doc, filename);
 }
 
+// Real cell colors/borders on the downloaded .xlsx need actual
+// style-writing, which the plain SheetJS build (also loaded on this page,
+// used only for the preview modal's aoa-based rendering) can't do on write
+// — CE dropped that years ago, which is why this export used to come out
+// as an unstyled flat grid. ExcelJS still writes real styles, so the
+// downloaded file is built with that instead, matching
+// buildCategoryOfCasesWorkbook()/buildDmmrWorkbook() above.
+function buildCasesBySchoolWorkbook(schoolBody, schoolTotals, title, periodLabel) {
+    const totalCols = 4; // School, Total Cases, Male, Female
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Cases by School');
+
+    sheet.mergeCells(1, 1, 1, totalCols);
+    const titleCell = sheet.getCell(1, 1);
+    titleCell.value = title;
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    sheet.mergeCells(2, 1, 2, totalCols);
+    const periodCell = sheet.getCell(2, 1);
+    periodCell.value = periodLabel;
+    periodCell.font = { size: 10, color: { argb: 'FF666666' } };
+    periodCell.alignment = { horizontal: 'center' };
+
+    const headRow = 4;
+    ['School', 'Total Cases', 'Male', 'Female'].forEach((label, i) => {
+        const cell = sheet.getCell(headRow, i + 1);
+        cell.value = label;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D5AA8' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = THIN_BORDER;
+    });
+
+    let rowIndex = headRow + 1;
+    schoolBody.forEach(row => {
+        row.forEach((value, c) => {
+            const cell = sheet.getCell(rowIndex, c + 1);
+            cell.value = value;
+            cell.border = THIN_BORDER;
+            cell.alignment = { vertical: 'middle', horizontal: c === 0 ? 'left' : 'center', wrapText: true };
+        });
+        rowIndex++;
+    });
+
+    const totalsRow = ['Overall Total', schoolTotals.total, schoolTotals.male, schoolTotals.female];
+    totalsRow.forEach((value, c) => {
+        const cell = sheet.getCell(rowIndex, c + 1);
+        cell.value = value;
+        cell.border = THIN_BORDER;
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+        cell.alignment = { vertical: 'middle', horizontal: c === 0 ? 'left' : 'center' };
+    });
+
+    sheet.getColumn(1).width = 34;
+    sheet.getColumn(2).width = 14;
+    sheet.getColumn(3).width = 10;
+    sheet.getColumn(4).width = 10;
+
+    return workbook;
+}
+
 async function generateCasesBySchoolExcel(period, start, end, label) {
-    if (typeof XLSX === 'undefined') {
+    if (typeof ExcelJS === 'undefined') {
         showAlert('error', 'Excel export library failed to load.');
         return;
     }
@@ -914,14 +977,9 @@ async function generateCasesBySchoolExcel(period, start, end, label) {
         { name: 'Cases by School', aoa: schoolAoa, colWidths: [{ wch: 34 }, { wch: 12 }, { wch: 10 }, { wch: 10 }] }
     ];
 
-    showExcelPreview(filename, sheets, () => {
-        const workbook = XLSX.utils.book_new();
-        sheets.forEach(sheet => {
-            const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
-            worksheet['!cols'] = sheet.colWidths;
-            XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
-        });
-        XLSX.writeFile(workbook, filename);
+    showExcelPreview(filename, sheets, async () => {
+        const workbook = buildCasesBySchoolWorkbook(schoolBody, schoolTotals, `Cases by School - ${districtTitle}`, `Period: ${label}`);
+        await downloadExcelJSWorkbook(workbook, filename);
         showAlert('success', 'Excel report exported successfully!');
     });
 }
