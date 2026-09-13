@@ -24,8 +24,8 @@ function ensure_documents_table(mysqli $conn): void {
     $sql = "
         CREATE TABLE IF NOT EXISTS documents (
             document_id INT NOT NULL AUTO_INCREMENT,
-            student_id INT NOT NULL,
-            document_type VARCHAR(30) NOT NULL,
+            student_id INT DEFAULT NULL,
+            document_type VARCHAR(30) DEFAULT NULL,
             original_filename VARCHAR(255) NOT NULL,
             stored_filename VARCHAR(255) NOT NULL,
             mime_type VARCHAR(100) NOT NULL,
@@ -53,6 +53,18 @@ function ensure_documents_table(mysqli $conn): void {
     $result = $conn->query("SHOW COLUMNS FROM documents LIKE 'file_data'");
     if ($result && $result->num_rows === 0) {
         $conn->query("ALTER TABLE documents ADD COLUMN file_data LONGBLOB DEFAULT NULL");
+    }
+
+    // student_id/document_type used to be required (every upload was tied
+    // to one student and categorized), but the coordinator's Document
+    // Library now also accepts general school uploads with neither —
+    // relax any pre-existing NOT NULL constraint left over from that.
+    foreach (['student_id' => 'INT', 'document_type' => 'VARCHAR(30)'] as $column => $type) {
+        $col = $conn->query("SHOW COLUMNS FROM documents LIKE '$column'");
+        $row = $col ? $col->fetch_assoc() : null;
+        if ($row && $row['Null'] === 'NO') {
+            $conn->query("ALTER TABLE documents MODIFY COLUMN $column $type DEFAULT NULL");
+        }
     }
 }
 
@@ -99,6 +111,9 @@ try {
         send_json(405, ['success' => false, 'message' => 'Method not allowed']);
     }
 
+    // student_id/document_type are both optional now — the coordinator's
+    // Document Library uploads general school resources tied to neither;
+    // the counselor's per-student Documents page still sends both.
     $typedStudentId = trim((string)($_POST['student_id'] ?? ''));
     $documentType = trim((string)($_POST['document_type'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
@@ -106,10 +121,10 @@ try {
     $school = trim((string)($_POST['school_attended'] ?? ''));
     $uploaderId = trim((string)($_POST['user_id'] ?? ''));
 
-    if ($typedStudentId === '' || $documentType === '' || $school === '') {
-        send_json(400, ['success' => false, 'message' => 'student_id, document_type, and school_attended are required']);
+    if ($school === '') {
+        send_json(400, ['success' => false, 'message' => 'school_attended is required']);
     }
-    if (!in_array($documentType, DOCUMENT_TYPES, true)) {
+    if ($documentType !== '' && !in_array($documentType, DOCUMENT_TYPES, true)) {
         send_json(400, ['success' => false, 'message' => 'Invalid document_type']);
     }
     // Same loose staff-role check the rest of this codebase already relies
@@ -118,9 +133,12 @@ try {
         send_json(403, ['success' => false, 'message' => 'Only guidance staff can upload documents']);
     }
 
-    $studentAccountId = resolve_student_account_id($conn, $typedStudentId);
-    if ($studentAccountId === null) {
-        send_json(404, ['success' => false, 'message' => 'Student not found']);
+    $studentAccountId = null;
+    if ($typedStudentId !== '') {
+        $studentAccountId = resolve_student_account_id($conn, $typedStudentId);
+        if ($studentAccountId === null) {
+            send_json(404, ['success' => false, 'message' => 'Student not found']);
+        }
     }
 
     if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
@@ -159,6 +177,10 @@ try {
     }
 
     $uploaderIdInt = ctype_digit($uploaderId) ? (int)$uploaderId : null;
+    // mysqli's bind_param sends an actual SQL NULL for a null PHP value
+    // regardless of the declared type character, so student_id/document_type
+    // land as NULL in the row when the form left them out.
+    $documentTypeValue = $documentType !== '' ? $documentType : null;
 
     $stmt = $conn->prepare('
         INSERT INTO documents (student_id, document_type, original_filename, stored_filename, mime_type, file_size, file_data, school_attended, description, uploaded_by_id, uploaded_by_role)
@@ -170,7 +192,7 @@ try {
     $stmt->bind_param(
         'issssisssis',
         $studentAccountId,
-        $documentType,
+        $documentTypeValue,
         $originalFilename,
         $storedFilename,
         $detectedMime,
@@ -193,7 +215,7 @@ try {
         'data' => [
             'document_id' => $documentId,
             'student_id' => $studentAccountId,
-            'document_type' => $documentType,
+            'document_type' => $documentTypeValue,
             'original_filename' => $originalFilename,
             'file_size' => $fileSize,
         ],
