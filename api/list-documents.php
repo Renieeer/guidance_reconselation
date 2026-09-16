@@ -24,8 +24,8 @@ function ensure_documents_table(mysqli $conn): void {
     $sql = "
         CREATE TABLE IF NOT EXISTS documents (
             document_id INT NOT NULL AUTO_INCREMENT,
-            student_id INT NOT NULL,
-            document_type VARCHAR(30) NOT NULL,
+            student_id INT DEFAULT NULL,
+            document_type VARCHAR(30) DEFAULT NULL,
             original_filename VARCHAR(255) NOT NULL,
             stored_filename VARCHAR(255) NOT NULL,
             mime_type VARCHAR(100) NOT NULL,
@@ -43,6 +43,18 @@ function ensure_documents_table(mysqli $conn): void {
     ";
     if (!$conn->query($sql)) {
         send_json(500, ['success' => false, 'message' => 'Failed to initialize documents table: ' . $conn->error]);
+    }
+
+    // student_id/document_type used to be required (every upload was tied
+    // to one student and categorized), but the coordinator's Document
+    // Library now also accepts general school uploads with neither —
+    // relax any pre-existing NOT NULL constraint left over from that.
+    foreach (['student_id' => 'INT', 'document_type' => 'VARCHAR(30)'] as $column => $type) {
+        $col = $conn->query("SHOW COLUMNS FROM documents LIKE '$column'");
+        $row = $col ? $col->fetch_assoc() : null;
+        if ($row && $row['Null'] === 'NO') {
+            $conn->query("ALTER TABLE documents MODIFY COLUMN $column $type DEFAULT NULL");
+        }
     }
 }
 
@@ -86,26 +98,43 @@ try {
     $typedStudentId = trim((string)($_GET['student_id'] ?? ''));
     $school = trim((string)($_GET['school_attended'] ?? ''));
 
-    if ($typedStudentId === '' || $school === '') {
-        send_json(400, ['success' => false, 'message' => 'student_id and school_attended are required']);
+    if ($school === '') {
+        send_json(400, ['success' => false, 'message' => 'school_attended is required']);
     }
 
-    $studentAccountId = resolve_student_account_id($conn, $typedStudentId);
-    if ($studentAccountId === null) {
-        // Unknown student — not an error, just nothing to show.
-        send_json(200, ['success' => true, 'documents' => []]);
+    // A student_id scopes the list to one student (the counselor's
+    // per-student Documents page). Without one, this lists every document
+    // for the school — the coordinator's general Document Library.
+    if ($typedStudentId !== '') {
+        $studentAccountId = resolve_student_account_id($conn, $typedStudentId);
+        if ($studentAccountId === null) {
+            // Unknown student — not an error, just nothing to show.
+            send_json(200, ['success' => true, 'documents' => []]);
+        }
+
+        $stmt = $conn->prepare('
+            SELECT document_id, student_id, document_type, original_filename, file_size, description, uploaded_at
+            FROM documents
+            WHERE student_id = ? AND school_attended = ?
+            ORDER BY uploaded_at DESC
+        ');
+        if (!$stmt) {
+            send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
+        }
+        $stmt->bind_param('is', $studentAccountId, $school);
+    } else {
+        $stmt = $conn->prepare('
+            SELECT document_id, student_id, document_type, original_filename, file_size, description, uploaded_at
+            FROM documents
+            WHERE school_attended = ?
+            ORDER BY uploaded_at DESC
+        ');
+        if (!$stmt) {
+            send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
+        }
+        $stmt->bind_param('s', $school);
     }
 
-    $stmt = $conn->prepare('
-        SELECT document_id, student_id, document_type, original_filename, file_size, description, uploaded_at
-        FROM documents
-        WHERE student_id = ? AND school_attended = ?
-        ORDER BY uploaded_at DESC
-    ');
-    if (!$stmt) {
-        send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
-    }
-    $stmt->bind_param('is', $studentAccountId, $school);
     if (!$stmt->execute()) {
         send_json(500, ['success' => false, 'message' => 'Execute failed: ' . $stmt->error]);
     }
@@ -113,7 +142,7 @@ try {
     $documents = [];
     while ($row = $result->fetch_assoc()) {
         $row['document_id'] = (int)$row['document_id'];
-        $row['student_id'] = (int)$row['student_id'];
+        $row['student_id'] = $row['student_id'] !== null ? (int)$row['student_id'] : null;
         $row['file_size'] = (int)$row['file_size'];
         $documents[] = $row;
     }

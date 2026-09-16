@@ -376,18 +376,6 @@
                         
                         <div class="document-tabs">
                             <button class="document-tab active" data-filter="all">All Documents</button>
-                            <button class="document-tab" data-filter="inventory">
-                                <i class="fas fa-id-card"></i> Inventory
-                            </button>
-                            <button class="document-tab" data-filter="referral">
-                                <i class="fas fa-clipboard"></i> Referrals
-                            </button>
-                            <button class="document-tab" data-filter="follow-up">
-                                <i class="fas fa-tasks"></i> Follow-ups
-                            </button>
-                            <button class="document-tab" data-filter="case">
-                                <i class="fas fa-briefcase"></i> Cases
-                            </button>
                         </div>
 
                         <div id="documentGrid" class="document-grid">
@@ -408,24 +396,6 @@
             </div>
             <div class="modal-body upload-modal-body">
                 <form id="uploadForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="studentId">Student ID <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="studentId" name="student_id" placeholder="e.g., STU001" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="documentType">Document Type <span style="color: #ef4444;">*</span></label>
-                            <select id="documentType" name="document_type" required>
-                                <option value="">Select Document Type</option>
-                                <option value="inventory">Individual Inventory Form</option>
-                                <option value="referral">Referral Form</option>
-                                <option value="follow-up">Follow-up Form</option>
-                                <option value="case">Case Document</option>
-                            </select>
-                        </div>
-                    </div>
-
                     <div class="form-group">
                         <label for="fileInput">Select Image File <span style="color: #ef4444;">*</span></label>
                         <div class="file-input-wrapper">
@@ -479,6 +449,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             setupUserInfo();
             setupEventListeners();
+            loadDocuments();
         });
 
         // Setup user info
@@ -562,26 +533,23 @@
             document.getElementById('uploadModal').classList.remove('show');
         }
 
-        // Handle file upload
+        // Handle file upload — general school resources, not tied to any
+        // one student, so this only needs the file itself (+ optional notes).
         async function handleUpload(e) {
             e.preventDefault();
 
             const form = document.getElementById('uploadForm');
-            const studentId = document.getElementById('studentId').value.trim();
-            const documentType = document.getElementById('documentType').value;
             const fileInput = document.getElementById('fileInput');
             const description = document.getElementById('description').value;
             const uploadBtn = form.querySelector('.upload-btn');
             const progressDiv = form.querySelector('.upload-progress');
 
-            if (!studentId || !documentType || !fileInput.files.length) {
-                showNotification('Please fill in all required fields', 'error');
+            if (!fileInput.files.length) {
+                showNotification('Please select a file to upload', 'error');
                 return;
             }
 
             const formData = new FormData();
-            formData.append('student_id', studentId);
-            formData.append('document_type', documentType);
             formData.append('file', fileInput.files[0]);
             formData.append('description', description);
             formData.append('user_type', sessionStorage.getItem('userType') || '');
@@ -604,7 +572,7 @@
                     form.reset();
                     document.getElementById('fileInput').value = '';
                     progressDiv.style.display = 'none';
-                    loadDocuments(studentId);
+                    loadDocuments();
                     hideUploadForm();
                 } else {
                     showNotification(data.message || 'Upload failed', 'error');
@@ -617,24 +585,20 @@
             }
         }
 
-        // Load documents
-        async function loadDocuments(studentId) {
-            if (!studentId) {
-                showEmptyState('Enter a Student ID to view documents');
-                return;
-            }
-
+        // Load every document uploaded for this school — the whole point of
+        // a shared "Document Library" rather than one student's folder.
+        async function loadDocuments() {
             const userType = sessionStorage.getItem('userType');
             const schoolAttended = sessionStorage.getItem('schoolAttended');
 
             try {
-                const response = await fetch(`../../api/list-documents.php?student_id=${studentId}&user_type=${userType}&school_attended=${schoolAttended || ''}`);
+                const response = await fetch(`../../api/list-documents.php?user_type=${userType}&school_attended=${schoolAttended || ''}`);
                 const data = await response.json();
 
                 if (data.success && data.documents.length > 0) {
                     displayDocuments(data.documents);
                 } else {
-                    showEmptyState('No documents found for this student');
+                    showEmptyState('No documents yet');
                 }
             } catch (error) {
                 console.error('Error loading documents:', error);
@@ -657,10 +621,10 @@
             documents.forEach(doc => {
                 const card = document.createElement('div');
                 card.className = 'document-card';
-                card.dataset.type = doc.document_type;
 
-                const icon = docTypeIcons[doc.document_type] || 'fa-file';
+                const icon = doc.document_type ? (docTypeIcons[doc.document_type] || 'fa-file') : 'fa-file';
                 const uploadDate = new Date(doc.uploaded_at).toLocaleDateString();
+                const typeLabel = doc.document_type ? `<div><strong>${doc.document_type.replace('-', ' ').toUpperCase()}</strong></div>` : '';
 
                 card.innerHTML = `
                     <div class="document-icon">
@@ -668,7 +632,7 @@
                     </div>
                     <div class="document-name">${doc.original_filename}</div>
                     <div class="document-meta">
-                        <div><strong>${doc.document_type.replace('-', ' ').toUpperCase()}</strong></div>
+                        ${typeLabel}
                         <div>${uploadDate}</div>
                         <div style="font-size: 11px; margin-top: 4px;">${(doc.file_size / 1024).toFixed(2)} KB</div>
                     </div>
@@ -701,12 +665,11 @@
 
         // View document
         function viewDocument(documentId) {
-            const studentId = document.getElementById('studentId').value;
             const userType = sessionStorage.getItem('userType');
             const schoolAttended = sessionStorage.getItem('schoolAttended');
 
-            const imageUrl = `../../api/download-document.php?document_id=${documentId}&student_id=${studentId}&user_type=${userType}&school_attended=${schoolAttended || ''}&user_id=${sessionStorage.getItem('userId') || 0}`;
-            
+            const imageUrl = `../../api/download-document.php?document_id=${documentId}&user_type=${userType}&school_attended=${schoolAttended || ''}&user_id=${sessionStorage.getItem('userId') || 0}`;
+
             document.getElementById('previewImage').src = imageUrl;
             document.getElementById('previewModal').classList.add('show');
         }
@@ -744,8 +707,7 @@
 
                 if (data.success) {
                     showNotification('Document deleted successfully', 'success');
-                    const studentId = document.getElementById('studentId').value;
-                    loadDocuments(studentId);
+                    loadDocuments();
                 } else {
                     showNotification(data.message || 'Delete failed', 'error');
                 }

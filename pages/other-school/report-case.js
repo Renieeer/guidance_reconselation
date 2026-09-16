@@ -111,9 +111,10 @@ function gradeCell(bucketKey, grade) {
 }
 
 // Flattens sections/categories/counts into one render-and-export-ready list:
-// a header row per section, a row per real category, an "Uncategorized" row
-// per section (cases whose category hasn't been chosen yet), a subtotal row
-// per section, and a final grand-total row.
+// a header row per section, a row per real category, a subtotal row per
+// section, and a final grand-total row. Uncategorized cases (no category
+// chosen yet) aren't broken out as their own row, but still count toward
+// the section/grand totals via addToTotals() below.
 function buildDisplayRows() {
     const rows = [];
     const grandTotal = {};
@@ -140,9 +141,10 @@ function buildDisplayRows() {
             addToTotals(cat.categoryId);
         });
 
-        const uncategorizedKey = `section-${section.sectionId}-uncategorized`;
-        rows.push({ type: 'category', label: 'Uncategorized', bucketKey: uncategorizedKey });
-        addToTotals(uncategorizedKey);
+        // Uncategorized cases (no category chosen yet) still count toward
+        // the section/grand totals below — they just don't get their own
+        // listed row, since "Uncategorized" isn't a real case category.
+        addToTotals(`section-${section.sectionId}-uncategorized`);
 
         rows.push({ type: 'subtotal', label: `Total ${section.sectionCode}: ${section.sectionName}`, totals: sectionTotal });
     });

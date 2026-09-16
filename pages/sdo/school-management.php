@@ -213,6 +213,8 @@
                     <p class="text-center p-5 text-muted">Loading schools...</p>
                 </div>
 
+                <div class="district-pagination" id="schoolFolderPagination" hidden></div>
+
                 <!-- Clicking a school card opens it here instead of expanding in the
                      grid, so it floats front-and-center for focused editing. -->
                 <div id="schoolDetailModal" class="modal">
