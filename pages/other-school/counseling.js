@@ -872,33 +872,11 @@ function renderRecentCases() {
                         </div>
 
                         <div class="drawer-case-summary">
-                            ${record.referralCode ? `
-                            <div class="drawer-case-field">
-                                <span class="drawer-case-label">Linked referral</span>
-                                <span class="drawer-case-value">
-                                    Created from #${escapeHtml(record.referralCode)}
-                                    <a href="referrals.php?id=${encodeURIComponent(record.referralCode)}" class="btn btn-outline btn-sm" style="margin-left:8px;">
-                                        <i class="bi bi-box-arrow-up-right"></i> View Referral
-                                    </a>
-                                </span>
+                            <div class="drawer-case-counts">
+                                <span><strong>${countFollowUpsByTitle(record, 'Counseling Session')}</strong> sessions</span>
+                                <span><strong>${countFollowUpsByTitle(record, 'Follow-up')}</strong> follow-ups</span>
                             </div>
-                            ` : ''}
-                            <div class="drawer-case-field">
-                                <span class="drawer-case-label">Section</span>
-                                <span class="drawer-case-value">${escapeHtml(record.sectionName || '—')}</span>
-                            </div>
-                            <div class="drawer-case-field">
-                                <span class="drawer-case-label">Summary of concern</span>
-                                <span class="drawer-case-value">${escapeHtml(record.caseSummary || '—')}</span>
-                            </div>
-                            <div class="drawer-case-field">
-                                <span class="drawer-case-label">Counseling objective</span>
-                                <span class="drawer-case-value">${escapeHtml(record.caseObjective || '—')}</span>
-                            </div>
-                            <div class="drawer-case-field">
-                                <span class="drawer-case-label">Initial action plan</span>
-                                <span class="drawer-case-value">${escapeHtml(record.firstAction || '—')}</span>
-                            </div>
+                            ${buildCaseTimelineRail(record)}
                         </div>
                     </div>
                 </div>
@@ -906,6 +884,129 @@ function renderRecentCases() {
         </tr>
     `;
     }).join('');
+}
+
+// The case drawer's chronological story — the case's own creation as the
+// first node, then a node per counseling session in date order, with every
+// follow-up nested inside whichever session most recently preceded it (a
+// follow-up is a check-in on progress since that session, not its own
+// separate step — see the "come back on that day" / "track if she's
+// improving" distinction), plus an open "still ongoing" node while the case
+// is pending. A follow-up logged before any session exists yet has nothing
+// to nest under, so it falls back to its own node. Reuses
+// student-history.js's own .sh-case-day/-badge/-bar/-note-row rail styling
+// (see counseling.php's stylesheet link) instead of a second design — and
+// counts/labels come straight from record.followUps, the same source
+// countFollowUpsByTitle() reads.
+function buildCaseTimelineRail(record) {
+    const followUps = record.followUps || [];
+    const sorted = followUps.slice().sort((a, b) => {
+        const da = new Date(a.recordedAt || a.followUpDate || 0);
+        const db = new Date(b.recordedAt || b.followUpDate || 0);
+        return da - db;
+    });
+
+    // Group into { session, followUps: [...] } — a Counseling Session opens
+    // a new group; a Follow-up joins whichever group is currently open, or
+    // stands alone (session: null) if none has happened yet.
+    const groups = [];
+    let currentGroup = null;
+    sorted.forEach(f => {
+        const isSession = (f.title || 'Follow-up') === 'Counseling Session';
+        if (isSession) {
+            currentGroup = { session: f, followUps: [] };
+            groups.push(currentGroup);
+        } else if (currentGroup) {
+            currentGroup.followUps.push(f);
+        } else {
+            groups.push({ session: null, followUps: [f] });
+        }
+    });
+
+    // inlineLabel + its own LOGGED badge only apply to a nested follow-up
+    // (no day-bar of its own to carry a label/pill) — a session's own note,
+    // or a session-less orphan follow-up, already gets both from its bar.
+    const buildNoteRow = (f, inlineLabel) => `
+        <div class="sh-case-note-row">
+            <span class="sh-case-note-icon"><i class="fas fa-pen"></i></span>
+            <div class="sh-case-note-body">
+                <div class="sh-case-note-head">
+                    ${inlineLabel ? `<strong>${escapeHtml(inlineLabel)}</strong> &middot; ` : ''}${f.categoryName ? `Category <strong>${escapeHtml(f.categoryName)}</strong> &middot; ` : ''}Note by <strong>${escapeHtml(f.counselorName || 'A counselor')}</strong> &middot; ${escapeHtml(formatDate(f.followUpDate))}
+                    ${inlineLabel ? `<span class="badge badge-completed" style="margin-left:6px;">LOGGED</span>` : ''}
+                </div>
+                <div class="sh-case-note-text">${escapeHtml(f.initialAction) || '—'}</div>
+            </div>
+        </div>`;
+
+    let sessionNum = 0;
+    let followUpNum = 0;
+    const eventNodes = groups.map(group => {
+        if (group.session) {
+            sessionNum++;
+            const nestedFollowUps = group.followUps.map(f => buildNoteRow(f, `Student Follow-up #${++followUpNum}`)).join('');
+            return `
+            <div class="sh-case-day">
+                <div class="sh-case-day-row">
+                    <span class="sh-case-day-badge sh-case-day-badge--session">${sessionNum}</span>
+                    <div class="sh-case-day-bar">
+                        <span>COUNSELING SESSION &middot; #${sessionNum}</span>
+                        <span class="sh-case-day-pill sh-case-day-pill--session">LOGGED</span>
+                    </div>
+                </div>
+                ${buildNoteRow(group.session)}
+                ${nestedFollowUps}
+            </div>`;
+        }
+        // No session has happened yet — nothing to nest this follow-up
+        // under, so it gets its own node same as before.
+        return group.followUps.map(f => `
+            <div class="sh-case-day">
+                <div class="sh-case-day-row">
+                    <span class="sh-case-day-badge">${++followUpNum}</span>
+                    <div class="sh-case-day-bar">
+                        <span>STUDENT FOLLOW-UP &middot; #${followUpNum}</span>
+                        <span class="sh-case-day-pill">LOGGED</span>
+                    </div>
+                </div>
+                ${buildNoteRow(f)}
+            </div>`).join('');
+    });
+
+    const students = record.students || [];
+    const roleLine = students.length === 1
+        ? `Student role: ${escapeHtml(students[0].role || '—')}`
+        : `${students.length} students involved`;
+    const openedLabel = record.referralCode
+        ? `CASE OPENED &mdash; FROM REFERRAL #${escapeHtml(record.referralCode)}`
+        : 'CASE OPENED &mdash; WALK-IN';
+
+    const openedNode = `
+        <div class="sh-case-day">
+            <div class="sh-case-day-row">
+                <span class="sh-case-day-badge sh-case-day-badge--opened"><i class="bi bi-folder2-open"></i></span>
+                <div class="sh-case-day-bar">
+                    <span>${openedLabel}</span>
+                </div>
+            </div>
+            <div class="sh-case-note-row">
+                <span class="sh-case-note-icon"><i class="fas fa-folder-open"></i></span>
+                <div class="sh-case-note-body">
+                    <div class="sh-case-note-head">Opened by <strong>${escapeHtml(record.counselor || 'A counselor')}</strong> &middot; ${roleLine} &middot; ${escapeHtml(formatDate(record.caseDate))}</div>
+                    ${record.caseSummary ? `<div class="sh-case-note-text">${escapeHtml(record.caseSummary)}</div>` : ''}
+                    ${record.referralCode ? `<div style="margin-top:8px;"><a href="referrals.php?id=${encodeURIComponent(record.referralCode)}" class="btn btn-outline btn-sm"><i class="bi bi-box-arrow-up-right"></i> View Referral</a></div>` : ''}
+                </div>
+            </div>
+        </div>`;
+
+    const ongoingNode = record.status !== 'closed' ? `
+        <div class="sh-case-day">
+            <div class="sh-case-day-row">
+                <span class="sh-case-day-badge sh-case-day-badge--ongoing"></span>
+                <span class="sh-case-day-ongoing-text">Case ongoing — add another session or follow-up.</span>
+            </div>
+        </div>` : '';
+
+    return `<div class="case-timeline-rail sh-case-thread-days">${openedNode}${eventNodes.join('')}${ongoingNode}</div>`;
 }
 
 function toggleStudentDrawer(caseId) {
@@ -923,6 +1024,15 @@ function toggleStudentGroup(caseId) {
 }
 
 /* ---- Helpers ---- */
+// Counts follow_up rows already on this case by their Title — 'Counseling
+// Session' vs 'Follow-up' (see saveFollowUp()) — so the drawer can show a
+// running total of each without a separate query. A row saved before this
+// distinction existed has no title, and counts as 'Follow-up' to match the
+// same default api/follow-up.php now applies server-side.
+function countFollowUpsByTitle(record, title) {
+    return (record.followUps || []).filter(f => (f.title || 'Follow-up') === title).length;
+}
+
 function initials(name) {
     return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
 }
@@ -1389,6 +1499,7 @@ async function saveFollowUp() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     case_uid:       record.id,
+                    title:          'Follow-up',
                     category_id:    entry.categoryId,
                     category_name:  entry.categoryName,
                     follow_up_date: date,
@@ -1402,12 +1513,14 @@ async function saveFollowUp() {
 
             record.followUps.push({
                 followUpId:    `FU-${json.data?.follow_up_id ?? Date.now()}-${entry.studentId}`,
+                title:         'Follow-up',
                 studentId:     entry.studentId,
                 categoryId:    entry.categoryId,
                 categoryName:  entry.categoryName,
                 initialAction: entry.note,
                 followUpDate:  date,
-                recordedAt:    new Date().toISOString()
+                recordedAt:    new Date().toISOString(),
+                counselorName: user?.name || ''
             });
         }
 
@@ -1690,7 +1803,10 @@ function closeAppointModal() {
 }
 
 async function submitAppointments() {
-    const body = document.getElementById('appointBody');
+    const modal  = document.getElementById('appointModal');
+    const caseId = modal.dataset.caseId;
+    const record = caseDrafts.find(r => r.id === caseId);
+    const body   = document.getElementById('appointBody');
 
     const checked = Array.from(body.querySelectorAll('.appoint-student-checkbox:checked'));
     if (!checked.length) {
@@ -1730,7 +1846,8 @@ async function submitAppointments() {
             notes,
             school,
             role:         user?.role || '',
-            counselor_id: user?.id || 0
+            counselor_id: user?.id || 0,
+            case_uid:     caseId
         })
     }).then(async res => {
         const json = await res.json();
@@ -1740,10 +1857,65 @@ async function submitAppointments() {
 
     const succeeded = results.filter(r => r.status === 'fulfilled').length;
     const failed    = results.filter(r => r.status === 'rejected');
+    // Only the students whose appointment actually went through get logged
+    // as a counseling session — same order as `checked` since allSettled
+    // preserves it.
+    const bookedStudents = checked.filter((cb, i) => results[i].status === 'fulfilled');
 
     if (succeeded) {
         showAlert(`Appointment${succeeded > 1 ? 's' : ''} requested for ${succeeded} student${succeeded > 1 ? 's' : ''}.`, 'success');
         closeAppointModal();
+
+        // Booking a counseling session also logs it on the case timeline —
+        // reuses the same follow_up/follow_up_note tables as
+        // "Add Student Follow-up" (see saveFollowUp()), tagged via the
+        // existing Title column so it's counted/shown as a session rather
+        // than a follow-up. A session has no per-student behavior category
+        // (it's a scheduled meeting, not an observation), so category_id is
+        // sent empty — api/follow-up.php only requires one for a Follow-up.
+        if (record && bookedStudents.length) {
+            record.followUps = record.followUps || [];
+            try {
+                const res = await fetch(FOLLOW_UP_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        case_uid:       caseId,
+                        title:          'Counseling Session',
+                        category_id:    '',
+                        category_name:  '',
+                        follow_up_date: date,
+                        counselor_id:   user?.id   || '',
+                        counselor_name: user?.name || '',
+                        notes: bookedStudents.map(cb => ({
+                            student_id:   cb.value,
+                            student_name: cb.dataset.name,
+                            note: `Scheduled counseling session — ${reason}${notes ? ` (${notes})` : ''} at ${time}.`
+                        }))
+                    })
+                });
+                const json = await res.json();
+                if (!res.ok || !json.success) throw new Error(json.message || `HTTP ${res.status}`);
+
+                bookedStudents.forEach(cb => {
+                    record.followUps.push({
+                        followUpId:    `FU-${json.data?.follow_up_id ?? Date.now()}-${cb.value}`,
+                        title:         'Counseling Session',
+                        studentId:     cb.value,
+                        categoryId:    '',
+                        categoryName:  '',
+                        initialAction: `Scheduled counseling session — ${reason}${notes ? ` (${notes})` : ''} at ${time}.`,
+                        followUpDate:  date,
+                        recordedAt:    new Date().toISOString(),
+                        counselorName: user?.name || ''
+                    });
+                });
+                renderRecentCases();
+            } catch (error) {
+                console.error('Failed to log counseling session on the case:', error);
+                showAlert(`Appointment booked, but logging it on the case failed: ${error.message}`, 'warning');
+            }
+        }
     }
     if (failed.length) {
         console.error('Appointment request failures:', failed.map(f => f.reason?.message));

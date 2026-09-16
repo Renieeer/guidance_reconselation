@@ -303,7 +303,7 @@ if (table_exists($conn, 'follow_up') && table_exists($conn, 'follow_up_note')) {
     $caseJoin = $hasCaseTable ? 'LEFT JOIN counselor_case_scenarios cs ON cs.case_uid = fu.case_uid' : '';
 
     $stmt = $conn->prepare("
-        SELECT fu.Follow_id AS follow_up_id, fu.case_uid, fu.category_name, fu.follow_up_date,
+        SELECT fu.Follow_id AS follow_up_id, fu.Title AS title, fu.case_uid, fu.category_name, fu.follow_up_date,
                fu.counselor_name, fu.created_at, n.note, {$caseTitleSelect} AS case_title
         FROM follow_up fu
         JOIN follow_up_note n ON n.follow_up_id = fu.Follow_id
@@ -318,6 +318,7 @@ if (table_exists($conn, 'follow_up') && table_exists($conn, 'follow_up_note')) {
             while ($row = $result->fetch_assoc()) {
                 $followUps[] = [
                     'follow_up_id' => (int)$row['follow_up_id'],
+                    'title' => $row['title'] ?? '',
                     'case_uid' => $row['case_uid'] ?? '',
                     'case_title' => $row['case_title'] ?? '',
                     'category_name' => $row['category_name'] ?? '',
@@ -372,6 +373,7 @@ if (!empty($candidateIds) && table_exists($conn, 'appointment_requests')) {
                     'notes' => $row['notes'] ?? '',
                     'status' => $row['status'] ?? 'pending',
                     'counselor_notes' => $row['counselor_notes'] ?? '',
+                    'case_uid' => $row['case_uid'] ?? '',
                     'created_at' => $row['created_at'] ?? null,
                     'updated_at' => $row['updated_at'] ?? null
                 ];

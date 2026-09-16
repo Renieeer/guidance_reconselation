@@ -1,84 +1,75 @@
-// Student Feedback — targets a specific counseling session, appointment,
-// or calendar event the student was actually involved in. Backed by
-// api/feedback.php (real DB table), not localStorage.
+// Student Feedback — star rating of how the counselor handled a specific
+// counseling session or referral. Saved server-side via
+// api/student-ratings.php (see pages/counselor/student-feedback.js and
+// pages/coordinator/student-feedback.js for the read-only views), so a
+// rating is visible to staff on any device, not just this browser. The
+// session picker below reuses the same category -> specific-record data
+// api/feedback.php (counseling cases) and api/referral.php (referrals)
+// already expose — each item now also carries who actually handled it
+// (counselor_id/counselor_name), so a rating is attributed to a real
+// counselor instead of just a free-text subject label.
 
-const FEEDBACK_TYPE_LABELS = {
+const STUDENT_RATINGS_API = '../../api/student-ratings.php';
+const STAR_RATING_HINTS = {
+    1: 'Poor',
+    2: 'Fair',
+    3: 'Good',
+    4: 'Very Good',
+    5: 'Excellent'
+};
+const RATING_SUBJECT_LABELS = {
     counseling_case: 'Counseling Session',
-    appointment: 'Appointment',
-    event: 'Calendar Event'
+    referral: 'Referral'
 };
 
-// Maps a subject_type to the key that API's ?action=options response uses
-// for that bucket.
-const FEEDBACK_OPTIONS_KEY = {
-    counseling_case: 'counseling_cases',
-    appointment: 'appointments',
-    event: 'events'
-};
-
-const FEEDBACK_TYPE_ICONS = {
-    counseling_case: 'bi-people',
-    appointment: 'bi-calendar-check',
-    event: 'bi-calendar-event'
-};
-
-let feedbackOptions = { counseling_cases: [], appointments: [], events: [] };
-let feedbackHistory = [];
-let openFeedbackId = null;
+let selectedStarRating = 0;
+let ratingSessionOptions = { counseling_case: [], referral: [] };
 
 document.addEventListener('DOMContentLoaded', function() {
     initPage();
-    loadOptions();
-    loadFeedback();
+    setupStarRatingInput();
     setupEventListeners();
+    loadRatingSessionOptions();
+    renderMyRatings();
 });
 
 function setupEventListeners() {
-    document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+    document.getElementById('ratingForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        sendFeedback();
+        saveRating();
     });
+    document.getElementById('ratingSubjectType').addEventListener('change', populateRatingSubjectIdOptions);
+    document.getElementById('clearRatingFormBtn').addEventListener('click', clearRatingForm);
+}
 
-    document.getElementById('feedbackSubjectType').addEventListener('change', populateSubjectIdOptions);
-
-    document.getElementById('openFeedbackFormBtn').addEventListener('click', openFeedbackForm);
-    document.getElementById('cancelFeedbackFormBtn').addEventListener('click', hideFeedbackForm);
-
-    document.getElementById('backToList').addEventListener('click', backToList);
-
-    document.getElementById('threadReplyForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        sendReply();
-    });
-
-    document.getElementById('threadReplyInput').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendReply();
-        }
+function setupStarRatingInput() {
+    const stars = document.querySelectorAll('#starRatingInput i');
+    stars.forEach(star => {
+        star.addEventListener('mouseenter', () => paintStars(Number(star.dataset.value)));
+        star.addEventListener('mouseleave', () => paintStars(selectedStarRating));
+        star.addEventListener('click', () => {
+            selectedStarRating = Number(star.dataset.value);
+            paintStars(selectedStarRating);
+            document.getElementById('starRatingHint').textContent = STAR_RATING_HINTS[selectedStarRating] || '';
+        });
     });
 }
 
-function backToList() {
-    document.getElementById('feedbackMessenger').classList.remove('is-showing-thread');
+function paintStars(value) {
+    document.querySelectorAll('#starRatingInput i').forEach(star => {
+        const isFilled = Number(star.dataset.value) <= value;
+        star.classList.toggle('is-filled', isFilled);
+        star.classList.toggle('bi-star', !isFilled);
+        star.classList.toggle('bi-star-fill', isFilled);
+    });
 }
 
-function openFeedbackForm() {
-    const wrapper = document.getElementById('feedbackFormWrapper');
-    wrapper.style.display = 'block';
-    wrapper.classList.add('case-form-enter');
-    document.getElementById('openFeedbackFormBtn').style.display = 'none';
-    wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
+// ============================================================
+// Session picker — "What are you rating?" -> "Which one?", fed by the
+// student's real counseling cases and referrals.
+// ============================================================
 
-function hideFeedbackForm() {
-    const wrapper = document.getElementById('feedbackFormWrapper');
-    wrapper.style.display = 'none';
-    wrapper.classList.remove('case-form-enter');
-    document.getElementById('openFeedbackFormBtn').style.display = '';
-}
-
-async function loadOptions() {
+async function loadRatingSessionOptions() {
     const user = getCurrentUser();
     if (!user) return;
 
@@ -88,32 +79,55 @@ async function loadOptions() {
         const response = await fetch(`../../api/feedback.php?action=options&student_id=${encodeURIComponent(user.id)}&school=${encodeURIComponent(school)}`);
         const data = await response.json();
         if (data.success) {
-            feedbackOptions = data.data;
+            ratingSessionOptions.counseling_case = (data.data.counseling_cases || []).map(c => ({
+                subject_id: c.subject_id,
+                label: c.label,
+                counselor_id: c.counselor_id || '',
+                counselor_name: c.counselor_name || ''
+            }));
         }
     } catch (error) {
-        showAlert('Could not load your counseling sessions/appointments/events: ' + error.message, 'error');
+        showAlert('Could not load your counseling sessions: ' + error.message, 'error');
     }
 
-    const typeSelect = document.getElementById('feedbackSubjectType');
+    try {
+        const response = await fetch(`../../api/referral.php?role=student&student_id=${encodeURIComponent(user.id)}&school=${encodeURIComponent(school)}`);
+        const data = await response.json();
+        if (data.success) {
+            ratingSessionOptions.referral = (data.data || []).map(r => ({
+                subject_id: String(r.id),
+                label: `${r.referral_reason || 'Referral'} — ${formatDate(r.date_submitted)}`,
+                counselor_id: r.counselor_id || '',
+                counselor_name: r.counselor_name || ''
+            }));
+        }
+    } catch (error) {
+        showAlert('Could not load your referrals: ' + error.message, 'error');
+    }
+
+    updateRatingSubjectTypeAvailability();
+}
+
+function updateRatingSubjectTypeAvailability() {
+    const typeSelect = document.getElementById('ratingSubjectType');
     let anyAvailable = false;
     Array.from(typeSelect.options).forEach(option => {
         const subjectType = option.value;
         if (!subjectType) return;
-        const key = FEEDBACK_OPTIONS_KEY[subjectType];
-        const hasItems = (feedbackOptions[key] || []).length > 0;
+        const hasItems = (ratingSessionOptions[subjectType] || []).length > 0;
         option.disabled = !hasItems;
-        const baseLabel = FEEDBACK_TYPE_LABELS[subjectType];
+        const baseLabel = RATING_SUBJECT_LABELS[subjectType];
         option.textContent = hasItems ? baseLabel : `${baseLabel} (none yet)`;
         if (hasItems) anyAvailable = true;
     });
 
-    document.getElementById('feedbackForm').style.display = anyAvailable ? '' : 'none';
-    document.getElementById('feedbackEmptyState').style.display = anyAvailable ? 'none' : '';
+    document.getElementById('ratingForm').style.display = anyAvailable ? '' : 'none';
+    document.getElementById('ratingEmptyState').style.display = anyAvailable ? 'none' : '';
 }
 
-function populateSubjectIdOptions() {
-    const subjectType = document.getElementById('feedbackSubjectType').value;
-    const idSelect = document.getElementById('feedbackSubjectId');
+function populateRatingSubjectIdOptions() {
+    const subjectType = document.getElementById('ratingSubjectType').value;
+    const idSelect = document.getElementById('ratingSubjectId');
     idSelect.innerHTML = '';
 
     if (!subjectType) {
@@ -122,7 +136,7 @@ function populateSubjectIdOptions() {
         return;
     }
 
-    const items = feedbackOptions[FEEDBACK_OPTIONS_KEY[subjectType]] || [];
+    const items = ratingSessionOptions[subjectType] || [];
     if (items.length === 0) {
         idSelect.disabled = true;
         idSelect.innerHTML = '<option value="">No records found</option>';
@@ -131,202 +145,175 @@ function populateSubjectIdOptions() {
 
     idSelect.disabled = false;
     idSelect.innerHTML = '<option value="">Select one</option>' +
-        items.map(item => `<option value="${escapeAttr(item.subject_id)}">${escapeHtml(item.label)}</option>`).join('');
+        items.map(item => `<option value="${escapeAttr(item.subject_id)}" data-counselor-id="${escapeAttr(item.counselor_id)}" data-counselor-name="${escapeAttr(item.counselor_name)}">${escapeHtml(item.label)}</option>`).join('');
 }
 
-async function sendFeedback() {
+// ============================================================
+// Rating form save / clear
+// ============================================================
+
+function clearRatingForm() {
+    document.getElementById('ratingForm').reset();
+    document.getElementById('ratingSubjectId').innerHTML = '<option value="">Select a category first</option>';
+    document.getElementById('ratingSubjectId').disabled = true;
+    selectedStarRating = 0;
+    paintStars(0);
+    document.getElementById('starRatingHint').textContent = 'Click a star to rate';
+}
+
+async function saveRating() {
     const user = getCurrentUser();
-    const subjectType = document.getElementById('feedbackSubjectType').value;
-    const subjectId = document.getElementById('feedbackSubjectId').value;
-    const message = document.getElementById('feedbackMessage').value.trim();
-    const feedbackType = document.getElementById('feedbackType').value;
+    if (!user) return;
+
+    const subjectType = document.getElementById('ratingSubjectType').value;
+    const idSelect = document.getElementById('ratingSubjectId');
+    const subjectId = idSelect.value;
+    const comment = document.getElementById('ratingComment').value.trim();
+    const anonymous = document.getElementById('ratingAnonymous').checked;
 
     if (!subjectType || !subjectId) {
-        showAlert('Please select what this feedback is about.', 'error');
+        showAlert('Please select what this rating is about.', 'error');
         return;
     }
-    if (!message || !feedbackType) {
-        showAlert('Please fill in all required fields.', 'error');
+    if (selectedStarRating < 1) {
+        showAlert('Please select a star rating.', 'error');
+        return;
+    }
+    if (!comment) {
+        showAlert('Please write a comment about your experience.', 'error');
         return;
     }
 
+    const selectedOption = idSelect.options[idSelect.selectedIndex];
+    const sessionLabel = selectedOption.textContent;
+    const subjectLabel = `${RATING_SUBJECT_LABELS[subjectType]} — ${sessionLabel}`;
+
     try {
-        const response = await fetch('../../api/feedback.php', {
+        const response = await fetch(STUDENT_RATINGS_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                student_id: user.id,
-                student_name: user.name,
-                school: user.school_attended || user.school || '',
-                subject_type: subjectType,
-                subject_id: subjectId,
-                feedback_type: feedbackType,
-                message: message
+                studentId: user.id,
+                studentName: user.name,
+                schoolAttended: user.school_attended || user.school || '',
+                subjectType,
+                subjectId,
+                subjectLabel,
+                counselorId: selectedOption.dataset.counselorId || '',
+                counselorName: selectedOption.dataset.counselorName || '',
+                rating: selectedStarRating,
+                comment,
+                anonymous
             })
         });
         const data = await response.json();
-
         if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Failed to send feedback');
+            throw new Error(data.message || 'Failed to submit rating');
         }
 
-        showAlert('Feedback sent successfully!');
-        document.getElementById('feedbackForm').reset();
-        populateSubjectIdOptions();
-        hideFeedbackForm();
-        loadFeedback();
+        clearRatingForm();
+        renderMyRatings();
+        showAlert('Thanks! Your rating has been submitted.');
     } catch (error) {
-        showAlert(error.message || 'Failed to send feedback', 'error');
+        showAlert('Could not submit your rating: ' + error.message, 'error');
     }
 }
 
-async function loadFeedback() {
+async function deleteRating(id) {
+    if (!confirm('Delete this rating? This cannot be undone.')) return;
+
     const user = getCurrentUser();
     if (!user) return;
 
     try {
-        const response = await fetch(`../../api/feedback.php?action=list&student_id=${encodeURIComponent(user.id)}`);
-        const data = await response.json();
-        feedbackHistory = data.success ? data.data : [];
-    } catch (error) {
-        showAlert('Could not load your feedback history: ' + error.message, 'error');
-        feedbackHistory = [];
-    }
-
-    renderConversationList();
-}
-
-function renderConversationList() {
-    const container = document.getElementById('conversationListItems');
-
-    if (feedbackHistory.length === 0) {
-        container.innerHTML = '<div class="feedback-conversation-list-empty">No feedback sent yet</div>';
-        return;
-    }
-
-    container.innerHTML = feedbackHistory.map(f => {
-        const isActive = f.id === openFeedbackId;
-        // 'replied' = staff sent the latest message — that's what's new
-        // for the student to read (opposite of the staff-side unread rule).
-        const isUnread = f.status === 'replied';
-        const preview = f.last_message || f.message;
-        const icon = FEEDBACK_TYPE_ICONS[f.subject_type] || 'bi-chat-dots';
-        return `
-            <div class="conversation-item ${isActive ? 'is-active' : ''} ${isUnread ? 'is-unread' : ''}" onclick="selectConversation('${f.id}')">
-                <div class="conversation-avatar"><i class="bi ${icon}"></i></div>
-                <div class="conversation-info">
-                    <div class="conversation-top-row">
-                        <span class="conversation-name">${escapeHtml(f.subject_label)}</span>
-                        <span class="conversation-time">${formatConversationTime(f.last_activity_at)}</span>
-                    </div>
-                    <div class="conversation-subject">${escapeHtml(FEEDBACK_TYPE_LABELS[f.subject_type] || f.subject_type)}</div>
-                    <div class="conversation-preview">${escapeHtml(preview)}</div>
-                </div>
-                ${isUnread ? '<span class="conversation-unread-dot"></span>' : ''}
-            </div>
-        `;
-    }).join('');
-}
-
-async function selectConversation(feedbackId) {
-    openFeedbackId = feedbackId;
-    renderConversationList();
-
-    document.getElementById('conversationEmpty').style.display = 'none';
-    document.getElementById('conversationActive').classList.add('show');
-    document.getElementById('feedbackMessenger').classList.add('is-showing-thread');
-    document.getElementById('threadMessages').innerHTML = '';
-    document.getElementById('threadReplyInput').value = '';
-
-    await loadThread();
-}
-
-function formatConversationTime(dateStr) {
-    const date = new Date(dateStr);
-    const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-async function loadThread() {
-    const user = getCurrentUser();
-    if (!user || !openFeedbackId) return;
-
-    try {
-        const response = await fetch(`../../api/feedback-replies.php?feedback_id=${encodeURIComponent(openFeedbackId)}&student_id=${encodeURIComponent(user.id)}`);
-        const data = await response.json();
-        if (!data.success) {
-            throw new Error(data.message || 'Failed to load conversation');
-        }
-        renderThread(data.data.feedback, data.data.messages);
-    } catch (error) {
-        showAlert(error.message || 'Failed to load conversation', 'error');
-    }
-}
-
-function renderThread(feedback, messages) {
-    const user = getCurrentUser();
-
-    document.getElementById('threadSubjectLabel').textContent =
-        `${FEEDBACK_TYPE_LABELS[feedback.subject_type] || feedback.subject_type} — ${feedback.subject_label}`;
-    document.getElementById('threadMeta').textContent = feedback.feedback_type;
-
-    const openingBubble = {
-        sender_account_id: feedback.student_account_id,
-        sender_name: feedback.student_name,
-        message: feedback.message,
-        created_at: feedback.created_at
-    };
-    const allMessages = [openingBubble, ...messages];
-
-    const container = document.getElementById('threadMessages');
-    container.innerHTML = allMessages.map(m => {
-        const mine = Number(m.sender_account_id) === Number(user.id);
-        return `
-            <div class="chat-bubble ${mine ? 'chat-bubble-mine' : 'chat-bubble-theirs'}">
-                <span class="chat-bubble-meta">${escapeHtml(m.sender_name)} · ${formatDate(m.created_at)}</span>
-                <div class="chat-bubble-text">${escapeHtml(m.message)}</div>
-            </div>
-        `;
-    }).join('');
-    container.scrollTop = container.scrollHeight;
-}
-
-async function sendReply() {
-    const user = getCurrentUser();
-    const input = document.getElementById('threadReplyInput');
-    const message = input.value.trim();
-    if (!message || !openFeedbackId) return;
-
-    try {
-        const response = await fetch('../../api/feedback-replies.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                feedback_id: openFeedbackId,
-                sender_role: 'student',
-                sender_account_id: user.id,
-                sender_name: user.name,
-                message: message,
-                student_id: user.id
-            })
+        const response = await fetch(`${STUDENT_RATINGS_API}?id=${encodeURIComponent(id)}&student_id=${encodeURIComponent(user.id)}`, {
+            method: 'DELETE'
         });
         const data = await response.json();
         if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Failed to send reply');
+            throw new Error(data.message || 'Failed to delete rating');
         }
-
-        input.value = '';
-        await loadThread();
-        loadFeedback();
+        renderMyRatings();
     } catch (error) {
-        showAlert(error.message || 'Failed to send reply', 'error');
+        showAlert('Could not delete rating: ' + error.message, 'error');
     }
+}
+
+// ============================================================
+// Rendering
+// ============================================================
+
+async function getMyRatings() {
+    const user = getCurrentUser();
+    if (!user) return [];
+    try {
+        const response = await fetch(`${STUDENT_RATINGS_API}?student_id=${encodeURIComponent(user.id)}`);
+        const data = await response.json();
+        return data.success ? data.data : [];
+    } catch (error) {
+        showAlert('Could not load your ratings: ' + error.message, 'error');
+        return [];
+    }
+}
+
+async function renderMyRatings() {
+    const myRatings = await getMyRatings();
+    renderRatingSummary(myRatings);
+    renderMyRatingsHistory(myRatings);
+}
+
+function renderRatingSummary(myRatings) {
+    const scoreEl = document.getElementById('ratingSummaryScore');
+    const starsEl = document.getElementById('ratingSummaryStars');
+    const metaEl = document.getElementById('ratingSummaryMeta');
+
+    if (myRatings.length === 0) {
+        scoreEl.textContent = '0.0';
+        starsEl.innerHTML = starsHtml(0);
+        metaEl.textContent = 'No ratings submitted yet';
+        return;
+    }
+
+    const average = myRatings.reduce((sum, r) => sum + r.rating, 0) / myRatings.length;
+    scoreEl.textContent = average.toFixed(1);
+    starsEl.innerHTML = starsHtml(Math.round(average));
+    metaEl.textContent = `Based on ${myRatings.length} rating${myRatings.length === 1 ? '' : 's'}`;
+}
+
+function renderMyRatingsHistory(myRatings) {
+    const container = document.getElementById('myRatingsList');
+
+    if (myRatings.length === 0) {
+        container.innerHTML = '<div class="review-list-empty">You haven\'t rated a counseling session yet.</div>';
+        return;
+    }
+
+    const sorted = [...myRatings].sort((a, b) => new Date(b.dateSent) - new Date(a.dateSent));
+    container.innerHTML = sorted.map(r => `
+        <div class="review-card">
+            <div class="review-card-top">
+                <div class="star-display">${starsHtml(r.rating)}</div>
+                <span class="review-date">${formatDate(r.dateSent)}</span>
+            </div>
+            ${r.counselorName ? `<div class="review-counselor">${escapeHtml(r.counselorName)}</div>` : ''}
+            ${r.subjectLabel ? `<div class="review-subject">${escapeHtml(r.subjectLabel)}</div>` : ''}
+            <p class="review-comment">${escapeHtml(r.comment)}</p>
+            <div class="review-card-footer">
+                ${r.anonymous ? '<span class="badge badge-empty">Sent Anonymously</span>' : '<span></span>'}
+                <button type="button" class="btn btn-sm btn-danger" onclick="deleteRating('${r.id}')">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function starsHtml(rating) {
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        html += `<i class="bi ${i <= rating ? 'bi-star-fill' : 'bi-star'}"></i>`;
+    }
+    return html;
 }
 
 function escapeHtml(value) {

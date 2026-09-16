@@ -84,7 +84,13 @@ try {
     }
 
     if ((int)($user['is_active'] ?? 1) === 0) {
-        echo json_encode(['success' => false, 'message' => 'This account has been deactivated. Please contact your SDO administrator.']);
+        // Student accounts are deactivated by the coordinator (see
+        // manage-accounts.php's setActive action); every other account type
+        // (teacher/counselor/coordinator/other-school) is SDO-only (see
+        // sdo-school-staff.php) — point the user at whichever one actually
+        // controls their account.
+        $deactivatedByLabel = ($user['Type'] ?? '') === 'student' ? 'coordinator' : 'SDO administrator';
+        echo json_encode(['success' => false, 'message' => "This account has been deactivated. Please contact your $deactivatedByLabel."]);
         exit;
     }
 

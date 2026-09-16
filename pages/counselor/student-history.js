@@ -615,31 +615,10 @@ function shBuildTimelineEntry(record) {
     let dateVal = record.date;
     let detailBody = '';
 
-    if (record.type === 'counseling') {
-        const c = record.raw;
-        const detail = c.student_detail || {};
-        const hasDetail = detail && (detail.scenario_id || detail.action || detail.reason);
-        const resolved = ['completed', 'resolved', 'done', 'closed'].includes(String(c.status || '').toLowerCase());
-        actorLine = `<strong>${esc(c.counselor_name || 'A counselor')}</strong> ${resolved ? 'resolved counseling case' : 'logged a counseling session'} — <strong>${esc(c.case_title || c.section_name || 'Counseling Case')}</strong>`;
-        dateVal = c.created_at || c.case_date;
-        detailBody = `
-            ${c.referral_code ? `
-            <div class="sh-detail-row"><div class="sh-detail-label">Created from Referral</div><div class="sh-detail-value"><a href="referral-status.php?id=${encodeURIComponent(c.referral_code)}">#${esc(c.referral_code)}</a></div></div>
-            ` : ''}
-            <div class="sh-detail-row"><div class="sh-detail-label">Summary</div><div class="sh-detail-value">${esc(shStripReferralLinkTag(c.case_summary)) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Objective</div><div class="sh-detail-value">${esc(c.case_objective) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">First Action Taken</div><div class="sh-detail-value">${esc(c.first_action) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Counselor</div><div class="sh-detail-value">${esc(c.counselor_name) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Student's Role</div><div class="sh-detail-value">${esc(c.student_role) || '—'}</div></div>
-            ${hasDetail ? `
-            <div class="sh-detail-row"><div class="sh-detail-label">Scenario</div><div class="sh-detail-value">${esc(detail.scenario_id) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Action</div><div class="sh-detail-value">${esc(detail.action) || '—'}</div></div>
-            <div class="sh-detail-row"><div class="sh-detail-label">Reason</div><div class="sh-detail-value">${esc(detail.reason) || '—'}</div></div>
-            ` : ''}
-        `;
-    } else if (record.type === 'follow_ups') {
+    if (record.type === 'follow_ups') {
         const f = record.raw;
-        actorLine = `<strong>${esc(f.counselor_name || 'A counselor')}</strong> added a follow-up note — <strong>${esc(f.category_name || f.case_title || 'Follow-up Session')}</strong>`;
+        const isSession = f.title === 'Counseling Session';
+        actorLine = `<strong>${esc(f.counselor_name || 'A counselor')}</strong> ${isSession ? 'logged a counseling session' : 'added a follow-up note'} — <strong>${esc(f.category_name || f.case_title || (isSession ? 'Counseling Session' : 'Follow-up Session'))}</strong>`;
         dateVal = f.created_at || f.follow_up_date;
         detailBody = `
             <div class="sh-detail-row"><div class="sh-detail-label">Note</div><div class="sh-detail-value">${esc(f.note) || '—'}</div></div>
@@ -749,110 +728,196 @@ function shStripReferralLinkTag(text) {
     return String(text || '').replace(/\s*\(Linked to Referral [^)]*\)\s*$/, '').trim();
 }
 
-/* A counseling case with linked follow-ups becomes one "case thread" — Day 1
-   is everything that happened the day the case was opened, Day 2+ are later
-   calendar days of follow-ups — instead of showing up as separate flat
-   entries. This is the "one timeline of every session" view: every day of
-   one case reads as a single continuous story. Same two-step approach as
-   shBuildReferralThreadEntry(): build a flat, chronologically-sorted list of
-   events first, then group whichever of them land on the same calendar day
-   into one "Day N" block — a follow-up logged for the same day the case was
-   opened (its date has no time-of-day, so compared directly against the
-   case's precise created_at it would otherwise almost always look like it
-   happened "earlier in the day", flipping Day 1/Day 2 and their
-   Opened/Continued labels) merges into that same Day 1 instead. */
-function shBuildCaseThreadEntry(c, followUpsRaw) {
+/* A counseling case with linked follow-ups becomes one "case thread": the
+   case's own opening, then a node per counseling session in date order,
+   with every follow-up nested inside whichever session most recently
+   preceded it (a follow-up is a check-in on progress since that session,
+   not its own separate step) — same grouping as buildCaseTimelineRail() in
+   counseling.js, so a case reads identically here and in its own case
+   drawer. A follow-up logged before any session exists yet has nothing to
+   nest under, so it falls back to its own node. */
+function shBuildCaseThreadEntry(c, followUpsRaw, appointmentsRaw) {
+    appointmentsRaw = appointmentsRaw || [];
     const resolved = SH_RESOLVED_CASE_STATUSES.includes(String(c.status || '').toLowerCase());
-    const day1Note = [
+    const counselorName = esc(c.counselor_name || 'A counselor');
+    const openedNote = [
         shStripReferralLinkTag(c.case_summary),
         c.case_objective ? `Objective: ${c.case_objective}` : '',
         c.first_action ? `First action: ${c.first_action}` : ''
     ].filter(Boolean).join(' ') || 'Counseling session recorded.';
 
-    const events = [
-        { rawDate: c.created_at || c.case_date, label: 'Initial session', note: day1Note },
-        ...followUpsRaw.map(f => ({
-            rawDate: f.follow_up_date || f.created_at,
-            // Category is the counselor's own read on this student's
-            // behavior for this follow-up (see renderFollowUpNoteTile() /
-            // saveFollowUp() in counseling.js, now picked per-student
-            // rather than one category for the whole batch) — surfaced
-            // here so the history shows what was actually assessed, not
-            // just a generic "Follow-up" label.
-            label: f.categoryName ? `Follow-up: ${f.categoryName}` : 'Follow-up',
-            note: f.note || 'Follow-up session recorded.'
-        }))
-    ].sort((a, b) => {
-        const da = shParseDate(a.rawDate) || new Date(0);
-        const db = shParseDate(b.rawDate) || new Date(0);
+    // Title tells a counseling-session entry apart from a follow-up entry
+    // (see saveFollowUp()/submitAppointments() in counseling.js — both
+    // write into this same follow_up table, distinguished only by Title);
+    // a row saved before that distinction existed has no title, and reads
+    // as 'Follow-up' same as api/follow-up.php's own default.
+    const sortedFollowUps = followUpsRaw.slice().sort((a, b) => {
+        const da = shParseDate(a.follow_up_date || a.created_at) || new Date(0);
+        const db = shParseDate(b.follow_up_date || b.created_at) || new Date(0);
         return da - db;
     });
 
-    const dayKeyOf = (rawDate) => {
-        const d = shParseDate(rawDate);
-        return d ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : String(rawDate || '');
-    };
-    const days = [];
-    events.forEach(ev => {
-        const key = dayKeyOf(ev.rawDate);
-        const current = days[days.length - 1];
-        if (current && current.key === key) {
-            current.events.push(ev);
+    const groups = [];
+    let currentGroup = null;
+    sortedFollowUps.forEach(f => {
+        const isSession = (f.title || 'Follow-up') === 'Counseling Session';
+        if (isSession) {
+            currentGroup = { session: f, followUps: [] };
+            groups.push(currentGroup);
+        } else if (currentGroup) {
+            currentGroup.followUps.push(f);
         } else {
-            days.push({ key, events: [ev] });
+            groups.push({ session: null, followUps: [f] });
         }
     });
 
-    if (resolved && days.length > 1) {
-        const lastDayEvents = days[days.length - 1].events;
-        lastDayEvents[lastDayEvents.length - 1].label = 'Closing';
-    }
+    // inlineLabel + its own LOGGED badge only apply to a nested follow-up
+    // (no day-bar of its own to carry a label/pill) — a session's own note
+    // gets both from its bar instead. Category is the counselor's own read
+    // on this student's behavior for this entry (see
+    // renderFollowUpNoteTile()), picked per-student rather than one
+    // category for the whole batch.
+    const buildFollowUpNoteRow = (f, inlineLabel) => `
+        <div class="sh-case-note-row">
+            <span class="sh-case-note-icon"><i class="fas fa-pen"></i></span>
+            <div class="sh-case-note-body">
+                <div class="sh-case-note-head">
+                    ${inlineLabel ? `<strong>${esc(inlineLabel)}</strong> &middot; ` : ''}${f.category_name ? `Category <strong>${esc(f.category_name)}</strong> &middot; ` : ''}<strong>${counselorName}</strong> added a note &middot; ${esc(shFormatDateTime(f.follow_up_date || f.created_at))}
+                    ${inlineLabel ? `<span class="badge badge-completed" style="margin-left:6px;">LOGGED</span>` : ''}
+                </div>
+                <div class="sh-case-note-text">${esc(f.note || 'Follow-up session recorded.')}</div>
+            </div>
+        </div>`;
 
-    const counselorName = esc(c.counselor_name || 'A counselor');
-    const daysHtml = days.map((day, i) => {
-        const dayNum = i + 1;
-        const isLast = i === days.length - 1;
-        const pill = isLast && resolved ? 'REVIEW' : (dayNum === 1 ? 'OPENED' : 'CONTINUED');
-        const headerLabel = [...new Set(day.events.map(ev => ev.label))].join(' + ');
-        const notesHtml = day.events.map(ev => `
+    // The appointment_requests row created alongside a session (see
+    // submitAppointments() in counseling.js) shares that exact same date —
+    // both are set from the same `date` variable in the same call — so
+    // matching on preferred_date/follow_up_date reliably ties an
+    // appointment back to the specific session it was booked for, not just
+    // "this case somewhere". Any appointment whose date matches no session
+    // (shouldn't normally happen) is nested under the case-opened node
+    // instead of silently dropped.
+    const appointmentsByDate = {};
+    const unmatchedAppointments = [];
+    appointmentsRaw.forEach(a => {
+        const key = a.preferred_date || '';
+        const hasSessionOnDate = sortedFollowUps.some(f => (f.title || 'Follow-up') === 'Counseling Session' && f.follow_up_date === key);
+        if (key && hasSessionOnDate) {
+            (appointmentsByDate[key] = appointmentsByDate[key] || []).push(a);
+        } else {
+            unmatchedAppointments.push(a);
+        }
+    });
+
+    // Only ever reached nested in a case thread, i.e. booked via "Add
+    // Counseling Session" (see submitAppointments() in counseling.js,
+    // the only place that stamps case_uid) — never a student's own
+    // request, so there's no separate approval step to name; "approved"
+    // here just means "the counselor booked it", not "someone reviewed
+    // and accepted it". Any other status (e.g. later declined/cancelled)
+    // is a real action, so that still shows as-is.
+    const buildAppointmentNoteRow = a => `
+        <div class="sh-case-note-row">
+            <span class="sh-case-note-icon"><i class="fas fa-calendar-check"></i></span>
+            <div class="sh-case-note-body">
+                <div class="sh-case-note-head">
+                    Appointment <strong>${a.status === 'approved' ? 'scheduled' : esc(a.status || 'pending')}</strong> &middot; ${esc(shFormatDate(a.preferred_date))} ${esc(a.preferred_time || '')}
+                </div>
+                <div class="sh-case-note-text">${esc(a.reason || 'Counseling appointment')}</div>
+            </div>
+        </div>`;
+
+    let sessionNum = 0;
+    let followUpNum = 0;
+    let nodeNum = 1; // the opened node below is node 1
+    const groupNodes = groups.map(group => {
+        nodeNum++;
+        if (group.session) {
+            sessionNum++;
+            const nestedFollowUps = group.followUps.map(f => buildFollowUpNoteRow(f, `Student Follow-up #${++followUpNum}`)).join('');
+            const nestedAppointments = (appointmentsByDate[group.session.follow_up_date] || []).map(buildAppointmentNoteRow).join('');
+            return `
+            <div class="sh-case-day">
+                <div class="sh-case-day-row">
+                    <span class="sh-case-day-badge sh-case-day-badge--session">${nodeNum}</span>
+                    <div class="sh-case-day-bar">
+                        <span>COUNSELING SESSION &middot; #${sessionNum}</span>
+                        <span class="sh-case-day-pill sh-case-day-pill--session">LOGGED</span>
+                    </div>
+                </div>
+                ${buildFollowUpNoteRow(group.session)}
+                ${nestedAppointments}
+                ${nestedFollowUps}
+            </div>`;
+        }
+        // No session has happened yet — nothing to nest this follow-up
+        // under, so it gets its own node.
+        return group.followUps.map(f => {
+            const html = `
+            <div class="sh-case-day">
+                <div class="sh-case-day-row">
+                    <span class="sh-case-day-badge">${nodeNum}</span>
+                    <div class="sh-case-day-bar">
+                        <span>STUDENT FOLLOW-UP &middot; #${++followUpNum}</span>
+                        <span class="sh-case-day-pill">LOGGED</span>
+                    </div>
+                </div>
+                ${buildFollowUpNoteRow(f)}
+            </div>`;
+            nodeNum++;
+            return html;
+        }).join('');
+    });
+
+    const openedLabel = c.referral_code
+        ? `CASE OPENED &mdash; FROM REFERRAL #${esc(c.referral_code)}`
+        : 'CASE OPENED &mdash; WALK-IN';
+    const openedNode = `
+        <div class="sh-case-day">
+            <div class="sh-case-day-row">
+                <span class="sh-case-day-badge sh-case-day-badge--opened"><i class="bi bi-folder2-open"></i></span>
+                <div class="sh-case-day-bar">
+                    <span>${openedLabel}</span>
+                </div>
+            </div>
             <div class="sh-case-note-row">
                 <span class="sh-case-note-icon"><i class="fas fa-pen"></i></span>
                 <div class="sh-case-note-body">
-                    <div class="sh-case-note-head"><strong>${counselorName}</strong> added a note &middot; ${esc(shFormatDateTime(ev.rawDate))}</div>
-                    <div class="sh-case-note-text">${esc(ev.note)}</div>
-                </div>
-            </div>`).join('');
-        return `
-        <div class="sh-case-day">
-            <div class="sh-case-day-row">
-                <span class="sh-case-day-badge">${dayNum}</span>
-                <div class="sh-case-day-bar">
-                    <span>Day ${dayNum} — ${esc(headerLabel)}</span>
-                    <span class="sh-case-day-pill">${pill}</span>
+                    <div class="sh-case-note-head"><strong>${counselorName}</strong> added a note &middot; ${esc(shFormatDateTime(c.created_at || c.case_date))}</div>
+                    <div class="sh-case-note-text">${esc(openedNote)}</div>
                 </div>
             </div>
-            ${notesHtml}
+            ${unmatchedAppointments.map(buildAppointmentNoteRow).join('')}
         </div>`;
-    }).join('');
 
-    const lastDay = days[days.length - 1];
-    const lastEvent = lastDay.events[lastDay.events.length - 1];
+    const lastFollowUp = sortedFollowUps[sortedFollowUps.length - 1];
+    const lastActivityDate = lastFollowUp ? (lastFollowUp.follow_up_date || lastFollowUp.created_at) : (c.created_at || c.case_date);
+    const totalNotes = 1 + sortedFollowUps.length;
+
+    const ongoingNode = !resolved ? `
+        <div class="sh-case-day">
+            <div class="sh-case-day-row">
+                <span class="sh-case-day-badge sh-case-day-badge--ongoing"></span>
+                <span class="sh-case-day-ongoing-text">Case ongoing — add another session or follow-up.</span>
+            </div>
+        </div>` : '';
+
     const doneHtml = resolved ? `
         <div class="sh-case-done-row">
             <span class="sh-case-done-icon"><i class="fas fa-check"></i></span>
             <div class="sh-case-note-body">
-                <div class="sh-case-note-head"><strong>${counselorName}</strong> marked the case as done &middot; ${esc(shFormatDateTime(c.updated_at || lastEvent.rawDate))}</div>
-                <div class="sh-case-done-summary">${days.length} day${days.length === 1 ? '' : 's'} &middot; ${events.length} note${events.length === 1 ? '' : 's'}</div>
+                <div class="sh-case-note-head"><strong>${counselorName}</strong> marked the case as done &middot; ${esc(shFormatDateTime(c.updated_at || lastActivityDate))}</div>
+                <div class="sh-case-done-summary">${sessionNum} session${sessionNum === 1 ? '' : 's'} &middot; ${followUpNum} follow-up${followUpNum === 1 ? '' : 's'}</div>
             </div>
         </div>` : '';
 
     // Collapsed-row summary — same shape as the referral thread's (see
     // shBuildReferralThreadEntry below): date of the last activity, plus
-    // either an activity count or "Awaiting follow-up" for a case that's
-    // just sitting at Day 1.
-    const dateLabel = shFormatDate(resolved ? (c.updated_at || lastEvent.rawDate) : lastEvent.rawDate);
-    const summaryLabel = events.length > 1
-        ? `${days.length} day${days.length === 1 ? '' : 's'} &middot; ${events.length} note${events.length === 1 ? '' : 's'}`
+    // either an activity count or "Awaiting follow-up" for a case that has
+    // nothing logged yet beyond its own opening.
+    const dateLabel = shFormatDate(resolved ? (c.updated_at || lastActivityDate) : lastActivityDate);
+    const summaryLabel = totalNotes > 1
+        ? `${sessionNum} session${sessionNum === 1 ? '' : 's'} &middot; ${followUpNum} follow-up${followUpNum === 1 ? '' : 's'}`
         : 'Awaiting follow-up';
 
     // Collapses to just its summary header by default, like the referral
@@ -865,7 +930,7 @@ function shBuildCaseThreadEntry(c, followUpsRaw) {
                 <div class="sh-referral-row-main">
                     <div class="sh-referral-row-eyebrow">Counseling</div>
                     <div class="sh-referral-row-title">${c.case_uid ? `Case #${esc(c.case_uid)} &middot; ` : ''}${esc(c.case_title || c.section_name || 'Counseling Case')}</div>
-                    <div class="sh-referral-row-sub">${esc(c.category_name || 'Counseling')} &middot; Handled by ${counselorName}${c.referral_code ? ` &middot; <span class="sh-linked-tag">From Referral #${esc(c.referral_code)}</span>` : ''}</div>
+                    <div class="sh-referral-row-sub">${esc(c.category_name || 'Counseling')} &middot; Handled by ${counselorName} &middot; ${c.referral_code ? `<span class="sh-linked-tag">From Referral #${esc(c.referral_code)}</span>` : `<span class="sh-linked-tag sh-walkin-tag">Walk-in</span>`}</div>
                 </div>
                 <div class="sh-referral-row-meta">
                     <div class="sh-referral-row-dates">${esc(dateLabel)}</div>
@@ -875,12 +940,12 @@ function shBuildCaseThreadEntry(c, followUpsRaw) {
                 <i class="fas fa-chevron-down sh-referral-thread-chevron"></i>
             </div>
             <div class="sh-referral-thread-body">
-                <div class="sh-case-thread-days">${daysHtml}</div>
+                <div class="sh-case-thread-days">${openedNode}${groupNodes.join('')}${ongoingNode}</div>
                 ${doneHtml}
             </div>
         </div>`;
 
-    const dateObj = shParseDate(resolved ? (c.updated_at || lastEvent.rawDate) : lastEvent.rawDate) || new Date(0);
+    const dateObj = shParseDate(resolved ? (c.updated_at || lastActivityDate) : lastActivityDate) || new Date(0);
     return { dateObj, html };
 }
 
@@ -1141,6 +1206,19 @@ function shRenderTimeline(grouped, hasActiveFilters) {
         (followUpsByCase[key] = followUpsByCase[key] || []).push(f.raw);
     });
 
+    // Same bucketing for appointments booked from a case's "Add Counseling
+    // Session" (see submitAppointments() in counseling.js, which now stamps
+    // case_uid on the appointment it creates) — nested into that session's
+    // own node in shBuildCaseThreadEntry() instead of showing up a second
+    // time as an unrelated standalone entry. A student's own self-service
+    // request has no case_uid and is never bucketed here.
+    const appointmentsByCase = {};
+    grouped.appointments.forEach(a => {
+        const key = a.raw.case_uid || '';
+        if (!key) return;
+        (appointmentsByCase[key] = appointmentsByCase[key] || []).push(a.raw);
+    });
+
     const threadedCaseUids = new Set();
     const entries = [];
 
@@ -1156,14 +1234,15 @@ function shRenderTimeline(grouped, hasActiveFilters) {
 
     grouped.counseling.forEach(c => {
         const caseUid = c.raw.case_uid || '';
-        const linkedFollowUps = caseUid ? followUpsByCase[caseUid] : null;
-        if (linkedFollowUps && linkedFollowUps.length > 0) {
-            threadedCaseUids.add(caseUid);
-            entries.push(shBuildCaseThreadEntry(c.raw, linkedFollowUps));
-        } else {
-            const entry = shBuildTimelineEntry(c);
-            if (entry) entries.push(entry);
-        }
+        const linkedFollowUps = caseUid ? (followUpsByCase[caseUid] || []) : [];
+        const linkedAppointments = caseUid ? (appointmentsByCase[caseUid] || []) : [];
+        if (caseUid) threadedCaseUids.add(caseUid);
+        // Every counseling case gets the same card/thread treatment as a
+        // referral — including a brand-new one with zero follow-ups yet
+        // (shBuildCaseThreadEntry already renders that fine, as a single
+        // "Day 1 — Initial session" card) — rather than falling back to a
+        // plain flat row just because no follow-up has been logged.
+        entries.push(shBuildCaseThreadEntry(c.raw, linkedFollowUps, linkedAppointments));
     });
 
     grouped.follow_ups.forEach(f => {
@@ -1179,6 +1258,8 @@ function shRenderTimeline(grouped, hasActiveFilters) {
     });
 
     grouped.appointments.forEach(a => {
+        const caseUid = a.raw.case_uid || '';
+        if (caseUid && threadedCaseUids.has(caseUid)) return;
         const entry = shBuildTimelineEntry(a);
         if (entry) entries.push(entry);
     });

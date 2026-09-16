@@ -40,8 +40,7 @@ function loadCoordinatorDashboard() {
         })
         .catch(error => {
             console.error('Error loading coordinator dashboard:', error);
-            ['totalReferrals', 'pendingReferrals', 'activeCases', 'closedCases',
-             'stageSub', 'stageReview', 'stageFollowUp', 'stageCounseling', 'stageProgress', 'stageClosed']
+            ['totalReferrals', 'pendingReferrals', 'activeCases', 'closedCases']
                 .forEach(id => { document.getElementById(id).textContent = '—'; });
             loadRecentReferrals([]);
         });
@@ -59,14 +58,6 @@ function renderCoordinatorDashboard(referrals) {
     document.getElementById('pendingReferrals').textContent = pending;
     document.getElementById('activeCases').textContent = active;
     document.getElementById('closedCases').textContent = closed;
-
-    // Update stage distribution
-    document.getElementById('stageSub').textContent = referrals.filter(r => r.stage === 1).length;
-    document.getElementById('stageReview').textContent = referrals.filter(r => r.stage === 2).length;
-    document.getElementById('stageFollowUp').textContent = referrals.filter(r => r.stage === 3).length;
-    document.getElementById('stageCounseling').textContent = referrals.filter(r => r.stage === 5).length;
-    document.getElementById('stageProgress').textContent = referrals.filter(r => r.stage === 4).length;
-    document.getElementById('stageClosed').textContent = referrals.filter(r => r.stage === 7).length;
 
     // Already sorted newest-first by the API (date_submitted DESC).
     loadRecentReferrals(referrals.slice(0, 5));

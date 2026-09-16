@@ -1845,6 +1845,21 @@ input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
     gap: 10px;
 }
 
+/* Running totals above the case's timeline rail (see buildCaseTimelineRail()
+   in counseling.js) — same numbers countFollowUpsByTitle() feeds into it,
+   just surfaced at a glance without opening every node. */
+.drawer-case-counts {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.drawer-case-counts strong {
+    color: var(--primary-color);
+    font-size: 15px;
+}
+
 .drawer-case-summary-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -9877,6 +9892,18 @@ th {
     gap: 10px;
     margin: 0 auto 20px;
     max-width: 1400px;
+    /* Sticks to the top of .page-content's own scroll (it's the scrolling
+       ancestor here, via overflow-y:auto) as the counselor/teacher scrolls
+       down through the long guidelines section to reach "Add Another
+       Person" — below 1600px this sits at the very top of the page, so
+       without this a collapsed person scrolls out of view immediately and
+       looks like they vanished rather than just being collapsed. Overridden
+       to position:fixed as a floating side panel at 1600px+ below. */
+    position: sticky;
+    top: 12px;
+    z-index: 15;
+    background: linear-gradient(135deg, #f5f7fa 0%, #f5f7fa 100%);
+    padding: 6px 0;
 }
 
 .referral-people-chips-bar:empty {

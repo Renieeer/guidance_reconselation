@@ -324,9 +324,11 @@ function openPersonEditModal(card) {
     document.getElementById('personEditModalTitle').textContent = name ? `Edit ${name}` : 'Person Details';
     // "Remove this person" lives in the modal footer now (a labeled button,
     // not the card's own corner ×, which is hidden while inside this modal
-    // — see .person-edit-modal .referral-person-remove in the CSS) — still
-    // has to respect the same "must keep at least one person" rule.
-    document.getElementById('personEditModalRemove').style.display = allPersonCards().length > 1 ? '' : 'none';
+    // — see .person-edit-modal .referral-person-remove in the CSS) — always
+    // available, even for the last remaining person; collectPeopleFromForm()
+    // is what actually enforces "a referral needs at least one", at submit
+    // time, with a clear message.
+    document.getElementById('personEditModalRemove').style.display = '';
     document.getElementById('personEditModal').classList.add('show');
     card.querySelector('.person-name').focus();
 }
@@ -364,20 +366,21 @@ function setupPersonEditModal() {
     });
 }
 
-// Only the Remove button's visibility depends on how many people there are
-// (a referral always needs at least one) — the "Person" label itself no
-// longer carries a number. Also keeps the live headcount next to "Add
-// Another Person" in sync, so it's clear how many people are on this
-// referral without having to look for the (possibly off-screen) chips.
+// Remove is always available, even down to the last person — clearing
+// everyone is allowed here; collectPeopleFromForm() is what actually
+// enforces "a referral needs at least one person", with a clear message,
+// at submit time. Also keeps the live headcount next to "Add Another
+// Person" in sync, so it's clear how many people are on this referral
+// without having to look for the (possibly off-screen) chips.
 function renumberPersonCards() {
     const cards = allPersonCards();
     cards.forEach((card) => {
-        card.querySelector('.referral-person-remove').style.display = cards.length > 1 ? '' : 'none';
+        card.querySelector('.referral-person-remove').style.display = '';
     });
 
     const countEl = document.getElementById('peopleCount');
     if (countEl) {
-        countEl.textContent = cards.length > 1 ? `${cards.length} people` : '';
+        countEl.textContent = cards.length > 0 ? `${cards.length} ${cards.length === 1 ? 'person' : 'people'}` : '';
     }
 }
 
@@ -690,6 +693,30 @@ function submitReferralForm(e) {
         return;
     }
 
+    const descriptionInput = document.getElementById('referralDescription');
+    const description = descriptionInput.value.trim();
+    if (!description) {
+        showErrorMessage('Please describe the incident or concern before submitting.');
+        descriptionInput.focus();
+        return;
+    }
+
+    const interventionAttemptsInput = document.getElementById('interventionAttempts');
+    const interventionAttempts = interventionAttemptsInput.value.trim();
+    if (!interventionAttempts) {
+        showErrorMessage('Please enter the initial actions taken before submitting.');
+        interventionAttemptsInput.focus();
+        return;
+    }
+
+    const teacherContactInput = document.getElementById('teacherContact');
+    const teacherContact = teacherContactInput.value.trim();
+    if (!teacherContact) {
+        showErrorMessage('Please enter a contact number before submitting.');
+        teacherContactInput.focus();
+        return;
+    }
+
     const people = collectPeopleFromForm();
     if (!people) return;
 
@@ -701,11 +728,11 @@ function submitReferralForm(e) {
     // record below — each person still becomes its own full referral row.
     const shared = {
         referral_reason: referralReason,
-        description: document.getElementById('referralDescription').value.trim(),
-        intervention_attempts: document.getElementById('interventionAttempts').value.trim(),
+        description: description,
+        intervention_attempts: interventionAttempts,
         teacher_id: user.id || null,
         teacher_name: user.name || user.email,
-        teacher_contact: document.getElementById('teacherContact').value.trim(),
+        teacher_contact: teacherContact,
         school_attended: teacherSchool,
         student_school: studentSchool,
         stage: 1, // Stage 1: Interview/Background

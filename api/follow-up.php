@@ -34,6 +34,12 @@ function ensure_follow_up_tables(mysqli $conn): void {
     ");
 
     $columns = [
+        // Title already ships in the original dump (guidance_tbl.sql) as a
+        // bare VARCHAR(45) that predates this feature and was never written
+        // to — reused here (see the POST handler below) to tell a
+        // "Counseling Session" row apart from a "Follow-up" row without a
+        // new column.
+        'Title'          => "VARCHAR(45) DEFAULT NULL",
         'case_uid'       => "VARCHAR(45) NOT NULL DEFAULT ''",
         'category_id'    => "VARCHAR(45) DEFAULT NULL",
         'category_name'  => "VARCHAR(150) DEFAULT NULL",
@@ -100,7 +106,7 @@ if ($method === 'GET') {
     }
 
     $stmt = $conn->prepare('
-        SELECT fu.Follow_id AS follow_up_id, fu.category_id, fu.category_name,
+        SELECT fu.Follow_id AS follow_up_id, fu.Title, fu.category_id, fu.category_name,
                fu.follow_up_date, fu.created_at, n.student_id, n.student_name, n.note
         FROM follow_up fu
         JOIN follow_up_note n ON n.follow_up_id = fu.Follow_id
@@ -120,6 +126,7 @@ if ($method === 'GET') {
     while ($row = $result->fetch_assoc()) {
         $rows[] = [
             'followUpId'    => 'FU-' . $row['follow_up_id'] . '-' . $row['student_id'],
+            'title'         => (string)($row['Title'] ?? ''),
             'studentId'     => (string)$row['student_id'],
             'categoryId'    => (string)$row['category_id'],
             'categoryName'  => (string)$row['category_name'],
@@ -137,6 +144,11 @@ if ($method === 'POST') {
     $body = read_json_body();
 
     $caseUid       = trim((string)($body['case_uid'] ?? ''));
+    // Distinguishes a counseling-session log entry from a follow-up entry —
+    // both write into this same table/row shape (see DECISION in the
+    // counseling-timeline unification work). Defaults to 'Follow-up' so an
+    // older caller that doesn't send this still behaves exactly as before.
+    $title         = trim((string)($body['title'] ?? '')) ?: 'Follow-up';
     $categoryId    = trim((string)($body['category_id'] ?? ''));
     $categoryName  = trim((string)($body['category_name'] ?? ''));
     $followUpDate  = trim((string)($body['follow_up_date'] ?? ''));
@@ -144,8 +156,12 @@ if ($method === 'POST') {
     $counselorName = trim((string)($body['counselor_name'] ?? ''));
     $notes         = is_array($body['notes'] ?? null) ? $body['notes'] : [];
 
-    if ($caseUid === '' || $categoryId === '' || $followUpDate === '' || count($notes) === 0) {
-        send_json(400, ['success' => false, 'message' => 'Case, category, date, and at least one student are required.']);
+    // A counseling session is a scheduled meeting, not a behavior
+    // observation, so it has no category to pick — only a Follow-up
+    // requires one.
+    $categoryRequired = $title !== 'Counseling Session';
+    if ($caseUid === '' || ($categoryRequired && $categoryId === '') || $followUpDate === '' || count($notes) === 0) {
+        send_json(400, ['success' => false, 'message' => 'Case, date, and at least one student are required.' . ($categoryRequired ? ' Category is required.' : '')]);
     }
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $followUpDate)) {
@@ -155,13 +171,13 @@ if ($method === 'POST') {
     $conn->begin_transaction();
     try {
         $stmt = $conn->prepare('
-            INSERT INTO follow_up (case_uid, category_id, category_name, follow_up_date, counselor_id, counselor_name)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO follow_up (case_uid, Title, category_id, category_name, follow_up_date, counselor_id, counselor_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ');
         if (!$stmt) {
             throw new RuntimeException('Prepare failed: ' . $conn->error);
         }
-        $stmt->bind_param('ssssss', $caseUid, $categoryId, $categoryName, $followUpDate, $counselorId, $counselorName);
+        $stmt->bind_param('sssssss', $caseUid, $title, $categoryId, $categoryName, $followUpDate, $counselorId, $counselorName);
         if (!$stmt->execute()) {
             throw new RuntimeException('Failed to save follow-up: ' . $stmt->error);
         }

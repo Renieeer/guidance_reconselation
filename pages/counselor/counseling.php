@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Case - Guidance Management System</title>
     <link rel="stylesheet" href="../../css/style.css?v=<?php echo filemtime(__DIR__ . '/../../css/style.css'); ?>">
+    <!-- Reuses student-history.js's own case-thread rail styling
+         (.sh-case-day/-badge/-bar/-note-row etc.) for this page's case
+         drawer timeline, instead of a second, separate visual language. -->
+    <link rel="stylesheet" href="../../css/student-history.css?v=<?php echo filemtime(__DIR__ . '/../../css/student-history.css'); ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body>

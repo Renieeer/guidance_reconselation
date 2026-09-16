@@ -169,13 +169,13 @@
                     </div>
 
                     <div class="form-field">
-                        <label>Description:</label>
-                        <textarea id="referralDescription" name="referralDescription" placeholder="Describe the incident or concern in more detail..."></textarea>
+                        <label>Description: <span style="color: var(--danger-color);">*</span></label>
+                        <textarea id="referralDescription" name="referralDescription" placeholder="Describe the incident or concern in more detail..." required></textarea>
                     </div>
 
                     <div class="form-field">
-                        <label>Initial Actions Taken:</label>
-                        <textarea id="interventionAttempts" name="interventionAttempts"></textarea>
+                        <label>Initial Actions Taken: <span style="color: var(--danger-color);">*</span></label>
+                        <textarea id="interventionAttempts" name="interventionAttempts" required></textarea>
                     </div>
 
                     <div class="form-row-three">
@@ -190,8 +190,8 @@
                         </div>
 
                         <div class="form-field">
-                            <label>Contact Number:</label>
-                            <input type="tel" id="teacherContact" name="teacherContact" placeholder="e.g. 0917 123 4567">
+                            <label>Contact Number: <span style="color: var(--danger-color);">*</span></label>
+                            <input type="tel" id="teacherContact" name="teacherContact" placeholder="e.g. 0917 123 4567" required>
                         </div>
                     </div>
 
@@ -226,6 +226,6 @@
 
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="referral-form.js"></script>
+    <script src="referral-form.js?v=<?php echo filemtime(__DIR__ . '/referral-form.js'); ?>"></script>
 </body>
 </html>

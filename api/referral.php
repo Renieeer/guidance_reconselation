@@ -489,6 +489,49 @@ try {
 
         $rows = fetchReferralRows($conn, $sql, $types, $params);
 
+        // A referral has no single "assigned counselor" column of its own —
+        // whoever picks it up records themselves on referral_screening
+        // (Stage 1/2) instead. Only resolved for the student's own view
+        // (see pages/student/feedback.js's rating picker, which needs to
+        // know who actually handled a referral to attribute a rating
+        // correctly) — other callers here don't use it, so it's skipped
+        // for them rather than adding a join every referral list pays for.
+        if ($studentId !== '' && !empty($rows)) {
+            $referralIds = array_column($rows, 'id');
+            $placeholders = implode(',', array_fill(0, count($referralIds), '?'));
+            $types2 = str_repeat('i', count($referralIds));
+            $stmt2 = $conn->prepare("
+                SELECT referral_id, counselor_id, counselor_name
+                FROM referral_screening
+                WHERE referral_id IN ($placeholders)
+                ORDER BY created_at DESC
+            ");
+            if ($stmt2) {
+                $stmt2->bind_param($types2, ...$referralIds);
+                if ($stmt2->execute()) {
+                    $screeningResult = $stmt2->get_result();
+                    $counselorByReferral = [];
+                    while ($srow = $screeningResult->fetch_assoc()) {
+                        // First row seen per referral is its most recent
+                        // (ORDER BY created_at DESC above).
+                        if (!isset($counselorByReferral[$srow['referral_id']])) {
+                            $counselorByReferral[$srow['referral_id']] = [
+                                'counselor_id' => $srow['counselor_id'],
+                                'counselor_name' => $srow['counselor_name']
+                            ];
+                        }
+                    }
+                    foreach ($rows as &$row) {
+                        $match = $counselorByReferral[$row['id']] ?? null;
+                        $row['counselor_id'] = $match['counselor_id'] ?? null;
+                        $row['counselor_name'] = $match['counselor_name'] ?? null;
+                    }
+                    unset($row);
+                }
+                $stmt2->close();
+            }
+        }
+
         send_json(200, [
             'success' => true,
             'data' => $rows,

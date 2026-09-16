@@ -586,6 +586,46 @@
     flex-shrink: 0;
 }
 
+/* The counseling case drawer's flat rail (see buildCaseTimelineRail() in
+   counseling.js) — one node per follow_up row plus the case-opened node,
+   instead of student-history.js's day-grouped thread. Same circular-badge
+   treatment #shBody-timeline already applies to this rail's day badges
+   (see above), scoped the same way here since this rail renders outside
+   that container. */
+.case-timeline-rail .sh-case-day-badge {
+    background: linear-gradient(140deg, #e0a94a, #c98a2b);
+    border-radius: 50%;
+}
+.case-timeline-rail .sh-case-note-icon {
+    background: linear-gradient(140deg, #5a8bd0, #3e6fb0);
+    color: #fff;
+}
+
+/* Node-type modifiers, layered on top of the circular badge above — a
+   session, a follow-up, and the case-opened node read apart at a glance,
+   matching the colour already used for each one's own action button (Add
+   Counseling Session = success/green, Add Student Follow-up = warn/amber).
+   Selector repeats .sh-case-day-badge (not just the modifier alone) so its
+   specificity matches — and wins the tie by coming later — against the
+   ".case-timeline-rail .sh-case-day-badge" gradient rule above. */
+.sh-case-day-badge.sh-case-day-badge--opened { background: var(--info); }
+.sh-case-day-badge.sh-case-day-badge--session { background: var(--ok); }
+.sh-case-day-pill--session { background: var(--ok-bg); color: var(--ok); }
+
+/* The open-ended final node showing the case is still awaiting its next
+   session/follow-up — hollow instead of filled so it reads as "not an
+   event yet" rather than another logged entry. */
+.sh-case-day-badge.sh-case-day-badge--ongoing {
+    background: transparent;
+    border: 2px dashed var(--border);
+    color: var(--text-light);
+}
+.sh-case-day-ongoing-text {
+    color: var(--text-light);
+    font-size: 13px;
+    font-style: italic;
+}
+
 .sh-case-note-row,
 .sh-case-done-row {
     display: flex;
@@ -1059,6 +1099,13 @@
     font-weight: 600;
 }
 
+/* A counseling case with no source referral (opened directly, not from a
+   referral workflow) — same subtitle slot as .sh-linked-tag above, but
+   neutral gray instead of blue since there's no link to follow. */
+.sh-walkin-tag {
+    color: #64748b;
+}
+
 .sh-referral-row-meta {
     text-align: right;
     flex-shrink: 0;
@@ -1092,6 +1139,17 @@
 #shBody-timeline .sh-case-day-badge {
     background: linear-gradient(140deg, #e0a94a, #c98a2b);
     border-radius: 50%;
+}
+
+/* Node-type modifiers (see .sh-case-day-badge--session etc. above) need
+   re-declaring here at #id + 2-class specificity — an ID selector like the
+   one above outweighs any number of plain classes, so the plain modifier
+   rule alone can never win inside this container. */
+#shBody-timeline .sh-case-day-badge.sh-case-day-badge--opened { background: var(--info); }
+#shBody-timeline .sh-case-day-badge.sh-case-day-badge--session { background: var(--ok); }
+#shBody-timeline .sh-case-day-badge.sh-case-day-badge--ongoing {
+    background: transparent;
+    border: 2px dashed var(--border);
 }
 
 #shBody-timeline .sh-case-note-icon {

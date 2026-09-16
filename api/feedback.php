@@ -279,7 +279,7 @@ try {
             // api/student-history.php.
             $counselingCases = [];
             $needle = '"id":"' . $studentId . '"';
-            $stmt = $conn->prepare("SELECT case_uid, case_title, case_date, status, students_json FROM counselor_case_scenarios WHERE students_json LIKE CONCAT('%', ?, '%') ORDER BY case_date DESC");
+            $stmt = $conn->prepare("SELECT case_uid, case_title, case_date, status, students_json, counselor_id, counselor_name FROM counselor_case_scenarios WHERE students_json LIKE CONCAT('%', ?, '%') ORDER BY case_date DESC");
             if ($stmt) {
                 $stmt->bind_param('s', $needle);
                 if ($stmt->execute()) {
@@ -299,7 +299,13 @@ try {
                         $counselingCases[] = [
                             'subject_id' => $row['case_uid'],
                             'label' => format_case_label($row),
-                            'status' => $row['status'] ?? ''
+                            'status' => $row['status'] ?? '',
+                            // Who actually handled this case — see
+                            // pages/student/feedback.js's rating picker,
+                            // which needs this to attribute a rating to a
+                            // real counselor instead of just a subject label.
+                            'counselor_id' => $row['counselor_id'] ?? '',
+                            'counselor_name' => $row['counselor_name'] ?? ''
                         ];
                     }
                 }

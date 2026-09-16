@@ -33,6 +33,10 @@ function ensure_follow_up_tables(mysqli $conn): void {
     ");
 
     $columns = [
+        // Reused (not new) — see api/follow-up.php's own ensure_follow_up_tables()
+        // for the full explanation of why Title tells a "Counseling Session"
+        // row apart from a "Follow-up" row.
+        'Title'          => "VARCHAR(45) DEFAULT NULL",
         'case_uid'       => "VARCHAR(45) NOT NULL DEFAULT ''",
         'category_id'    => "VARCHAR(45) DEFAULT NULL",
         'category_name'  => "VARCHAR(150) DEFAULT NULL",
@@ -97,8 +101,8 @@ function fetch_follow_ups_by_case(mysqli $conn, array $caseUids): array {
     $types = str_repeat('s', count($caseUids));
 
     $stmt = $conn->prepare("
-        SELECT fu.case_uid, fu.Follow_id AS follow_up_id, fu.category_id, fu.category_name,
-               fu.follow_up_date, fu.created_at, n.student_id, n.student_name, n.note
+        SELECT fu.case_uid, fu.Follow_id AS follow_up_id, fu.Title, fu.category_id, fu.category_name,
+               fu.follow_up_date, fu.created_at, fu.counselor_name, n.student_id, n.student_name, n.note
         FROM follow_up fu
         JOIN follow_up_note n ON n.follow_up_id = fu.Follow_id
         WHERE fu.case_uid IN ($placeholders)
@@ -119,12 +123,14 @@ function fetch_follow_ups_by_case(mysqli $conn, array $caseUids): array {
     while ($row = $result->fetch_assoc()) {
         $byCase[$row['case_uid']][] = [
             'followUpId'    => 'FU-' . $row['follow_up_id'] . '-' . $row['student_id'],
+            'title'         => (string)($row['Title'] ?? ''),
             'studentId'     => (string)$row['student_id'],
             'categoryId'    => (string)$row['category_id'],
             'categoryName'  => (string)$row['category_name'],
             'initialAction' => (string)$row['note'],
             'followUpDate'  => (string)$row['follow_up_date'],
-            'recordedAt'    => (string)$row['created_at']
+            'recordedAt'    => (string)$row['created_at'],
+            'counselorName' => (string)($row['counselor_name'] ?? '')
         ];
     }
     $stmt->close();

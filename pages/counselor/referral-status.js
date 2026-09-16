@@ -192,8 +192,15 @@ function renderStageSection(referral, viewStage) {
 
     // Show the Initial Risk Assessment completion gate for stage 2
     const screeningSection = document.getElementById('screeningFormSection');
+    // The Referral Information mirror (see loadAssessmentFiles()) exists so
+    // the document stays visible once the referral moves past Stage 2 —
+    // while Stage 2 itself is the one being viewed, its own section right
+    // below already shows that same file, so the mirror just hides for
+    // that one case instead of showing it twice on the same page.
+    const assessmentMirror = document.getElementById('detAssessmentFileList');
     if (viewStage === 2) {
         screeningSection.style.display = 'block';
+        if (assessmentMirror) assessmentMirror.style.display = 'none';
         document.getElementById('assessmentUploadForm').onsubmit = submitAssessmentUpload;
         document.getElementById('assessmentCompletedYesBtn').onclick = confirmAssessmentCompleted;
         document.getElementById('assessmentCompletedNoBtn').onclick = () => {
@@ -202,6 +209,7 @@ function renderStageSection(referral, viewStage) {
         loadAssessmentFiles(referral.id);
     } else {
         screeningSection.style.display = 'none';
+        if (assessmentMirror) assessmentMirror.style.display = '';
     }
 
     // Show the Parent Call-up/Consent file upload + agreement gate for stage 3
@@ -1181,13 +1189,36 @@ function renderAcknowledgementPrintSheet(referral, ack) {
     `;
 }
 
+function buildAssessmentFileRow(row) {
+    const ext = String(row.fileName || '').split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+    // this.closest('a').nextElementSibling is the .file-chip fallback
+    // right after the thumbnail link below — swapped in if the
+    // image itself 404s, so a missing/broken file still reads as
+    // a clean row instead of a broken-image icon.
+    const preview = isImage
+        ? `<a href="${row.url}" target="_blank" rel="noopener" class="file-thumb-link"><img src="${row.url}" alt="${escapeHtml(row.fileName)}" class="file-thumb" onerror="this.closest('a').style.display='none'; this.closest('a').nextElementSibling.style.display='inline-flex';"></a><a href="${row.url}" target="_blank" rel="noopener" class="file-chip" style="display:none;"><i class="bi bi-file-earmark-image"></i> ${escapeHtml(row.fileName)}</a>`
+        : `<a href="${row.url}" target="_blank" rel="noopener" class="file-chip"><i class="bi bi-file-earmark-check"></i> ${escapeHtml(row.fileName)}</a>`;
+    return `
+        <div style="background:#f9fafb; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
+            ${preview}
+            <div><small class="text-muted">${((row.fileSize || 0) / 1024).toFixed(1)} KB • Uploaded by ${escapeHtml(row.uploadedBy || 'Unknown')} on ${formatDate(row.uploadedAt)}</small></div>
+        </div>
+    `;
+}
+
 // Renders into both #assessmentFileList (the Stage 2 section, visible only
-// while viewStage === 2) and #detAssessmentFileList (the always-visible
-// mirror in Referral Information) — whichever of the two exist on the page.
+// while viewStage === 2 — shows every uploaded document, oldest to newest,
+// since that's where a counselor manages the full upload history) and
+// #detAssessmentFileList (the always-visible mirror in Referral
+// Information — just the single latest upload, since it's meant as a
+// quick "what's the current document" glance, not a duplicate of the full
+// history already available in Stage 2). Whichever of the two exist on
+// the page.
 function loadAssessmentFiles(referralId) {
-    const containers = ['assessmentFileList', 'detAssessmentFileList']
-        .map(id => document.getElementById(id))
-        .filter(Boolean);
+    const fullHistoryContainer = document.getElementById('assessmentFileList');
+    const latestOnlyContainer = document.getElementById('detAssessmentFileList');
+    const containers = [fullHistoryContainer, latestOnlyContainer].filter(Boolean);
     if (containers.length === 0) return;
     containers.forEach(c => { c.innerHTML = '<p class="text-muted">Loading uploaded documents...</p>'; });
 
@@ -1200,24 +1231,9 @@ function loadAssessmentFiles(referralId) {
                 containers.forEach(c => { c.innerHTML = '<p class="text-muted">No assessment document uploaded yet.</p>'; });
                 return;
             }
-            const html = rows.map(row => {
-                const ext = String(row.fileName || '').split('.').pop().toLowerCase();
-                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
-                // this.closest('a').nextElementSibling is the .file-chip fallback
-                // right after the thumbnail link below — swapped in if the
-                // image itself 404s, so a missing/broken file still reads as
-                // a clean row instead of a broken-image icon.
-                const preview = isImage
-                    ? `<a href="${row.url}" target="_blank" rel="noopener" class="file-thumb-link"><img src="${row.url}" alt="${escapeHtml(row.fileName)}" class="file-thumb" onerror="this.closest('a').style.display='none'; this.closest('a').nextElementSibling.style.display='inline-flex';"></a><a href="${row.url}" target="_blank" rel="noopener" class="file-chip" style="display:none;"><i class="bi bi-file-earmark-image"></i> ${escapeHtml(row.fileName)}</a>`
-                    : `<a href="${row.url}" target="_blank" rel="noopener" class="file-chip"><i class="bi bi-file-earmark-check"></i> ${escapeHtml(row.fileName)}</a>`;
-                return `
-                <div style="background:#f9fafb; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
-                    ${preview}
-                    <div><small class="text-muted">${((row.fileSize || 0) / 1024).toFixed(1)} KB • Uploaded by ${escapeHtml(row.uploadedBy || 'Unknown')} on ${formatDate(row.uploadedAt)}</small></div>
-                </div>
-            `;
-            }).join('');
-            containers.forEach(c => { c.innerHTML = html; });
+            // rows are ORDER BY uploaded_at DESC — rows[0] is the latest.
+            if (fullHistoryContainer) fullHistoryContainer.innerHTML = rows.map(buildAssessmentFileRow).join('');
+            if (latestOnlyContainer) latestOnlyContainer.innerHTML = buildAssessmentFileRow(rows[0]);
         })
         .catch(error => {
             containers.forEach(c => { c.innerHTML = `<p class="text-danger">${escapeHtml(error.message)}</p>`; });

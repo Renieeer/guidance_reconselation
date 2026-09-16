@@ -61,6 +61,7 @@ function ensure_appointment_request_table(mysqli $conn): void {
     }
 
     ensure_booking_type_column($conn);
+    ensure_appointment_case_uid_column($conn);
 }
 
 // booking_type records whether this was a staff-initiated ("counseling",
@@ -88,6 +89,28 @@ function ensure_booking_type_column(mysqli $conn): void {
     $conn->query("UPDATE appointment_requests SET booking_type = 'counseling' WHERE counselor_notes = 'Scheduled directly by counselor'");
 }
 
+// Links an appointment back to the counselor_case_scenarios.case_uid it was
+// booked from (see "Add Counseling Session" — submitAppointments() in
+// counseling.js), so the student-history timeline can nest it under that
+// case's own counseling-session node instead of showing it a second time as
+// an unrelated standalone entry. NULL for an appointment nobody booked from
+// a case (e.g. a student's own self-service request).
+function ensure_appointment_case_uid_column(mysqli $conn): void {
+    static $checked = false;
+    if ($checked) {
+        return;
+    }
+    $checked = true;
+
+    $result = $conn->query("SHOW COLUMNS FROM appointment_requests LIKE 'case_uid'");
+    if ($result && $result->num_rows > 0) {
+        return;
+    }
+
+    $conn->query("ALTER TABLE appointment_requests ADD COLUMN case_uid VARCHAR(45) DEFAULT NULL");
+    $conn->query("ALTER TABLE appointment_requests ADD INDEX idx_case_uid (case_uid)");
+}
+
 try {
     ensure_appointment_request_table($conn);
 
@@ -110,6 +133,7 @@ try {
                     counselor_id,
                     counselor_notes,
                     booking_type,
+                    case_uid,
                     created_at,
                     updated_at
                 FROM appointment_requests WHERE 1=1";
@@ -194,6 +218,12 @@ try {
         $school = trim((string)($payload['school'] ?? ''));
         $role = trim((string)($payload['role'] ?? ''));
         $counselor_id = (int)($payload['counselor_id'] ?? 0);
+        // Ties this appointment back to the case it was booked from (see
+        // "Add Counseling Session" — submitAppointments() in counseling.js)
+        // so student-history.php can nest it under that case's own
+        // counseling-session node — NULL for a plain self-service request.
+        $case_uid = trim((string)($payload['case_uid'] ?? ''));
+        $case_uid = $case_uid !== '' ? $case_uid : null;
 
         if ($student_id === 0 || $student_name === '' || $preferred_date === '' || $preferred_time === '' || $reason === '') {
             send_json(400, ['success' => false, 'message' => 'Missing required fields']);
@@ -230,8 +260,8 @@ try {
 
         $sql = "
             INSERT INTO appointment_requests (
-                request_id, student_id, student_name, preferred_date, preferred_time, reason, notes, school_attended, status, counselor_id, counselor_notes, booking_type
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                request_id, student_id, student_name, preferred_date, preferred_time, reason, notes, school_attended, status, counselor_id, counselor_notes, booking_type, case_uid
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ";
 
         $stmt = $conn->prepare($sql);
@@ -240,7 +270,7 @@ try {
         }
 
         $stmt->bind_param(
-            'sisssssssiss',
+            'sisssssssisss',
             $request_id,
             $student_id,
             $student_name,
@@ -252,7 +282,8 @@ try {
             $initialStatus,
             $initialCounselorId,
             $initialCounselorNotes,
-            $initialBookingType
+            $initialBookingType,
+            $case_uid
         );
 
         if (!$stmt->execute()) {
