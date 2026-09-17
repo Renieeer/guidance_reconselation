@@ -3731,7 +3731,8 @@ input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
     vertical-align: -2px;
 }
 
-/* Collapsible nav group (a sidebar section header with nested links).
+/* Collapsible nav group (an expandable item with nested links), styled to
+   match a plain .sidebar-menu a link so it reads as just another nav item.
    Collapsed by default; initSidebarGroups() in sidebar-active.js opens it
    on click, or automatically if one of its links is the current page. */
 .sidebar-group-toggle {
@@ -3741,23 +3742,34 @@ input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
     width: 100%;
     background: none;
     border: none;
+    border-left: 3px solid transparent;
     cursor: pointer;
-    padding: 18px 20px 6px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.4);
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
     font-family: inherit;
-    transition: color 0.2s ease;
+    transition: var(--transition);
 }
 
 .sidebar-group-toggle:hover {
-    color: rgba(255, 255, 255, 0.75);
+    background-color: rgba(255, 255, 255, 0.08);
+    color: white;
+}
+
+.sidebar-group-toggle .bi:first-child {
+    margin-right: 10px;
+    font-size: 16px;
+    vertical-align: -2px;
+}
+
+.sidebar-group.is-open .sidebar-group-toggle {
+    color: white;
 }
 
 .sidebar-group-chevron {
-    font-size: 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
     transition: transform 0.2s ease;
 }
 
@@ -3777,7 +3789,8 @@ input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
 }
 
 .sidebar-submenu a {
-    padding-left: 40px;
+    padding-left: 48px;
+    font-size: 13px;
 }
 
 /* Hamburger toggle — hidden on desktop, shown by the mobile media query below.
@@ -7111,6 +7124,40 @@ footer {
     font-size: 14px;
     background: white;
     min-width: 130px;
+}
+
+/* Table toolbar: page-length selector on the left, search on the right
+   (the arrangement of a typical data-table header row), reusing this app's
+   own input/select styling rather than any third-party table library's. */
+.table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.table-toolbar label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #5a6b80;
+    white-space: nowrap;
+}
+
+.table-toolbar select,
+.table-toolbar input[type="text"] {
+    padding: 8px 12px;
+    border: 1px solid #d8e0ea;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-toolbar input[type="text"] {
+    min-width: 220px;
 }
 
 .accounts-pagination {
