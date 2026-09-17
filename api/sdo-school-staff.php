@@ -82,6 +82,94 @@ try {
             exit;
         }
 
+        if ($action === 'updateSchoolInfo') {
+            $schoolCode = trim((string)($data['schoolCode'] ?? ''));
+            $schoolLevel = trim((string)($data['schoolLevel'] ?? ''));
+            $newSchoolName = trim((string)($data['schoolName'] ?? ''));
+
+            if ($schoolCode === '' || $newSchoolName === '') {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'schoolCode and schoolName are required']);
+                exit;
+            }
+            if (!in_array($schoolLevel, ['Secondary', 'East', 'West', 'South'], true)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Invalid school level']);
+                exit;
+            }
+
+            $currentStmt = $conn->prepare('SELECT school_name FROM schools WHERE school_code = ?');
+            if (!$currentStmt) {
+                throw new RuntimeException('Failed to prepare school lookup statement');
+            }
+            $currentStmt->bind_param('s', $schoolCode);
+            $currentStmt->execute();
+            $current = $currentStmt->get_result()->fetch_assoc();
+            $currentStmt->close();
+
+            if (!$current) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'School not found']);
+                exit;
+            }
+            $oldSchoolName = $current['school_name'];
+
+            if (strcasecmp($oldSchoolName, $newSchoolName) !== 0) {
+                $dupStmt = $conn->prepare('SELECT school_code FROM schools WHERE school_name = ? AND school_code != ? LIMIT 1');
+                if (!$dupStmt) {
+                    throw new RuntimeException('Failed to prepare school name uniqueness check');
+                }
+                $dupStmt->bind_param('ss', $newSchoolName, $schoolCode);
+                $dupStmt->execute();
+                $duplicate = $dupStmt->get_result()->fetch_assoc();
+                $dupStmt->close();
+
+                if ($duplicate) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'Another school already uses that name.']);
+                    exit;
+                }
+            }
+
+            $conn->begin_transaction();
+            $transactionStarted = true;
+
+            $stmt = $conn->prepare('UPDATE schools SET school_name = ?, school_level = ? WHERE school_code = ?');
+            if (!$stmt) {
+                throw new RuntimeException('Failed to prepare school info update statement');
+            }
+            $stmt->bind_param('sss', $newSchoolName, $schoolLevel, $schoolCode);
+            if (!$stmt->execute()) {
+                $stmt->close();
+                throw new RuntimeException('Failed to update school info');
+            }
+            $stmt->close();
+
+            // Staff accounts are matched to a school by school_attended, which
+            // can hold either the school's code or its name (see
+            // getAssignments()) — any account currently linked by the OLD
+            // name needs to move to the new one so it doesn't silently fall
+            // out of this school's roster.
+            if (strcasecmp($oldSchoolName, $newSchoolName) !== 0) {
+                $relink = $conn->prepare('UPDATE users_tables SET school_attended = ? WHERE school_attended = ?');
+                if (!$relink) {
+                    throw new RuntimeException('Failed to prepare account relink statement');
+                }
+                $relink->bind_param('ss', $newSchoolName, $oldSchoolName);
+                if (!$relink->execute()) {
+                    $relink->close();
+                    throw new RuntimeException('Failed to relink staff accounts to the renamed school');
+                }
+                $relink->close();
+            }
+
+            $conn->commit();
+            $transactionStarted = false;
+
+            echo json_encode(['success' => true, 'message' => 'School info updated.']);
+            exit;
+        }
+
         if ($action === 'setActive') {
             $accountId = (int)($data['accountId'] ?? 0);
             $active = !empty($data['active']) ? 1 : 0;
@@ -133,6 +221,11 @@ try {
     $schoolName = trim((string)($data['schoolName'] ?? ''));
     $assignType = trim((string)($data['assignType'] ?? ''));
     $schoolLevel = trim((string)($data['schoolLevel'] ?? ''));
+    // Set only when this submission is replacing an existing coordinator/
+    // counselor/combined account (see school-management.js's "Replace
+    // Account" button) — that old account is deactivated, not deleted, so
+    // every record tied to it (cases, referrals, etc.) stays on file.
+    $replaceAccountId = (int)($data['replaceAccountId'] ?? 0);
 
     if ($schoolName === '') {
         http_response_code(400);
@@ -223,6 +316,10 @@ try {
         ]);
     }
 
+    if ($replaceAccountId > 0) {
+        deactivateReplacedAccount($conn, $replaceAccountId, $assignType, $schoolRecord);
+    }
+
     $conn->commit();
     $transactionStarted = false;
 
@@ -263,6 +360,42 @@ function normalizePerson(array $person): array {
 // filtering logic applied elsewhere.
 function normalizeGradeScopeInput($raw): string {
     return implode(',', grade_scope_to_list((string)$raw));
+}
+
+// Deactivates (not deletes) the account being swapped out by "Replace
+// Account" — every case/referral/counseling record tied to that AccountID
+// stays exactly as-is, since nothing else references it by name. Only
+// deactivates when the id actually matches the role+school being replaced,
+// so a stale or mismatched id can't silently deactivate the wrong account.
+// school_attended is stored inconsistently as either the school's code or
+// its name across older rows (see getAssignments()'s own OR-matched join),
+// so both are accepted here too.
+function deactivateReplacedAccount(mysqli $conn, int $accountId, string $assignType, array $schoolRecord): void {
+    $expectedType = $assignType === 'combined' ? 'counselor-and-coordinator' : $assignType;
+
+    $check = $conn->prepare('SELECT AccountID FROM users_tables WHERE AccountID = ? AND Type = ? AND (school_attended = ? OR school_attended = ?)');
+    if (!$check) {
+        throw new RuntimeException('Failed to prepare replaced-account check statement');
+    }
+    $check->bind_param('isss', $accountId, $expectedType, $schoolRecord['school_name'], $schoolRecord['school_code']);
+    $check->execute();
+    $matches = (bool)$check->get_result()->fetch_assoc();
+    $check->close();
+
+    if (!$matches) {
+        return;
+    }
+
+    $deactivate = $conn->prepare('UPDATE users_tables SET is_active = 0 WHERE AccountID = ?');
+    if (!$deactivate) {
+        throw new RuntimeException('Failed to prepare replaced-account deactivation statement');
+    }
+    $deactivate->bind_param('i', $accountId);
+    if (!$deactivate->execute()) {
+        $deactivate->close();
+        throw new RuntimeException('Failed to deactivate the replaced account');
+    }
+    $deactivate->close();
 }
 
 function validatePerson(array $person, string $label): void {
@@ -338,38 +471,70 @@ function createUser(mysqli $conn, array $input): array {
 }
 
 function getAssignments(mysqli $conn): array {
-    // Coordinators/counselors are listed one row per school in this view, so
-    // only the first matching account of each type is surfaced here (a
-    // school with several per-grade counselors will show one in this
-    // summary table — the full list can still be queried directly if needed).
+    // Coordinators/counselors are listed one row per school in this view —
+    // only one account per role is surfaced here (a school with several
+    // per-grade counselors will show one in this summary table — the full
+    // list can still be queried directly if needed).
+    //
+    // "Replace Account" (school-management.js) deactivates the old account
+    // and creates a new one for the same role+school, so more than one
+    // users_tables row can now share a (school, Type) pair. Each role is
+    // resolved to exactly one AccountID via a correlated subquery — active
+    // preferred, then most recently created — and every column for that
+    // role comes from the SAME joined row. The previous approach (a plain
+    // GROUP BY with an independent MAX(CASE...) per column) picked each
+    // column from whichever row happened to have the highest value for
+    // THAT column alone — e.g. AccountID from the new row but the name
+    // from the old one, whenever "Old ..." alphabetically outranked
+    // "New ..." — so id/name/email could end up mismatched.
     $query = "SELECT
                 s.school_code,
                 s.school_name,
                 s.assignment_type,
                 s.school_level,
                 s.district,
-                COUNT(u.AccountID) AS totalAssigned,
-                MAX(CASE WHEN u.Type = 'coordinator' THEN u.AccountID END) AS coordinator_id,
-                MAX(CASE WHEN u.Type = 'coordinator' THEN CONCAT(u.First_name, ' ', u.Last_name) END) AS coordinator_name,
-                MAX(CASE WHEN u.Type = 'coordinator' THEN u.email END) AS coordinator_email,
-                MAX(CASE WHEN u.Type = 'coordinator' THEN u.Grade END) AS coordinator_grade,
-                MAX(CASE WHEN u.Type = 'coordinator' THEN u.is_active END) AS coordinator_active,
-                MAX(CASE WHEN u.Type = 'counselor' THEN u.AccountID END) AS counselor_id,
-                MAX(CASE WHEN u.Type = 'counselor' THEN CONCAT(u.First_name, ' ', u.Last_name) END) AS counselor_name,
-                MAX(CASE WHEN u.Type = 'counselor' THEN u.email END) AS counselor_email,
-                MAX(CASE WHEN u.Type = 'counselor' THEN u.Grade END) AS counselor_grade,
-                MAX(CASE WHEN u.Type = 'counselor' THEN u.is_active END) AS counselor_active,
-                MAX(CASE WHEN u.Type = 'counselor-and-coordinator' THEN u.AccountID END) AS combined_id,
-                MAX(CASE WHEN u.Type = 'counselor-and-coordinator' THEN CONCAT(u.First_name, ' ', u.Last_name) END) AS combined_name,
-                MAX(CASE WHEN u.Type = 'counselor-and-coordinator' THEN u.email END) AS combined_email,
-                MAX(CASE WHEN u.Type = 'counselor-and-coordinator' THEN u.Grade END) AS combined_grade,
-                MAX(CASE WHEN u.Type = 'counselor-and-coordinator' THEN u.is_active END) AS combined_active
+                (
+                    -- Active accounts only — replacing an account leaves the
+                    -- old one on file (is_active = 0) for history, and that
+                    -- shouldn't keep inflating this school's account count
+                    -- once a replacement is actually in the role.
+                    SELECT COUNT(*) FROM users_tables u
+                    WHERE (u.school_attended = s.school_code OR u.school_attended = s.school_name)
+                      AND u.Type IN ('coordinator', 'counselor', 'counselor-and-coordinator')
+                      AND u.is_active = 1
+                ) AS totalAssigned,
+                co.AccountID AS coordinator_id,
+                CONCAT(co.First_name, ' ', co.Last_name) AS coordinator_name,
+                co.email AS coordinator_email,
+                co.Grade AS coordinator_grade,
+                co.is_active AS coordinator_active,
+                cu.AccountID AS counselor_id,
+                CONCAT(cu.First_name, ' ', cu.Last_name) AS counselor_name,
+                cu.email AS counselor_email,
+                cu.Grade AS counselor_grade,
+                cu.is_active AS counselor_active,
+                cb.AccountID AS combined_id,
+                CONCAT(cb.First_name, ' ', cb.Last_name) AS combined_name,
+                cb.email AS combined_email,
+                cb.Grade AS combined_grade,
+                cb.is_active AS combined_active
             FROM schools s
-            LEFT JOIN users_tables u
-                ON (u.school_attended = s.school_code OR u.school_attended = s.school_name)
-                AND u.Type IN ('coordinator', 'counselor', 'counselor-and-coordinator')
+            LEFT JOIN users_tables co ON co.AccountID = (
+                SELECT u.AccountID FROM users_tables u
+                WHERE (u.school_attended = s.school_code OR u.school_attended = s.school_name) AND u.Type = 'coordinator'
+                ORDER BY u.is_active DESC, u.AccountID DESC LIMIT 1
+            )
+            LEFT JOIN users_tables cu ON cu.AccountID = (
+                SELECT u.AccountID FROM users_tables u
+                WHERE (u.school_attended = s.school_code OR u.school_attended = s.school_name) AND u.Type = 'counselor'
+                ORDER BY u.is_active DESC, u.AccountID DESC LIMIT 1
+            )
+            LEFT JOIN users_tables cb ON cb.AccountID = (
+                SELECT u.AccountID FROM users_tables u
+                WHERE (u.school_attended = s.school_code OR u.school_attended = s.school_name) AND u.Type = 'counselor-and-coordinator'
+                ORDER BY u.is_active DESC, u.AccountID DESC LIMIT 1
+            )
             WHERE s.is_active = 1
-            GROUP BY s.school_code, s.school_name, s.assignment_type, s.school_level, s.district
             ORDER BY s.school_name ASC";
     $result = $conn->query($query);
 

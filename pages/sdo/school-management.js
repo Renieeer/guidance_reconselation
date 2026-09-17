@@ -13,6 +13,12 @@ let currentSearch = '';
 let editMode = false;
 let openSchoolCode = null;
 
+// Set while the "Add School" modal is open for a "Replace Account" click
+// (as opposed to a fresh add, or "+ Assign an account" on an empty slot) —
+// read by handleSchoolAssignmentSubmit() so the old account gets
+// deactivated (not deleted) once the replacement is created.
+let pendingReplaceAccountId = null;
+
 // Paginates the folder grid once the filtered result grows past one page —
 // short lists (the common case) never show pagination controls at all.
 const SCHOOL_FOLDER_PAGE_SIZE = 16;
@@ -271,6 +277,8 @@ function getRolePayload(rolePrefix) {
 // state. Used both when opening it fresh and after "+ Assign an account"
 // on a folder left it scoped to one school/role.
 function resetAssignmentModal() {
+    pendingReplaceAccountId = null;
+
     const form = document.getElementById('schoolAssignmentForm');
     if (form) {
         form.reset();
@@ -307,12 +315,14 @@ function openAssignRoleModal(btn) {
     const role = btn.getAttribute('data-assign-role');
     const schoolName = btn.getAttribute('data-school-name') || '';
     const schoolLevel = btn.getAttribute('data-school-level') || '';
+    const replaceAccountId = btn.getAttribute('data-replace-account-id') || '';
 
     // This button can live inside the school detail modal — close it first
     // so the two floating panels don't stack.
     closeModal('schoolDetailModal');
 
     resetAssignmentModal();
+    pendingReplaceAccountId = replaceAccountId || null;
 
     const schoolNameInput = document.getElementById('schoolName');
     if (schoolNameInput) {
@@ -339,7 +349,9 @@ function openAssignRoleModal(btn) {
     const intro = document.getElementById('schoolAssignmentIntro');
     if (intro) {
         const roleLabel = role === 'combined' ? 'a combined coordinator & counselor' : `a ${role}`;
-        intro.textContent = `Assign ${roleLabel} account to ${schoolName}.`;
+        intro.textContent = pendingReplaceAccountId
+            ? `Replace the ${roleLabel} account for ${schoolName}. The previous account will be deactivated and kept on record, not deleted.`
+            : `Assign ${roleLabel} account to ${schoolName}.`;
     }
 
     toggleAssignmentFields();
@@ -366,6 +378,7 @@ async function handleSchoolAssignmentSubmit(event) {
             schoolName,
             assignType,
             schoolLevel,
+            replaceAccountId: pendingReplaceAccountId || null,
             coordinator: getRolePayload('coordinator'),
             counselor: getRolePayload('counselor'),
             combined: getRolePayload('combined')
@@ -634,16 +647,45 @@ function buildFolderCard(item) {
     `;
 }
 
-// The school detail modal's body: the three role slots, plus (in edit mode
-// only) a revoke-access footer. District always mirrors the school's own
-// name (set once at creation, see api/school-config.php) and is not
-// independently editable.
+// Editable School Name + School Level (edit mode only) — lets the SDO admin
+// fix/rename a school or reclassify it (e.g. Secondary -> East) after
+// creation, instead of that being locked in forever at Add School time.
+function buildSchoolInfoEdit(item) {
+    if (!editMode) return '';
+
+    const levels = ['Secondary', 'East', 'West', 'South'];
+    const options = levels.map(lvl =>
+        `<option value="${lvl}" ${item.schoolLevel === lvl ? 'selected' : ''}>${lvl}</option>`
+    ).join('');
+
+    return `
+        <div class="school-info-edit">
+            <div class="school-info-edit-label">School Info</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Name of School</label>
+                    <input type="text" data-edit-school-name value="${escapeHtml(item.schoolName || '')}" placeholder="e.g. Oriental Mindoro National High School">
+                </div>
+                <div class="form-group">
+                    <label>School Level</label>
+                    <select data-edit-school-level>${options}</select>
+                </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-save-school-info data-school-code="${escapeHtml(item.schoolCode)}">Save School Info</button>
+        </div>
+    `;
+}
+
+// The school detail modal's body: an editable School Info section (edit
+// mode only), the three role slots, plus (edit mode only) a revoke-access
+// footer.
 function buildSchoolDetailContent(item) {
     const revokeBtn = editMode
         ? `<button type="button" class="school-folder-revoke" data-revoke-school="${escapeHtml(item.schoolCode)}">Revoke school access</button>`
         : '';
 
     return `
+        ${buildSchoolInfoEdit(item)}
         ${buildRoleSlot('COORDINATOR', item.coordinator, 'coordinator', item.schoolName, item.schoolLevel)}
         ${buildRoleSlot('COUNSELOR', item.counselor, 'counselor', item.schoolName, item.schoolLevel)}
         ${buildRoleSlot('COMBINED', item.combined, 'combined', item.schoolName, item.schoolLevel)}
@@ -673,6 +715,10 @@ function wireSchoolDetailEvents(container) {
 
     container.querySelectorAll('[data-revoke-school]').forEach(btn => {
         btn.addEventListener('click', () => revokeSchoolAccess(btn));
+    });
+
+    container.querySelectorAll('[data-save-school-info]').forEach(btn => {
+        btn.addEventListener('click', () => saveSchoolInfo(btn));
     });
 }
 
@@ -709,6 +755,7 @@ function buildRoleSlot(label, person, roleKey, schoolName, schoolLevel) {
                 ${buildGradeCheckboxes(person.accountId, person.grade || '', schoolLevel)}
                 <button type="button" class="btn btn-secondary btn-sm" data-save-grade data-account-id="${person.accountId}">Save</button>
                 <button type="button" class="btn ${toggleBtnClass} btn-sm" data-toggle-active data-account-id="${person.accountId}" data-active="${isActive ? '1' : '0'}">${toggleLabel}</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-assign-role="${roleKey}" data-school-name="${escapeHtml(schoolName)}" data-school-level="${escapeHtml(schoolLevel || 'Secondary')}" data-replace-account-id="${person.accountId}">Replace Account</button>
             </div>
         `;
     })() : `<div class="text-sm text-muted">${gradeDisplayLabel(person.grade, schoolLevel)}</div>`;
@@ -792,6 +839,43 @@ async function toggleAccountActive(btn) {
         refreshOpenSchoolDetail();
     } catch (error) {
         showSchoolAssignmentAlert(error.message || 'Failed to update account status.', 'error');
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
+async function saveSchoolInfo(btn) {
+    const schoolCode = btn.getAttribute('data-school-code');
+    const container = btn.closest('.school-info-edit');
+    if (!schoolCode || !container) return;
+
+    const schoolLevel = container.querySelector('[data-edit-school-level]')?.value || 'Secondary';
+    const schoolName = container.querySelector('[data-edit-school-name]')?.value.trim() || '';
+
+    if (!schoolName) {
+        showSchoolAssignmentAlert('School name cannot be empty.', 'error');
+        return;
+    }
+
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+        const response = await fetch(SCHOOL_STAFF_ENDPOINT, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'updateSchoolInfo', schoolCode, schoolLevel, schoolName })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to update school info.');
+        }
+        showSchoolAssignmentAlert('School info updated.', 'success');
+        await loadSchoolAssignments();
+        refreshOpenSchoolDetail();
+    } catch (error) {
+        showSchoolAssignmentAlert(error.message || 'Failed to update school info.', 'error');
         btn.disabled = false;
         btn.textContent = originalText;
     }
