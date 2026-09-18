@@ -14,7 +14,8 @@ function initAddSectionPage() {
     initPage();
     loadSections();
 
-    document.getElementById('addSectionForm').addEventListener('submit', handleAddSection);
+    document.getElementById('addSectionForm').addEventListener('submit', handleAddSectionSubmit);
+    document.getElementById('confirmAddSectionYesBtn').addEventListener('click', confirmAddSection);
 
     document.getElementById('sectionSearchInput').addEventListener('input', (e) => {
         sectionSearchTerm = e.target.value.trim().toLowerCase();
@@ -62,8 +63,23 @@ function loadSections() {
         });
 }
 
-function handleAddSection(e) {
+// Just validates and shows the confirmation panel — the actual add happens
+// in confirmAddSection() once the user picks "Yes" there.
+function handleAddSectionSubmit(e) {
     e.preventDefault();
+
+    const sectionName = document.getElementById('sectionNameInput').value.trim();
+    if (!sectionName) return;
+
+    openModal('confirmAddSectionModal');
+}
+
+function closeConfirmAddSectionModal() {
+    closeModal('confirmAddSectionModal');
+}
+
+function confirmAddSection() {
+    closeConfirmAddSectionModal();
 
     const input = document.getElementById('sectionNameInput');
     const sectionName = input.value.trim();

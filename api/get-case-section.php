@@ -185,6 +185,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if ($action === 'edit_case_category') {
+        $caseId = trim((string)($input['caseId'] ?? ''));
+        $sectionId = (int)($input['sectionId'] ?? 0);
+        $categoryName = trim((string)($input['categoryName'] ?? ''));
+
+        if ($caseId === '' || $sectionId <= 0 || $categoryName === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Category, section, and name are required.']);
+            exit;
+        }
+
+        $existsCheck = $conn->prepare('SELECT CaseId FROM case_category WHERE CaseId = ?');
+        $existsCheck->bind_param('s', $caseId);
+        $existsCheck->execute();
+        $found = $existsCheck->get_result()->fetch_assoc();
+        $existsCheck->close();
+
+        if (!$found) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Case category was not found.']);
+            exit;
+        }
+
+        $section = $conn->prepare('SELECT SectionID, SectionCode, SectionName FROM section WHERE SectionID = ?');
+        $section->bind_param('i', $sectionId);
+        $section->execute();
+        $sectionRow = $section->get_result()->fetch_assoc();
+        $section->close();
+
+        if (!$sectionRow) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Selected section was not found.']);
+            exit;
+        }
+
+        $dup = $conn->prepare('SELECT CaseId FROM case_category WHERE SectionID = ? AND LOWER(CategoryName) = LOWER(?) AND CaseId != ? LIMIT 1');
+        $dup->bind_param('iss', $sectionId, $categoryName, $caseId);
+        $dup->execute();
+        $exists = $dup->get_result()->fetch_assoc();
+        $dup->close();
+
+        if ($exists) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'That category already exists under this section.']);
+            exit;
+        }
+
+        $stmt = $conn->prepare('UPDATE case_category SET SectionID = ?, CategoryName = ? WHERE CaseId = ?');
+        $stmt->bind_param('iss', $sectionId, $categoryName, $caseId);
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Failed to update case category.']);
+            exit;
+        }
+        $stmt->close();
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Case category updated successfully.',
+            'category' => [
+                'CaseId' => $caseId,
+                'SectionID' => $sectionId,
+                'SectionCode' => $sectionRow['SectionCode'],
+                'SectionName' => $sectionRow['SectionName'],
+                'CategoryName' => $categoryName
+            ]
+        ]);
+        exit;
+    }
+
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Unknown action.']);
     exit;

@@ -15,7 +15,8 @@ function initAddCaseCategoryPage() {
     initPage();
     loadCaseSections();
 
-    document.getElementById('addCaseCategoryForm').addEventListener('submit', handleAddCaseCategory);
+    document.getElementById('addCaseCategoryForm').addEventListener('submit', handleAddCaseCategorySubmit);
+    document.getElementById('confirmAddCategoryYesBtn').addEventListener('click', confirmAddCaseCategory);
 
     document.getElementById('categorySearchInput').addEventListener('input', (e) => {
         categorySearchTerm = e.target.value.trim().toLowerCase();
@@ -35,6 +36,14 @@ function initAddCaseCategoryPage() {
         categoryCurrentPage += btn.dataset.page === 'next' ? 1 : -1;
         renderCategories();
     });
+
+    document.getElementById('categoriesTableBody').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-edit-id]');
+        if (!btn) return;
+        openEditCaseCategoryModal(btn.dataset.editId);
+    });
+
+    document.getElementById('editCaseCategoryForm').addEventListener('submit', handleEditCaseCategory);
 }
 
 function loadCaseSections() {
@@ -66,20 +75,38 @@ function loadCaseSections() {
         .catch(error => {
             console.error('Error loading case categories:', error);
             document.getElementById('categoriesTableBody').innerHTML =
-                `<tr><td colspan="3" class="no-accounts"><i class="bi bi-exclamation-triangle"></i> <p>Unable to load case categories</p></td></tr>`;
+                `<tr><td colspan="4" class="no-accounts"><i class="bi bi-exclamation-triangle"></i> <p>Unable to load case categories</p></td></tr>`;
         });
 }
 
 function renderSectionOptions() {
-    const select = document.getElementById('categorySectionSelect');
-    const currentValue = select.value;
-    select.innerHTML = '<option value="">Select a section</option>' +
-        caseSections.map(s => `<option value="${s.SectionID}">${escapeHtml(s.SectionName)}</option>`).join('');
-    if (currentValue) select.value = currentValue;
+    ['categorySectionSelect', 'editCategorySectionSelect'].forEach(id => {
+        const select = document.getElementById(id);
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Select a section</option>' +
+            caseSections.map(s => `<option value="${s.SectionID}">${escapeHtml(s.SectionName)}</option>`).join('');
+        if (currentValue) select.value = currentValue;
+    });
 }
 
-function handleAddCaseCategory(e) {
+// Just validates and shows the confirmation panel — the actual add happens
+// in confirmAddCaseCategory() once the user picks "Yes" there.
+function handleAddCaseCategorySubmit(e) {
     e.preventDefault();
+
+    const sectionId = document.getElementById('categorySectionSelect').value;
+    const categoryName = document.getElementById('categoryNameInput').value.trim();
+    if (!sectionId || !categoryName) return;
+
+    openModal('confirmAddCategoryModal');
+}
+
+function closeConfirmAddCategoryModal() {
+    closeModal('confirmAddCategoryModal');
+}
+
+function confirmAddCaseCategory() {
+    closeConfirmAddCategoryModal();
 
     const sectionSelect = document.getElementById('categorySectionSelect');
     const nameInput = document.getElementById('categoryNameInput');
@@ -107,6 +134,43 @@ function handleAddCaseCategory(e) {
         .finally(() => { submitBtn.disabled = false; });
 }
 
+function openEditCaseCategoryModal(caseId) {
+    const category = allCategories.find(c => String(c.CaseId) === String(caseId));
+    if (!category) return;
+
+    document.getElementById('editCaseId').value = category.CaseId;
+    document.getElementById('editCategorySectionSelect').value = category.SectionID;
+    document.getElementById('editCategoryNameInput').value = category.CategoryName;
+    openModal('editCaseCategoryModal');
+}
+
+function closeEditCaseCategoryModal() {
+    closeModal('editCaseCategoryModal');
+}
+
+function handleEditCaseCategory(e) {
+    e.preventDefault();
+
+    const caseId = document.getElementById('editCaseId').value;
+    const sectionId = document.getElementById('editCategorySectionSelect').value;
+    const categoryName = document.getElementById('editCategoryNameInput').value.trim();
+    if (!caseId || !sectionId || !categoryName) return;
+
+    fetch(CASE_SECTION_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'edit_case_category', caseId, sectionId, categoryName })
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message || 'Failed to update case category');
+            showAlert('Case category updated successfully!', 'success');
+            closeEditCaseCategoryModal();
+            loadCaseSections();
+        })
+        .catch(error => showAlert('Error: ' + error.message, 'error'));
+}
+
 function renderCategories() {
     const filtered = categorySearchTerm
         ? allCategories.filter(c =>
@@ -124,13 +188,20 @@ function renderCategories() {
 
     const tbody = document.getElementById('categoriesTableBody');
     if (pageRows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" class="no-accounts"><i class="bi bi-inbox"></i> <p>No case categories found</p></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="no-accounts"><i class="bi bi-inbox"></i> <p>No case categories found</p></td></tr>`;
     } else {
         tbody.innerHTML = pageRows.map((cat, i) => `
             <tr>
                 <td>${startIdx + i + 1}</td>
                 <td>${escapeHtml(cat.SectionName)}</td>
                 <td><strong>${escapeHtml(cat.CategoryName)}</strong></td>
+                <td class="text-center">
+                    <div class="action-buttons" style="justify-content: center;">
+                        <button type="button" class="btn-edit" data-edit-id="${cat.CaseId}">
+                            <i class="bi bi-pencil-square"></i> Edit
+                        </button>
+                    </div>
+                </td>
             </tr>
         `).join('');
     }

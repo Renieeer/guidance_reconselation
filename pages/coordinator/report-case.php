@@ -19,6 +19,9 @@
                     <h2 class="page-hero-title">Report Cases</h2>
                     <p class="page-hero-text">Review case reports submitted by counselors and teachers in your school.</p>
                 </div>
+                <div class="page-hero-actions">
+                    <button type="button" class="btn btn-primary" id="openAddCaseCategoryBtn"><i class="bi bi-plus-lg"></i> Add Case Category</button>
+                </div>
             </div>
 
             <!-- Page Content -->
@@ -218,6 +221,51 @@
                                 <button type="button" class="btn btn-secondary" id="cancelNewCase">Cancel</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Add Case Category Modal -->
+                <div id="addCaseCategoryModal" class="modal">
+                    <div class="modal-content" style="max-width: 480px;">
+                        <div class="modal-header">
+                            <h2>Add Case Category</h2>
+                            <button class="modal-close" id="closeAddCaseCategoryModal">&times;</button>
+                        </div>
+                        <form id="addCaseCategoryForm">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="newCategorySection">Section</label>
+                                    <select id="newCategorySection" required>
+                                        <option value="">Select a section</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newCategoryName">Category Name</label>
+                                    <input type="text" id="newCategoryName" placeholder="e.g. Truancy" required autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-success">Save</button>
+                                <button type="button" class="btn btn-secondary" id="cancelAddCaseCategory">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Confirm Add Case Category Modal -->
+                <div id="confirmAddCaseCategoryModal" class="modal">
+                    <div class="modal-content" style="max-width: 420px;">
+                        <div class="modal-header">
+                            <h2>Confirm</h2>
+                            <button class="modal-close" id="closeConfirmAddCaseCategoryModal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to add this category?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" id="confirmAddCaseCategoryYesBtn">Yes</button>
+                            <button type="button" class="btn btn-secondary" id="cancelConfirmAddCaseCategory">No</button>
+                        </div>
                     </div>
                 </div>
             </div>

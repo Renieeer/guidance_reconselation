@@ -111,6 +111,23 @@
         </div>
     </div>
 
+    <!-- Confirm Add Section Modal -->
+    <div id="confirmAddSectionModal" class="modal">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Confirm</h2>
+                <span class="modal-close" onclick="closeConfirmAddSectionModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to add this section?</p>
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button type="button" class="btn btn-primary" id="confirmAddSectionYesBtn">Yes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeConfirmAddSectionModal()">No</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
     <script src="add-section.js?v=<?php echo filemtime(__DIR__ . '/add-section.js'); ?>"></script>

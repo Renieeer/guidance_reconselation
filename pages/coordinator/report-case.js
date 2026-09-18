@@ -438,13 +438,111 @@ function setupEventListeners() {
         }
     });
 
+    // Add Case Category — opens a section/category-name form, which on
+    // submit hands off to a "Are you sure?" panel rather than saving right
+    // away; only the Yes button there actually calls the API.
+    document.getElementById('openAddCaseCategoryBtn').addEventListener('click', openAddCaseCategoryModal);
+    document.getElementById('closeAddCaseCategoryModal').addEventListener('click', closeAddCaseCategoryModal);
+    document.getElementById('cancelAddCaseCategory').addEventListener('click', closeAddCaseCategoryModal);
+    document.getElementById('addCaseCategoryForm').addEventListener('submit', handleAddCaseCategorySubmit);
+
+    document.getElementById('closeConfirmAddCaseCategoryModal').addEventListener('click', cancelConfirmAddCaseCategory);
+    document.getElementById('cancelConfirmAddCaseCategory').addEventListener('click', cancelConfirmAddCaseCategory);
+    document.getElementById('confirmAddCaseCategoryYesBtn').addEventListener('click', confirmAddCaseCategory);
+
     // Close modals on outside click
     window.addEventListener('click', (e) => {
         const caseModal = document.getElementById('caseModal');
         const newCaseModal = document.getElementById('newCaseModal');
+        const addCaseCategoryModal = document.getElementById('addCaseCategoryModal');
+        const confirmAddCaseCategoryModal = document.getElementById('confirmAddCaseCategoryModal');
         if (e.target === caseModal) caseModal.style.display = 'none';
         if (e.target === newCaseModal) newCaseModal.style.display = 'none';
+        if (e.target === addCaseCategoryModal) closeAddCaseCategoryModal();
+        if (e.target === confirmAddCaseCategoryModal) closeConfirmAddCaseCategoryModal();
     });
+}
+
+// sections is already loaded (loadReportData(), on page init) with the
+// exact section list this report table itself is built from — reused here
+// instead of a second fetch just to fill this dropdown.
+function populateCaseCategorySectionOptions() {
+    const select = document.getElementById('newCategorySection');
+    select.innerHTML = '<option value="">Select a section</option>' +
+        sections.map(s => `<option value="${s.sectionId}">${esc(s.sectionName)}</option>`).join('');
+}
+
+function openAddCaseCategoryModal() {
+    document.getElementById('addCaseCategoryForm').reset();
+    populateCaseCategorySectionOptions();
+    openModal('addCaseCategoryModal');
+}
+
+function closeAddCaseCategoryModal() {
+    closeModal('addCaseCategoryModal');
+}
+
+function closeConfirmAddCaseCategoryModal() {
+    closeModal('confirmAddCaseCategoryModal');
+}
+
+// Just validates and swaps to the confirmation panel — the actual add
+// happens in confirmAddCaseCategory() once the user picks "Yes" there.
+function handleAddCaseCategorySubmit(e) {
+    e.preventDefault();
+
+    const sectionId = document.getElementById('newCategorySection').value;
+    const categoryName = document.getElementById('newCategoryName').value.trim();
+    if (!sectionId || !categoryName) return;
+
+    closeAddCaseCategoryModal();
+    openModal('confirmAddCaseCategoryModal');
+}
+
+// "No" backs out to the add form (values still filled in) rather than
+// dropping the whole thing.
+function cancelConfirmAddCaseCategory() {
+    closeConfirmAddCaseCategoryModal();
+    openModal('addCaseCategoryModal');
+}
+
+// Shares the same add_case_category endpoint the SDO Case Management pages
+// use (api/get-case-section.php) — one source of truth for section/category
+// creation instead of a second copy of that insert logic here.
+async function confirmAddCaseCategory() {
+    closeConfirmAddCaseCategoryModal();
+
+    const sectionId = document.getElementById('newCategorySection').value;
+    const categoryName = document.getElementById('newCategoryName').value.trim();
+    if (!sectionId || !categoryName) return;
+
+    const yesBtn = document.getElementById('confirmAddCaseCategoryYesBtn');
+    yesBtn.disabled = true;
+
+    try {
+        const response = await fetch('../../api/get-case-section.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'add_case_category', sectionId, categoryName })
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || 'Failed to add case category');
+
+        showAlert('Case category added successfully!', 'success');
+        document.getElementById('addCaseCategoryForm').reset();
+
+        // Refresh the report table/filters so the new category shows up
+        // immediately instead of only after a manual page reload.
+        await loadReportData();
+        visibleGrades = computeVisibleGrades();
+        renderGradeHeader();
+        buildCasesTable();
+        populateFilterOptions();
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+    } finally {
+        yesBtn.disabled = false;
+    }
 }
 
 // This quick-add form is a local note only — it doesn't have a real

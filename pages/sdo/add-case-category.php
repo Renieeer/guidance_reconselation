@@ -78,11 +78,12 @@
                                     <th style="width: 80px;">#</th>
                                     <th>Section</th>
                                     <th>Category Name</th>
+                                    <th style="width: 100px;" class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="categoriesTableBody">
                                 <tr>
-                                    <td colspan="3" class="no-accounts">
+                                    <td colspan="4" class="no-accounts">
                                         <i class="bi bi-hourglass-split" style="font-size: 24px; margin-bottom: 10px;"></i>
                                         <p>Loading case categories...</p>
                                     </td>
@@ -91,6 +92,52 @@
                         </table>
                         <div id="categoriesPagination" class="accounts-pagination"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Case Category Modal -->
+    <div id="editCaseCategoryModal" class="modal">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>Edit Case Category</h2>
+                <span class="modal-close" onclick="closeEditCaseCategoryModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editCaseCategoryForm">
+                    <input type="hidden" id="editCaseId">
+                    <div class="form-group">
+                        <label for="editCategorySectionSelect">Section</label>
+                        <select id="editCategorySectionSelect" required>
+                            <option value="">Select a section</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCategoryNameInput">Category Name</label>
+                        <input type="text" id="editCategoryNameInput" required autocomplete="off">
+                    </div>
+                    <div class="form-actions" style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-success">Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeEditCaseCategoryModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Add Case Category Modal -->
+    <div id="confirmAddCategoryModal" class="modal">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Confirm</h2>
+                <span class="modal-close" onclick="closeConfirmAddCategoryModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to add this category?</p>
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button type="button" class="btn btn-primary" id="confirmAddCategoryYesBtn">Yes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeConfirmAddCategoryModal()">No</button>
                 </div>
             </div>
         </div>
