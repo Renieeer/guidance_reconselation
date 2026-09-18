@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Section - Guidance Management System</title>
+    <title>All Section - Guidance Management System</title>
     <link rel="stylesheet" href="../../css/style.css?v=<?php echo filemtime(__DIR__ . '/../../css/style.css'); ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
@@ -16,7 +16,7 @@
             <div class="page-hero">
                 <div>
                     <div class="page-hero-eyebrow"><i class="bi bi-folder2-open"></i> Case Management</div>
-                    <h2 class="page-hero-title">Add Section</h2>
+                    <h2 class="page-hero-title">All Section</h2>
                     <p class="page-hero-text">Create new case sections and manage the ones already in the system.</p>
                 </div>
             </div>

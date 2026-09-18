@@ -9295,10 +9295,16 @@ footer {
     box-shadow: var(--clay-dark-out);
 }
 
-.sidebar-menu a {
+.sidebar-menu a,
+.sidebar-group-toggle {
     border-left: none;
     border-radius: var(--clay-r-pill);
     margin: 4px 12px;
+    /* explicit calc, not `width: auto` — <button> is a form control, so
+       unlike the <a> links here it won't stretch to fill the row on its
+       own once this margin cuts into its old width: 100% (see the base
+       .sidebar-group-toggle rule). */
+    width: calc(100% - 24px);
 }
 
 .sidebar-menu a:hover {
