@@ -111,6 +111,23 @@
         </div>
     </div>
 
+    <!-- Confirm Edit Section Modal -->
+    <div id="confirmEditSectionModal" class="modal">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Confirm</h2>
+                <span class="modal-close" onclick="cancelConfirmEditSection()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to save changes to this section?</p>
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button type="button" class="btn btn-primary" id="confirmEditSectionYesBtn">Yes</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelConfirmEditSection()">No</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirm Add Section Modal -->
     <div id="confirmAddSectionModal" class="modal">
         <div class="modal-content" style="max-width: 420px;">

@@ -42,7 +42,8 @@ function initAddSectionPage() {
         openEditSectionModal(btn.dataset.editId);
     });
 
-    document.getElementById('editSectionForm').addEventListener('submit', handleEditSection);
+    document.getElementById('editSectionForm').addEventListener('submit', handleEditSectionSubmit);
+    document.getElementById('confirmEditSectionYesBtn').addEventListener('click', confirmEditSection);
 }
 
 function loadSections() {
@@ -117,8 +118,32 @@ function closeEditSectionModal() {
     closeModal('editSectionModal');
 }
 
-function handleEditSection(e) {
+// Just validates and shows the confirmation panel — the actual save
+// happens in confirmEditSection() once the user picks "Yes" there.
+function handleEditSectionSubmit(e) {
     e.preventDefault();
+
+    const sectionId = document.getElementById('editSectionId').value;
+    const sectionName = document.getElementById('editSectionNameInput').value.trim();
+    if (!sectionId || !sectionName) return;
+
+    closeEditSectionModal();
+    openModal('confirmEditSectionModal');
+}
+
+function closeConfirmEditSectionModal() {
+    closeModal('confirmEditSectionModal');
+}
+
+// "No" backs out to the edit form (values still filled in) rather than
+// dropping the whole thing.
+function cancelConfirmEditSection() {
+    closeConfirmEditSectionModal();
+    openModal('editSectionModal');
+}
+
+function confirmEditSection() {
+    closeConfirmEditSectionModal();
 
     const sectionId = document.getElementById('editSectionId').value;
     const sectionName = document.getElementById('editSectionNameInput').value.trim();
@@ -133,7 +158,6 @@ function handleEditSection(e) {
         .then(result => {
             if (!result.success) throw new Error(result.message || 'Failed to update section');
             showAlert('Section updated successfully!', 'success');
-            closeEditSectionModal();
             loadSections();
         })
         .catch(error => showAlert('Error: ' + error.message, 'error'));

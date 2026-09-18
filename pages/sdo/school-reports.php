@@ -8,7 +8,12 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- ExcelJS (not the SheetJS/xlsx build this page used to load) — needed
+         to write real cell styles and embed the SDO letterhead logos into
+         the downloaded workbook; see sdo-report-letterhead.js. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="sdo-report-assets.js?v=<?php echo filemtime(__DIR__ . '/sdo-report-assets.js'); ?>"></script>
+    <script src="sdo-report-letterhead.js?v=<?php echo filemtime(__DIR__ . '/sdo-report-letterhead.js'); ?>"></script>
 </head>
 <body>
     <div class="main-wrapper">

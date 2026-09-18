@@ -771,15 +771,16 @@ function generateCategoryOfCasesPdf() {
     const { header, body, sectionHeaderRows } = buildExportTable();
 
     doc.setFontSize(14);
-    doc.text(`District Report Cases - ${districtTitle}`, 14, 15);
+    doc.text(`District Report Cases - ${districtTitle}`, 14, SDO_PDF_CONTENT_TOP);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Period: ${PERIOD_LABELS[currentPeriod]}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+    doc.text(`Period: ${PERIOD_LABELS[currentPeriod]}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
 
     doc.autoTable({
         head: [header],
         body,
-        startY: 26,
+        startY: SDO_PDF_CONTENT_TOP + 11,
+        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', valign: 'middle' },
         styles: { fontSize: 9, cellPadding: 3, valign: 'middle', overflow: 'linebreak' },
@@ -791,6 +792,8 @@ function generateCategoryOfCasesPdf() {
             }
         }
     });
+
+    drawSdoPdfLetterhead(doc);
 
     const filename = `${districtTitle.replace(/\s+/g, '-')}_${PERIOD_LABELS[currentPeriod].replace(/\s+/g, '-')}_CategoryOfCases_${new Date().toISOString().split('T')[0]}.pdf`;
     showPdfPreview(doc, filename);
@@ -988,15 +991,16 @@ async function generateDivisionSummaryPdf(period, start, end, label) {
     const doc = new jsPDF();
 
     doc.setFontSize(14);
-    doc.text('Division-Wide Summary Case', 14, 15);
+    doc.text('Division-Wide Summary Case', 14, SDO_PDF_CONTENT_TOP);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
 
     doc.autoTable({
         head: [header],
         body,
-        startY: 26,
+        startY: SDO_PDF_CONTENT_TOP + 11,
+        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', valign: 'middle' },
         styles: { fontSize: 10, cellPadding: 4, valign: 'middle', overflow: 'linebreak' },
@@ -1008,6 +1012,8 @@ async function generateDivisionSummaryPdf(period, start, end, label) {
             }
         }
     });
+
+    drawSdoPdfLetterhead(doc);
 
     const filename = `Division-Wide-Summary_${label.replace(/\s+/g, '-')}_${new Date().toISOString().split('T')[0]}.pdf`;
     showPdfPreview(doc, filename);
@@ -1062,10 +1068,10 @@ async function generateCasesBySchoolPdf(period, start, end, label) {
     const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows(schools);
 
     doc.setFontSize(14);
-    doc.text(`Cases by School - ${districtTitle}`, 14, 15);
+    doc.text(`Cases by School - ${districtTitle}`, 14, SDO_PDF_CONTENT_TOP);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
 
     doc.autoTable({
         head: [['School', 'Total Cases', 'Male', 'Female']],
@@ -1078,11 +1084,14 @@ async function generateCasesBySchoolPdf(period, start, end, label) {
                 { content: String(schoolTotals.female), styles: { fontStyle: 'bold' } }
             ]
         ],
-        startY: 26,
+        startY: SDO_PDF_CONTENT_TOP + 11,
+        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 3 }
     });
+
+    drawSdoPdfLetterhead(doc);
 
     showPdfPreview(doc, filename);
 }
@@ -1277,15 +1286,16 @@ async function generateDmmrPdf(start, end, label) {
     const doc = new jsPDF({ orientation: 'landscape' });
 
     doc.setFontSize(14);
-    doc.text(`Division Monthly Monitoring Report of Learners' Personal-Social Concerns`, 14, 15);
+    doc.text(`Division Monthly Monitoring Report of Learners' Personal-Social Concerns`, 14, SDO_PDF_CONTENT_TOP);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
 
     doc.autoTable({
         head: pdfHead,
         body,
-        startY: 26,
+        startY: SDO_PDF_CONTENT_TOP + 11,
+        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: DMMR_HEADER_COLOR, textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, halign: 'center', valign: 'middle' },
         styles: { fontSize: 7, cellPadding: 3, valign: 'middle', overflow: 'linebreak' },
@@ -1297,6 +1307,8 @@ async function generateDmmrPdf(start, end, label) {
             }
         }
     });
+
+    drawSdoPdfLetterhead(doc);
 
     const filename = `DMMR_${label.replace(/\s+/g, '-')}_${new Date().toISOString().split('T')[0]}.pdf`;
     showPdfPreview(doc, filename);

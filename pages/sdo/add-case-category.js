@@ -43,7 +43,8 @@ function initAddCaseCategoryPage() {
         openEditCaseCategoryModal(btn.dataset.editId);
     });
 
-    document.getElementById('editCaseCategoryForm').addEventListener('submit', handleEditCaseCategory);
+    document.getElementById('editCaseCategoryForm').addEventListener('submit', handleEditCaseCategorySubmit);
+    document.getElementById('confirmEditCaseCategoryYesBtn').addEventListener('click', confirmEditCaseCategory);
 }
 
 function loadCaseSections() {
@@ -148,8 +149,33 @@ function closeEditCaseCategoryModal() {
     closeModal('editCaseCategoryModal');
 }
 
-function handleEditCaseCategory(e) {
+// Just validates and shows the confirmation panel — the actual save
+// happens in confirmEditCaseCategory() once the user picks "Yes" there.
+function handleEditCaseCategorySubmit(e) {
     e.preventDefault();
+
+    const caseId = document.getElementById('editCaseId').value;
+    const sectionId = document.getElementById('editCategorySectionSelect').value;
+    const categoryName = document.getElementById('editCategoryNameInput').value.trim();
+    if (!caseId || !sectionId || !categoryName) return;
+
+    closeEditCaseCategoryModal();
+    openModal('confirmEditCaseCategoryModal');
+}
+
+function closeConfirmEditCaseCategoryModal() {
+    closeModal('confirmEditCaseCategoryModal');
+}
+
+// "No" backs out to the edit form (values still filled in) rather than
+// dropping the whole thing.
+function cancelConfirmEditCaseCategory() {
+    closeConfirmEditCaseCategoryModal();
+    openModal('editCaseCategoryModal');
+}
+
+function confirmEditCaseCategory() {
+    closeConfirmEditCaseCategoryModal();
 
     const caseId = document.getElementById('editCaseId').value;
     const sectionId = document.getElementById('editCategorySectionSelect').value;
@@ -165,7 +191,6 @@ function handleEditCaseCategory(e) {
         .then(result => {
             if (!result.success) throw new Error(result.message || 'Failed to update case category');
             showAlert('Case category updated successfully!', 'success');
-            closeEditCaseCategoryModal();
             loadCaseSections();
         })
         .catch(error => showAlert('Error: ' + error.message, 'error'));

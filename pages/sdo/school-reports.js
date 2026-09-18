@@ -253,14 +253,14 @@ function buildReportPdf(schools, districts, districtTitle, periodLabel) {
 
     doc.setFontSize(14);
     doc.setTextColor(20);
-    doc.text(`School Reports - ${districtTitle}`, 14, 15);
+    doc.text(`School Reports - ${districtTitle}`, 14, SDO_PDF_CONTENT_TOP);
     doc.setFontSize(9);
     doc.setTextColor(120);
-    doc.text(`Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+    doc.text(`Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
 
     doc.setFontSize(11);
     doc.setTextColor(30);
-    doc.text('School Case & Gender Report', 14, 30);
+    doc.text('School Case & Gender Report', 14, SDO_PDF_CONTENT_TOP + 15);
 
     doc.autoTable({
         head: [['School', 'District', 'Total Cases', 'Male', 'Female']],
@@ -274,7 +274,8 @@ function buildReportPdf(schools, districts, districtTitle, periodLabel) {
                 { content: String(totals.female), styles: { fontStyle: 'bold' } }
             ]
         ] : [[{ content: 'No schools found.', colSpan: 5, styles: { halign: 'center', textColor: 130 } }]],
-        startY: 34,
+        startY: SDO_PDF_CONTENT_TOP + 19,
+        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: REPORT_HEADER_COLOR, textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 3 },
@@ -298,10 +299,13 @@ function buildReportPdf(schools, districts, districtTitle, periodLabel) {
             return [d.district, d.schoolCount, d.studentsReferred, d.resolvedCount, `${successRate}%`, lastDate];
         }) : [[{ content: 'No districts found.', colSpan: 6, styles: { halign: 'center', textColor: 130 } }]],
         startY: summaryStartY + 4,
+        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: REPORT_HEADER_COLOR, textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 3 }
     });
+
+    drawSdoPdfLetterhead(doc);
 
     return doc;
 }
@@ -361,8 +365,132 @@ function buildReportExcelSheets(schools, districts, districtTitle, periodLabel) 
     ];
 }
 
+// Real cell colors/borders need actual style-writing on the downloaded
+// .xlsx, which the SheetJS build (used only for the aoa-based preview modal
+// above) can't do on write — same tradeoff already accepted on
+// district-report-cases.js's exports.
+function buildReportExcelWorkbook(schools, districts, districtTitle, periodLabel) {
+    const totals = schools.reduce((acc, s) => {
+        acc.total += s.total; acc.male += s.male; acc.female += s.female;
+        return acc;
+    }, { total: 0, male: 0, female: 0 });
+
+    const workbook = new ExcelJS.Workbook();
+    const headFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D5AA8' } };
+
+    const addTitleRows = (sheet, totalCols, title, subtitle) => {
+        sheet.mergeCells(1, 1, 1, totalCols);
+        const titleCell = sheet.getCell(1, 1);
+        titleCell.value = title;
+        titleCell.font = { bold: true, size: 14 };
+        titleCell.alignment = { horizontal: 'center' };
+
+        sheet.mergeCells(2, 1, 2, totalCols);
+        const subCell = sheet.getCell(2, 1);
+        subCell.value = subtitle;
+        subCell.font = { size: 10, color: { argb: 'FF666666' } };
+        subCell.alignment = { horizontal: 'center' };
+
+        return 4;
+    };
+
+    // ---- Sheet 1: School Case & Gender Report ----
+    const caseSheet = workbook.addWorksheet('Case & Gender Report');
+    const caseCols = 5;
+    const caseColWidths = [32, 24, 12, 10, 10];
+    caseColWidths.forEach((w, i) => { caseSheet.getColumn(i + 1).width = w; });
+    const caseHeadRow = addTitleRows(
+        caseSheet, caseCols,
+        `School Case & Gender Report - ${districtTitle}`,
+        `Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`
+    );
+
+    ['School', 'District', 'Total Cases', 'Male', 'Female'].forEach((label, i) => {
+        const cell = caseSheet.getCell(caseHeadRow, i + 1);
+        cell.value = label;
+        cell.fill = headFill;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = THIN_BORDER;
+    });
+
+    let r = caseHeadRow + 1;
+    schools.forEach(s => {
+        [s.school, s.district, s.total, s.male, s.female].forEach((value, c) => {
+            const cell = caseSheet.getCell(r, c + 1);
+            cell.value = value;
+            cell.border = THIN_BORDER;
+            cell.alignment = { vertical: 'middle', horizontal: c === 0 || c === 1 ? 'left' : 'center', wrapText: true };
+        });
+        r++;
+    });
+    ['Overall Total', '', totals.total, totals.male, totals.female].forEach((value, c) => {
+        const cell = caseSheet.getCell(r, c + 1);
+        cell.value = value;
+        cell.border = THIN_BORDER;
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+        cell.alignment = { vertical: 'middle', horizontal: c === 0 ? 'left' : 'center' };
+    });
+
+    // ---- Sheet 2: District Summary ----
+    const summarySheet = workbook.addWorksheet('District Summary');
+    const summaryCols = 6;
+    const summaryColWidths = [24, 10, 17, 15, 13, 16];
+    summaryColWidths.forEach((w, i) => { summarySheet.getColumn(i + 1).width = w; });
+    const summaryHeadRow = addTitleRows(
+        summarySheet, summaryCols,
+        `District Summary - ${districtTitle}`,
+        `Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`
+    );
+
+    ['District', 'Schools', 'Students Referred', 'Cases Resolved', 'Success Rate', 'Last Updated'].forEach((label, i) => {
+        const cell = summarySheet.getCell(summaryHeadRow, i + 1);
+        cell.value = label;
+        cell.fill = headFill;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = THIN_BORDER;
+    });
+
+    let sr = summaryHeadRow + 1;
+    districts.forEach(d => {
+        const successRate = d.studentsReferred > 0 ? Math.round((d.resolvedCount / d.studentsReferred) * 100) : 0;
+        const lastDate = d.lastActivity ? new Date(d.lastActivity).toLocaleDateString() : 'No activity yet';
+        [d.district, d.schoolCount, d.studentsReferred, d.resolvedCount, `${successRate}%`, lastDate].forEach((value, c) => {
+            const cell = summarySheet.getCell(sr, c + 1);
+            cell.value = value;
+            cell.border = THIN_BORDER;
+            cell.alignment = { vertical: 'middle', horizontal: c === 0 ? 'left' : 'center', wrapText: true };
+        });
+        sr++;
+    });
+
+    return workbook;
+}
+
+// Generic thin border, matching district-report-cases.js's own ExcelJS
+// exports (this page didn't need one before it started writing real
+// styled workbooks instead of a plain aoa-to-sheet grid).
+const THIN_BORDER = {
+    top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+};
+
+async function downloadExcelJSWorkbook(workbook, filename) {
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 async function previewReportExcel(district, periodKey) {
-    if (typeof XLSX === 'undefined') {
+    if (typeof ExcelJS === 'undefined') {
         showAlert('Excel export library failed to load.', 'error');
         return;
     }
@@ -375,14 +503,9 @@ async function previewReportExcel(district, periodKey) {
         const sheets = buildReportExcelSheets(schools, districts, districtTitle, periodLabel);
         const filename = `school_report_${districtTitle.replace(/\s+/g, '-')}_${periodKey}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
-        showExcelPreview(filename, sheets, () => {
-            const workbook = XLSX.utils.book_new();
-            sheets.forEach(sheet => {
-                const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
-                worksheet['!cols'] = sheet.colWidths;
-                XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
-            });
-            XLSX.writeFile(workbook, filename);
+        showExcelPreview(filename, sheets, async () => {
+            const workbook = buildReportExcelWorkbook(schools, districts, districtTitle, periodLabel);
+            await downloadExcelJSWorkbook(workbook, filename);
             showAlert('Excel report exported successfully!', 'success');
         });
     } catch (error) {

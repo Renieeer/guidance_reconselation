@@ -219,6 +219,8 @@
          actual style-writing on .xlsx, which the free SheetJS "Community
          Edition" build can't do on write (CE dropped that years ago). -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="sdo-report-assets.js?v=<?php echo filemtime(__DIR__ . '/sdo-report-assets.js'); ?>"></script>
+    <script src="sdo-report-letterhead.js?v=<?php echo filemtime(__DIR__ . '/sdo-report-letterhead.js'); ?>"></script>
     <script src="district-report-cases.js?v=<?php echo filemtime(__DIR__ . '/district-report-cases.js'); ?>"></script>
 </body>
 </html>

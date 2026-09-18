@@ -126,6 +126,23 @@
         </div>
     </div>
 
+    <!-- Confirm Edit Case Category Modal -->
+    <div id="confirmEditCaseCategoryModal" class="modal">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Confirm</h2>
+                <span class="modal-close" onclick="cancelConfirmEditCaseCategory()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to save changes to this category?</p>
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button type="button" class="btn btn-primary" id="confirmEditCaseCategoryYesBtn">Yes</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelConfirmEditCaseCategory()">No</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirm Add Case Category Modal -->
     <div id="confirmAddCategoryModal" class="modal">
         <div class="modal-content" style="max-width: 420px;">
