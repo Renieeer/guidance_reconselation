@@ -38,20 +38,137 @@ const SDO_LOGO_RATIOS = {
     footerCombined: 548 / 130
 };
 
+/* ===================== Per-division custom override ===================== */
+// SDO's "Report Settings" (district-report-cases.php) lets the division
+// replace this whole hardcoded letterhead with one uploaded PDF, cropped
+// into a header image + footer image client-side — exactly the same
+// api/report-letterhead.php CRUD the coordinator role already uses per
+// school, just keyed by this reserved sentinel instead of a real
+// schools.school_code (that endpoint never validates the key against the
+// schools table, so any distinctive string works as a division-wide slot).
+const SDO_LETTERHEAD_SCHOOL_CODE = 'SDO-DIVISION';
+const SDO_LETTERHEAD_MARGIN = 14; // mm side margin, matches this file's own `margin` locals below
+const SDO_LETTERHEAD_IMAGE_TOP = 6; // mm from the page edge to the header image / up from the bottom edge to the footer image
+const SDO_LETTERHEAD_BAND_GAP = 6; // mm breathing room between an image band and the report's own title/table
+
+// Cached in-memory: same shape as the coordinator's currentReportLetterhead
+// (headerImage/headerRatio/footerImage/footerRatio/sourceImage/headerPct/
+// footerPct/originalFilename/updatedAt), or null if SDO has never replaced
+// the built-in DepEd letterhead — every function below falls back to
+// today's exact hardcoded design when this is null.
+let sdoLetterheadOverride = null;
+
+// Called once from district-report-cases.js's and school-reports.js's own
+// init, before either page's first possible export.
+async function loadSdoReportLetterheadOverride() {
+    sdoLetterheadOverride = null;
+    try {
+        const res = await fetch(`../../api/report-letterhead.php?action=get&school_code=${encodeURIComponent(SDO_LETTERHEAD_SCHOOL_CODE)}`).then(r => r.json());
+        if (res.success && res.exists) {
+            sdoLetterheadOverride = {
+                headerImage: res.header_image,
+                headerRatio: res.header_ratio,
+                footerImage: res.footer_image,
+                footerRatio: res.footer_ratio,
+                sourceImage: res.source_image || null,
+                headerPct: res.header_pct,
+                footerPct: res.footer_pct,
+                originalFilename: res.original_filename,
+                updatedAt: res.updated_at
+            };
+        }
+    } catch (err) {
+        console.error('Error loading SDO report letterhead override:', err);
+    }
+    return sdoLetterheadOverride;
+}
+
+function getCurrentSdoReportLetterhead() {
+    return sdoLetterheadOverride;
+}
+
+// sourceBlob/headerPct/footerPct are what makes "Edit Crop" possible later
+// without re-uploading the PDF — the full rendered page plus the exact
+// slider percentages used, same convention as the coordinator's
+// saveReportLetterhead() in pages/coordinator/report-letterhead.js.
+async function saveSdoReportLetterhead(headerBlob, footerBlob, headerRatio, footerRatio, originalFilename, sourceBlob, headerPct, footerPct) {
+    const user = getCurrentUser();
+    const formData = new FormData();
+    formData.append('action', 'save');
+    formData.append('school_code', SDO_LETTERHEAD_SCHOOL_CODE);
+    formData.append('header_image', headerBlob, 'header.png');
+    formData.append('footer_image', footerBlob, 'footer.png');
+    formData.append('header_ratio', String(headerRatio));
+    formData.append('footer_ratio', String(footerRatio));
+    formData.append('header_pct', String(headerPct || 0));
+    formData.append('footer_pct', String(footerPct || 0));
+    formData.append('original_filename', originalFilename || '');
+    formData.append('updated_by_id', (user && user.id) || '');
+    if (sourceBlob) {
+        formData.append('source_image', sourceBlob, 'source.png');
+    }
+
+    const res = await fetch('../../api/report-letterhead.php', { method: 'POST', body: formData }).then(r => r.json());
+    if (!res.success) {
+        throw new Error(res.message || 'Failed to save the report letterhead');
+    }
+
+    await loadSdoReportLetterheadOverride();
+    return res;
+}
+
+// Removes the custom override — sdoDrawPdfHeader()/sdoDrawPdfFooter() then
+// fall straight back to the built-in DepEd design, not to a blank band,
+// since SDO always has *something* to show (unlike a school that never set
+// one up at all).
+async function deleteSdoReportLetterhead() {
+    const res = await fetch('../../api/report-letterhead.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', school_code: SDO_LETTERHEAD_SCHOOL_CODE })
+    }).then(r => r.json());
+
+    if (!res.success) {
+        throw new Error(res.message || 'Failed to delete the report letterhead');
+    }
+
+    sdoLetterheadOverride = null;
+    return res;
+}
+
+function sdoLetterheadHeaderHeightMM(doc) {
+    const imgWidth = doc.internal.pageSize.getWidth() - SDO_LETTERHEAD_MARGIN * 2;
+    return imgWidth / sdoLetterheadOverride.headerRatio;
+}
+
+function sdoLetterheadFooterHeightMM(doc) {
+    const imgWidth = doc.internal.pageSize.getWidth() - SDO_LETTERHEAD_MARGIN * 2;
+    return imgWidth / sdoLetterheadOverride.footerRatio;
+}
+
 /* ============================== PDF (jsPDF) ============================== */
 
 // Reserved vertical space (mm) at the top/bottom of every page — every
-// report's title/table must start below SDO_PDF_CONTENT_TOP and leave at
-// least SDO_PDF_FOOTER_RESERVE clear at the bottom (pass as autoTable's
-// `margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE }` so
-// multi-page tables reserve the same space on every continued page, not
+// report's title/table must start below sdoPdfContentTop() and leave at
+// least sdoPdfFooterReserve() clear at the bottom (pass as autoTable's
+// `margin: { top: sdoPdfContentTop(doc), bottom: sdoPdfFooterReserve(doc) }`
+// so multi-page tables reserve the same space on every continued page, not
 // just the first).
-// The header actually renders seal(6..22) + 3 text lines(~27..42.5) + double
-// rule(~44) + office line(~50, baseline) -- measured empirically by
-// rendering a test page, not just estimated, since a few mm short here
-// means the report's own title overlaps "Office of the ... Superintendent".
-const SDO_PDF_CONTENT_TOP = 58;
-const SDO_PDF_FOOTER_RESERVE = 26;
+// The default 58/26 below is the built-in DepEd design's real measured
+// size: seal(6..22) + 3 text lines(~27..42.5) + double rule(~44) + office
+// line(~50, baseline) -- measured empirically by rendering a test page, not
+// just estimated, since a few mm short here means the report's own title
+// overlaps "Office of the ... Superintendent". A custom override instead
+// sizes these from its own image's aspect ratio.
+function sdoPdfContentTop(doc) {
+    if (!sdoLetterheadOverride) return 58;
+    return SDO_LETTERHEAD_IMAGE_TOP + sdoLetterheadHeaderHeightMM(doc) + SDO_LETTERHEAD_BAND_GAP;
+}
+
+function sdoPdfFooterReserve(doc) {
+    if (!sdoLetterheadOverride) return 26;
+    return SDO_LETTERHEAD_IMAGE_TOP + sdoLetterheadFooterHeightMM(doc) + SDO_LETTERHEAD_BAND_GAP;
+}
 
 // Centers a report's own title + "Period: ... | Generated: ..." subtitle
 // under the shared letterhead header above, instead of left-aligning at the
@@ -68,7 +185,7 @@ const SDO_PDF_FOOTER_RESERVE = 26;
 // wrapped to fit the same margins as the letterhead's own rule line first.
 // Returns the y (mm) where the caller's own content (usually an autoTable)
 // should start, since a wrapped 2-3 line title pushes that down from the
-// fixed SDO_PDF_CONTENT_TOP + 11 every caller used to hardcode.
+// sdoPdfContentTop(doc) + 11 every caller uses.
 function sdoDrawReportTitle(doc, title, subtitle) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
@@ -80,7 +197,7 @@ function sdoDrawReportTitle(doc, title, subtitle) {
     doc.setFontSize(14);
     doc.setTextColor(0);
     const titleLines = doc.splitTextToSize(title, maxWidth);
-    let y = SDO_PDF_CONTENT_TOP;
+    let y = sdoPdfContentTop(doc);
     titleLines.forEach(line => {
         doc.text(line, centerX, y, { align: 'center' });
         y += titleLineHeight;
@@ -99,6 +216,18 @@ function sdoDrawReportTitle(doc, title, subtitle) {
 
 function sdoDrawPdfHeader(doc) {
     const pageWidth = doc.internal.pageSize.getWidth();
+
+    // A custom override fully replaces the built-in design — image only,
+    // no DepEd text layered on top of it (same mental model as the
+    // coordinator's per-school letterhead: the uploaded design IS the
+    // whole header band).
+    if (sdoLetterheadOverride) {
+        const imgWidth = pageWidth - SDO_LETTERHEAD_MARGIN * 2;
+        const imgHeight = sdoLetterheadHeaderHeightMM(doc);
+        doc.addImage(sdoLetterheadOverride.headerImage, 'PNG', SDO_LETTERHEAD_MARGIN, SDO_LETTERHEAD_IMAGE_TOP, imgWidth, imgHeight);
+        return;
+    }
+
     const centerX = pageWidth / 2;
     const margin = 14;
 
@@ -137,8 +266,16 @@ function sdoDrawPdfHeader(doc) {
 function sdoDrawPdfFooter(doc) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+
+    if (sdoLetterheadOverride) {
+        const imgWidth = pageWidth - SDO_LETTERHEAD_MARGIN * 2;
+        const imgHeight = sdoLetterheadFooterHeightMM(doc);
+        doc.addImage(sdoLetterheadOverride.footerImage, 'PNG', SDO_LETTERHEAD_MARGIN, pageHeight - SDO_LETTERHEAD_IMAGE_TOP - imgHeight, imgWidth, imgHeight);
+        return;
+    }
+
     const margin = 14;
-    const ruleY = pageHeight - SDO_PDF_FOOTER_RESERVE;
+    const ruleY = pageHeight - sdoPdfFooterReserve(doc);
 
     doc.setDrawColor(0);
     doc.setLineWidth(0.5);

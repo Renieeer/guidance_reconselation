@@ -13,8 +13,13 @@ const REPORT_HEADER_COLOR = [29, 90, 168];
 
 let generatedReports = [];
 
-function loadSchoolReports() {
+async function loadSchoolReports() {
     initPage();
+    // Awaited so Export PDF never races this — sdoPdfContentTop()/
+    // sdoPdfFooterReserve() fall back to the built-in DepEd sizing if it
+    // hasn't resolved yet. Same division-wide override the "Report
+    // Settings" gear on District Report Cases manages — read-only here.
+    await loadSdoReportLetterheadOverride();
     loadDistrictOptions();
     loadSummaryReports();
 }
@@ -271,7 +276,7 @@ function buildReportPdf(schools, districts, districtTitle, periodLabel) {
             ]
         ] : [[{ content: 'No schools found.', colSpan: 5, styles: { halign: 'center', textColor: 130 } }]],
         startY: subheadingY + 4,
-        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
+        margin: { top: sdoPdfContentTop(doc), bottom: sdoPdfFooterReserve(doc) },
         theme: 'grid',
         headStyles: { fillColor: REPORT_HEADER_COLOR, textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 3 },
@@ -295,7 +300,7 @@ function buildReportPdf(schools, districts, districtTitle, periodLabel) {
             return [d.district, d.schoolCount, d.studentsReferred, d.resolvedCount, `${successRate}%`, lastDate];
         }) : [[{ content: 'No districts found.', colSpan: 6, styles: { halign: 'center', textColor: 130 } }]],
         startY: summaryStartY + 4,
-        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
+        margin: { top: sdoPdfContentTop(doc), bottom: sdoPdfFooterReserve(doc) },
         theme: 'grid',
         headStyles: { fillColor: REPORT_HEADER_COLOR, textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 3 }

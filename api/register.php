@@ -119,56 +119,51 @@ try {
     // Hash password
     $hashedPassword = password_hash($plainPassword, PASSWORD_BCRYPT);
 
-    // Only require OTP verification when mail is actually configured —
-    // otherwise every new registration would be stuck pending a code that
-    // can never arrive. See email-verification.php for the same "safe no-op
-    // until configured" pattern used by appointment notification emails.
-    $mailEnabled = is_mail_enabled();
-
-    if ($mailEnabled) {
-        // Don't persist the account until the OTP proves the email address
-        // is real and reachable — stash the registration instead, and the
-        // users_tables row gets created by verify_email_otp() once the code
-        // checks out.
-        save_pending_registration($conn, $email, $firstName, $lastName, $hashedPassword, $role, $school);
-
-        $fullName = trim($firstName . ' ' . $lastName);
-        $otpResult = generate_and_send_otp($conn, $email, $fullName);
+    // OTP verification is mandatory — a self-registered account must never
+    // be created without proving the email is real and reachable. If mail
+    // isn't configured (api/mail-config.php missing/disabled — see
+    // email-verification.php's is_mail_enabled()), registration fails
+    // outright instead of silently creating an unverified account, even
+    // though that means registration is unusable until mail is set up.
+    if (!is_mail_enabled()) {
+        http_response_code(503);
         echo json_encode([
-            'success' => true,
-            'needsVerification' => true,
-            'email' => $email,
-            'message' => $otpResult['emailSent']
-                ? 'Please check your email for a 6-digit verification code to finish creating your account.'
-                : 'We could not send a verification email right now. Please contact your school administrator.'
+            'success' => false,
+            'message' => 'Email verification is not available right now. Please contact your school administrator.'
         ]);
-    } else {
-        $verified = 1;
-        $insertQuery = "INSERT INTO users_tables (First_name, Last_name, Password, Type, email, school_attended, email_verified, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
-        $stmt = $conn->prepare($insertQuery);
-        if (!$stmt) {
-            throw new Exception("Prepare failed: " . $conn->error);
-        }
-
-        $stmt->bind_param("ssssssi", $firstName, $lastName, $hashedPassword, $role, $email, $school, $verified);
-
-        if ($stmt->execute()) {
-            if ($role === 'student') {
-                create_student_stub($conn, (int)$stmt->insert_id, $firstName, $lastName, $email);
-            }
-
-            echo json_encode([
-                'success' => true,
-                'needsVerification' => false,
-                'message' => 'Account created successfully'
-            ]);
-        } else {
-            throw new Exception("Execute failed: " . $stmt->error);
-        }
-
-        $stmt->close();
+        exit;
     }
+
+    // Don't persist the account until the OTP proves the email address is
+    // real and reachable — stash the registration instead, and the
+    // users_tables row gets created by verify_email_otp() once the code
+    // checks out.
+    save_pending_registration($conn, $email, $firstName, $lastName, $hashedPassword, $role, $school);
+
+    $fullName = trim($firstName . ' ' . $lastName);
+    $otpResult = generate_and_send_otp($conn, $email, $fullName);
+
+    // A throttled resend (someone double-submitted within 60s) still has a
+    // valid code already in their inbox from moments ago — that's not a
+    // real failure, so it still proceeds to the OTP panel. An actual send
+    // failure (EmailJS/network error) is: no code exists to enter, so this
+    // must fail rather than hand back a useless "check your email" panel.
+    if (!$otpResult['emailSent'] && !str_contains($otpResult['message'], 'wait')) {
+        echo json_encode([
+            'success' => false,
+            'message' => $otpResult['message'] ?: 'We could not send a verification email right now. Please try again later.'
+        ]);
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'needsVerification' => true,
+        'email' => $email,
+        'message' => $otpResult['emailSent']
+            ? 'Please check your email for a 6-digit verification code to finish creating your account.'
+            : $otpResult['message']
+    ]);
 
     $conn->close();
 

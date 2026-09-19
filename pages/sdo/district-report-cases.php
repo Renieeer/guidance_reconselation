@@ -19,6 +19,11 @@
                     <h2 class="page-hero-title">District Report Cases</h2>
                     <p class="page-hero-text">Review all case reports from schools throughout the district and track outcomes.</p>
                 </div>
+                <div class="page-hero-actions">
+                    <button type="button" class="report-settings-btn" id="reportSettingsBtn" title="Report Settings">
+                        <i class="bi bi-gear-fill"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Page Content -->
@@ -249,6 +254,90 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" id="cancelExportOptionsBtn">Cancel</button>
                             <button type="button" class="btn btn-primary" id="generateExportBtn"><i class="bi bi-eye"></i> Preview</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Settings Modal — division-wide PDF header/footer,
+                     replaces the built-in DepEd letterhead once a custom PDF
+                     is uploaded and cropped client-side (see
+                     sdo-report-letterhead.js). Affects every PDF export on
+                     this page AND on School Reports — one shared setting. -->
+                <div id="reportSettingsModal" class="modal">
+                    <div class="modal-content" style="max-width: 640px;">
+                        <div class="modal-header">
+                            <h2><i class="bi bi-gear-fill"></i> Report Settings</h2>
+                            <button class="modal-close" id="closeReportSettingsModal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted" style="margin-top: 0;">This header/footer prints on every PDF report exported from District Report Cases and School Reports. Upload one PDF containing a replacement letterhead and it'll be split into a header (top) and footer (bottom) band.</p>
+
+                            <div id="reportLetterheadBuiltinNotice" style="display: none; margin-bottom: 20px;">
+                                <div style="display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;">
+                                    <div>
+                                        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 4px;">Header (current)</label>
+                                        <img id="reportLetterheadBuiltinHeaderPreview" alt="Built-in header seal" style="max-width: 120px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; padding: 8px;">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 4px;">Footer (current)</label>
+                                        <img id="reportLetterheadBuiltinFooterPreview" alt="Built-in footer logos" style="max-width: 260px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; padding: 8px;">
+                                    </div>
+                                </div>
+                                <p class="text-muted" style="font-size: 12.5px; margin: 10px 0 0;">
+                                    <i class="bi bi-info-circle"></i> Current (built-in DepEd letterhead). The report also prints "Republic of the Philippines / Department of Education / SCHOOLS DIVISION OF CALAPAN CITY" and the office/address lines around these images in code. Uploading a replacement PDF below replaces the whole header/footer band — image and text together — with your own design.
+                                </p>
+                            </div>
+
+                            <div id="reportLetterheadCurrent" style="display: none; margin-bottom: 20px;">
+                                <div style="display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;">
+                                    <div>
+                                        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 4px;">Header</label>
+                                        <img id="reportLetterheadHeaderPreview" alt="Header preview" style="max-width: 260px; border: 1px solid var(--border-color); border-radius: 6px;">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 4px;">Footer</label>
+                                        <img id="reportLetterheadFooterPreview" alt="Footer preview" style="max-width: 260px; border: 1px solid var(--border-color); border-radius: 6px;">
+                                    </div>
+                                </div>
+                                <p class="text-muted" id="reportLetterheadMeta" style="font-size: 12.5px; margin: 10px 0 0;"></p>
+                                <p id="reportLetterheadNoEditNotice" style="display: none; font-size: 12.5px; color: #b45309; background: #fffbeb; border-left: 3px solid #f59e0b; border-radius: 4px; padding: 8px 12px; margin: 10px 0 0;">
+                                    <i class="bi bi-info-circle"></i> This one was uploaded before Edit Crop existed, so there's no saved page to re-slice. Re-upload it once below (Replace with a Different PDF) and Edit Crop will work for it from then on.
+                                </p>
+                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <button type="button" class="btn btn-primary" id="editReportLetterheadCropBtn">
+                                        <i class="bi bi-crop"></i> Edit Crop
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="deleteReportLetterheadBtn">
+                                        <i class="bi bi-trash"></i> Revert to Built-in Letterhead
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="reportLetterheadFileInput" id="reportLetterheadFileLabel">Upload New PDF</label>
+                                <input type="file" id="reportLetterheadFileInput" accept="application/pdf">
+                            </div>
+
+                            <div id="reportLetterheadEditor" style="display: none;">
+                                <div style="position: relative; display: inline-block; max-width: 100%;">
+                                    <canvas id="reportLetterheadCanvas" style="max-width: 100%; border: 1px solid var(--border-color); border-radius: 6px; display: block;"></canvas>
+                                    <div id="reportLetterheadHeaderOverlay" style="position: absolute; top: 0; left: 0; right: 0; background: rgba(37, 99, 235, 0.25); border-bottom: 2px dashed #2563eb; pointer-events: none;"></div>
+                                    <div id="reportLetterheadFooterOverlay" style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(220, 38, 38, 0.25); border-top: 2px dashed #dc2626; pointer-events: none;"></div>
+                                </div>
+
+                                <div class="form-group" style="margin-top: 16px;">
+                                    <label for="reportLetterheadHeaderSlider">Header height: <span id="reportLetterheadHeaderPct">20</span>%</label>
+                                    <input type="range" id="reportLetterheadHeaderSlider" min="5" max="45" value="20" style="width: 100%;">
+                                </div>
+                                <div class="form-group">
+                                    <label for="reportLetterheadFooterSlider">Footer height: <span id="reportLetterheadFooterPct">15</span>%</label>
+                                    <input type="range" id="reportLetterheadFooterSlider" min="5" max="45" value="15" style="width: 100%;">
+                                </div>
+
+                                <button type="button" class="btn btn-success" id="saveReportLetterheadBtn">
+                                    <i class="bi bi-check-lg"></i> Save Header &amp; Footer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

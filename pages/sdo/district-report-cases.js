@@ -871,7 +871,7 @@ function generateCategoryOfCasesPdf() {
         head: pdfHead,
         body,
         startY: contentTop,
-        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
+        margin: { top: sdoPdfContentTop(doc), bottom: sdoPdfFooterReserve(doc) },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', valign: 'middle', halign: 'center' },
         styles: { fontSize: 9, cellPadding: 3, valign: 'middle', overflow: 'linebreak' },
@@ -1114,7 +1114,7 @@ async function generateDivisionSummaryPdf(period, start, end, label) {
         head: [header],
         body,
         startY: contentTop,
-        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
+        margin: { top: sdoPdfContentTop(doc), bottom: sdoPdfFooterReserve(doc) },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', valign: 'middle' },
         styles: { fontSize: 10, cellPadding: 4, valign: 'middle', overflow: 'linebreak' },
@@ -1237,7 +1237,7 @@ async function generateCasesBySchoolPdf(period, start, end, label) {
             ]
         ],
         startY: contentTop,
-        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
+        margin: { top: sdoPdfContentTop(doc), bottom: sdoPdfFooterReserve(doc) },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 3 }
@@ -1451,7 +1451,7 @@ async function generateDmmrPdf(start, end, label) {
         head: pdfHead,
         body,
         startY: contentTop,
-        margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
+        margin: { top: sdoPdfContentTop(doc), bottom: sdoPdfFooterReserve(doc) },
         theme: 'grid',
         headStyles: { fillColor: DMMR_HEADER_COLOR, textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, halign: 'center', valign: 'middle' },
         styles: { fontSize: 7, cellPadding: 3, valign: 'middle', overflow: 'linebreak' },
@@ -1606,12 +1606,247 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
     setUserInfo();
 
+    // Awaited so Export PDF never races this — sdoPdfContentTop()/
+    // sdoPdfFooterReserve() fall back to the built-in DepEd sizing if it
+    // hasn't resolved yet.
+    await loadSdoReportLetterheadOverride();
+    setupReportSettingsModal();
+
     await loadDistrictList();
     renderDistrictButtons();
     initDistrictSearch();
     await refreshReports();
     setupEventListeners();
 });
+
+/* ── Report Settings (division-wide PDF header/footer) ── */
+
+// Holds the full-resolution rendered PDF page between file-select and Save
+// — the visible <canvas> is drawn at this same resolution (scaled down only
+// via CSS), so cropping straight from it needs no re-render. Same pattern
+// as the coordinator's report-case.js.
+let reportLetterheadSourceCanvas = null;
+let reportLetterheadOriginalFilename = '';
+
+function setupReportSettingsModal() {
+    document.getElementById('reportSettingsBtn').addEventListener('click', openReportSettingsModal);
+    document.getElementById('closeReportSettingsModal').addEventListener('click', closeReportSettingsModal);
+    document.getElementById('reportSettingsModal').addEventListener('click', (e) => {
+        if (e.target.id === 'reportSettingsModal') closeReportSettingsModal();
+    });
+    document.getElementById('reportLetterheadFileInput').addEventListener('change', handleReportLetterheadFileSelected);
+    document.getElementById('editReportLetterheadCropBtn').addEventListener('click', handleEditReportLetterheadCrop);
+    document.getElementById('reportLetterheadHeaderSlider').addEventListener('input', updateReportLetterheadOverlays);
+    document.getElementById('reportLetterheadFooterSlider').addEventListener('input', updateReportLetterheadOverlays);
+    document.getElementById('saveReportLetterheadBtn').addEventListener('click', handleSaveReportLetterhead);
+    document.getElementById('deleteReportLetterheadBtn').addEventListener('click', handleDeleteReportLetterhead);
+}
+
+function openReportSettingsModal() {
+    resetReportLetterheadEditor();
+    renderReportLetterheadCurrentState();
+    openModal('reportSettingsModal');
+}
+
+function closeReportSettingsModal() {
+    closeModal('reportSettingsModal');
+}
+
+// Two states: a custom override already saved (same layout as the
+// coordinator's settings modal), or still on the built-in DepEd design
+// (shows the real seal/footer-logo assets already loaded from
+// sdo-report-assets.js, since there's nothing stored in the DB yet to show).
+function renderReportLetterheadCurrentState() {
+    const letterhead = getCurrentSdoReportLetterhead();
+    const currentBlock = document.getElementById('reportLetterheadCurrent');
+    const builtinBlock = document.getElementById('reportLetterheadBuiltinNotice');
+    const fileLabel = document.getElementById('reportLetterheadFileLabel');
+
+    if (!letterhead) {
+        currentBlock.style.display = 'none';
+        builtinBlock.style.display = 'block';
+        document.getElementById('reportLetterheadBuiltinHeaderPreview').src = SDO_LOGO_DEPED_SEAL;
+        document.getElementById('reportLetterheadBuiltinFooterPreview').src = SDO_LOGO_FOOTER_COMBINED;
+        fileLabel.textContent = 'Upload New PDF';
+        return;
+    }
+
+    builtinBlock.style.display = 'none';
+    document.getElementById('reportLetterheadHeaderPreview').src = letterhead.headerImage;
+    document.getElementById('reportLetterheadFooterPreview').src = letterhead.footerImage;
+    document.getElementById('reportLetterheadMeta').textContent =
+        (letterhead.originalFilename ? `Uploaded from "${letterhead.originalFilename}"` : 'Uploaded') +
+        (letterhead.updatedAt ? ` — last updated ${new Date(letterhead.updatedAt.replace(' ', 'T')).toLocaleString()}` : '');
+    // Older rows saved before Edit Crop existed have no stored source
+    // image to re-slice — Replace with a Different PDF is their only path,
+    // called out explicitly instead of just silently hiding the button.
+    document.getElementById('editReportLetterheadCropBtn').style.display = letterhead.sourceImage ? '' : 'none';
+    document.getElementById('reportLetterheadNoEditNotice').style.display = letterhead.sourceImage ? 'none' : 'block';
+    fileLabel.textContent = 'Replace with a Different PDF';
+    currentBlock.style.display = 'block';
+}
+
+function handleEditReportLetterheadCrop() {
+    const letterhead = getCurrentSdoReportLetterhead();
+    if (!letterhead || !letterhead.sourceImage) {
+        showAlert('error', 'This letterhead was saved before Edit Crop existed — upload the PDF again to re-adjust it.');
+        return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.getElementById('reportLetterheadCanvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+
+        reportLetterheadSourceCanvas = canvas;
+        reportLetterheadOriginalFilename = letterhead.originalFilename || '';
+
+        document.getElementById('reportLetterheadHeaderSlider').value = letterhead.headerPct || 20;
+        document.getElementById('reportLetterheadFooterSlider').value = letterhead.footerPct || 15;
+        document.getElementById('reportLetterheadEditor').style.display = 'block';
+        updateReportLetterheadOverlays();
+    };
+    img.onerror = () => showAlert('error', 'Could not load the saved letterhead image.');
+    img.src = letterhead.sourceImage;
+}
+
+function resetReportLetterheadEditor() {
+    document.getElementById('reportLetterheadFileInput').value = '';
+    document.getElementById('reportLetterheadEditor').style.display = 'none';
+    reportLetterheadSourceCanvas = null;
+    reportLetterheadOriginalFilename = '';
+}
+
+// pdf.js is only ever needed on this settings modal — every PDF export path
+// stays on plain jsPDF/autoTable, so this stays out of the page's default
+// script tags and is fetched once, lazily, the first time it's actually used.
+let reportLetterheadPdfJsPromise = null;
+function loadPdfJsIfNeeded() {
+    if (window.pdfjsLib) return Promise.resolve();
+    if (reportLetterheadPdfJsPromise) return reportLetterheadPdfJsPromise;
+
+    reportLetterheadPdfJsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Failed to load the PDF renderer'));
+        document.head.appendChild(script);
+    }).then(() => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    });
+
+    return reportLetterheadPdfJsPromise;
+}
+
+async function handleReportLetterheadFileSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    reportLetterheadOriginalFilename = file.name;
+
+    try {
+        await loadPdfJsIfNeeded();
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+        // 2x scale for print-quality crops — the visible canvas is shown
+        // shrunk via CSS (max-width: 100%), the full pixel data is kept for
+        // the actual header/footer crops at Save time.
+        const viewport = page.getViewport({ scale: 2 });
+
+        const canvas = document.getElementById('reportLetterheadCanvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+        reportLetterheadSourceCanvas = canvas;
+        document.getElementById('reportLetterheadEditor').style.display = 'block';
+        updateReportLetterheadOverlays();
+    } catch (err) {
+        console.error('Error rendering PDF letterhead:', err);
+        showAlert('error', 'Could not read that PDF — try a different file.');
+    }
+}
+
+// Redraws the two highlight bands over the canvas preview as the sliders
+// move — pure percentage-of-container sizing, so it tracks the canvas's
+// displayed (CSS-scaled) size regardless of its actual pixel resolution.
+function updateReportLetterheadOverlays() {
+    const headerPct = Number(document.getElementById('reportLetterheadHeaderSlider').value);
+    const footerPct = Number(document.getElementById('reportLetterheadFooterSlider').value);
+    document.getElementById('reportLetterheadHeaderPct').textContent = headerPct;
+    document.getElementById('reportLetterheadFooterPct').textContent = footerPct;
+    document.getElementById('reportLetterheadHeaderOverlay').style.height = `${headerPct}%`;
+    document.getElementById('reportLetterheadFooterOverlay').style.height = `${footerPct}%`;
+}
+
+function cropCanvasRegion(sourceCanvas, yStart, height) {
+    const cropped = document.createElement('canvas');
+    cropped.width = sourceCanvas.width;
+    cropped.height = height;
+    cropped.getContext('2d').drawImage(sourceCanvas, 0, yStart, sourceCanvas.width, height, 0, 0, sourceCanvas.width, height);
+    return cropped;
+}
+
+function canvasToPngBlob(canvas) {
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+async function handleSaveReportLetterhead() {
+    if (!reportLetterheadSourceCanvas) {
+        showAlert('error', 'Choose a PDF first.');
+        return;
+    }
+
+    const headerPctValue = Number(document.getElementById('reportLetterheadHeaderSlider').value);
+    const footerPctValue = Number(document.getElementById('reportLetterheadFooterSlider').value);
+    const fullHeight = reportLetterheadSourceCanvas.height;
+    const headerHeightPx = Math.round(fullHeight * (headerPctValue / 100));
+    const footerHeightPx = Math.round(fullHeight * (footerPctValue / 100));
+
+    const headerCanvas = cropCanvasRegion(reportLetterheadSourceCanvas, 0, headerHeightPx);
+    const footerCanvas = cropCanvasRegion(reportLetterheadSourceCanvas, fullHeight - footerHeightPx, footerHeightPx);
+
+    const saveBtn = document.getElementById('saveReportLetterheadBtn');
+    saveBtn.disabled = true;
+
+    try {
+        const [headerBlob, footerBlob, sourceBlob] = await Promise.all([
+            canvasToPngBlob(headerCanvas),
+            canvasToPngBlob(footerCanvas),
+            canvasToPngBlob(reportLetterheadSourceCanvas)
+        ]);
+        await saveSdoReportLetterhead(
+            headerBlob, footerBlob,
+            headerCanvas.width / headerCanvas.height,
+            footerCanvas.width / footerCanvas.height,
+            reportLetterheadOriginalFilename,
+            sourceBlob, headerPctValue, footerPctValue
+        );
+        showAlert('success', 'Report header/footer saved! This also updates School Reports exports.');
+        resetReportLetterheadEditor();
+        renderReportLetterheadCurrentState();
+    } catch (err) {
+        showAlert('error', err.message || 'Failed to save the report header/footer.');
+    } finally {
+        saveBtn.disabled = false;
+    }
+}
+
+async function handleDeleteReportLetterhead() {
+    if (!confirm('Revert to the built-in DepEd letterhead? Future exports go back to the seal/text design.')) return;
+
+    try {
+        await deleteSdoReportLetterhead();
+        showAlert('success', 'Reverted to the built-in letterhead.');
+        renderReportLetterheadCurrentState();
+    } catch (err) {
+        showAlert('error', err.message || 'Failed to delete the report letterhead.');
+    }
+}
 
 // Show alert
 function showAlert(type, message) {
