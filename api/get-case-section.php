@@ -15,13 +15,26 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+/** Strips invisible Unicode formatting characters (zero-width spaces/
+ *  joiners, left-to-right/right-to-left marks, BOM) that can ride along
+ *  unnoticed when a section/category name is copy-pasted in from Word or a
+ *  PDF — invisible in every plain-text/HTML view, but jsPDF's built-in
+ *  fonts have no glyph for them and mis-measure the string, spreading every
+ *  character after it across the whole PDF column instead of wrapping
+ *  normally. Applied both on read (case-report.php's fetch_sections() has
+ *  the same helper, for already-saved rows) and here on write, so a new
+ *  section/category can't reintroduce the same rendering bug. */
+function clean_label_text(string $s): string {
+    return trim(preg_replace('/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}\x{FEFF}]/u', '', $s) ?? $s);
+}
+
 /* ── ADD SECTION / ADD CASE CATEGORY (SDO Case Management) ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     $action = is_array($input) ? ($input['action'] ?? '') : '';
 
     if ($action === 'add_section') {
-        $sectionName = trim((string)($input['sectionName'] ?? ''));
+        $sectionName = clean_label_text((string)($input['sectionName'] ?? ''));
 
         if ($sectionName === '') {
             http_response_code(400);
@@ -70,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'edit_section') {
         $sectionId = (int)($input['sectionId'] ?? 0);
-        $sectionName = trim((string)($input['sectionName'] ?? ''));
+        $sectionName = clean_label_text((string)($input['sectionName'] ?? ''));
 
         if ($sectionId <= 0 || $sectionName === '') {
             http_response_code(400);
@@ -123,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'add_case_category') {
         $sectionId = (int)($input['sectionId'] ?? 0);
-        $categoryName = trim((string)($input['categoryName'] ?? ''));
+        $categoryName = clean_label_text((string)($input['categoryName'] ?? ''));
 
         if ($sectionId <= 0 || $categoryName === '') {
             http_response_code(400);
@@ -188,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'edit_case_category') {
         $caseId = trim((string)($input['caseId'] ?? ''));
         $sectionId = (int)($input['sectionId'] ?? 0);
-        $categoryName = trim((string)($input['categoryName'] ?? ''));
+        $categoryName = clean_label_text((string)($input['categoryName'] ?? ''));
 
         if ($caseId === '' || $sectionId <= 0 || $categoryName === '') {
             http_response_code(400);
@@ -291,14 +304,14 @@ if ($action === 'sections') {
             $sections[$sid] = [
                 'SectionID'   => $sid,
                 'SectionCode' => $row['SectionCode'],
-                'SectionName' => $row['SectionName'],
+                'SectionName' => clean_label_text($row['SectionName']),
                 'categories'  => []
             ];
         }
         if ($row['CaseId']) {
             $sections[$sid]['categories'][] = [
                 'CaseId'       => $row['CaseId'],
-                'CategoryName' => $row['CategoryName']
+                'CategoryName' => clean_label_text($row['CategoryName'])
             ];
         }
     }

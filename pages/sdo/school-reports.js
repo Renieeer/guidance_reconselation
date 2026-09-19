@@ -251,16 +251,12 @@ function buildReportPdf(schools, districts, districtTitle, periodLabel) {
         return acc;
     }, { total: 0, male: 0, female: 0 });
 
-    doc.setFontSize(14);
-    doc.setTextColor(20);
-    doc.text(`School Reports - ${districtTitle}`, 14, SDO_PDF_CONTENT_TOP);
-    doc.setFontSize(9);
-    doc.setTextColor(120);
-    doc.text(`Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
+    const contentTop = sdoDrawReportTitle(doc, `School Reports - ${districtTitle}`, `Period: ${periodLabel}  |  Generated: ${new Date().toLocaleDateString()}`);
+    const subheadingY = contentTop + 4;
 
     doc.setFontSize(11);
     doc.setTextColor(30);
-    doc.text('School Case & Gender Report', 14, SDO_PDF_CONTENT_TOP + 15);
+    doc.text('School Case & Gender Report', doc.internal.pageSize.getWidth() / 2, subheadingY, { align: 'center' });
 
     doc.autoTable({
         head: [['School', 'District', 'Total Cases', 'Male', 'Female']],
@@ -274,7 +270,7 @@ function buildReportPdf(schools, districts, districtTitle, periodLabel) {
                 { content: String(totals.female), styles: { fontStyle: 'bold' } }
             ]
         ] : [[{ content: 'No schools found.', colSpan: 5, styles: { halign: 'center', textColor: 130 } }]],
-        startY: SDO_PDF_CONTENT_TOP + 19,
+        startY: subheadingY + 4,
         margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: REPORT_HEADER_COLOR, textColor: 255, fontStyle: 'bold' },

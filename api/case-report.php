@@ -39,6 +39,20 @@ function case_report_role_is_primary(string $role): bool {
     return $role === '' || !in_array($role, $nonPrimaryRoles, true);
 }
 
+/** Strips invisible Unicode formatting characters (zero-width spaces/
+ *  joiners, left-to-right/right-to-left marks, BOM) that can ride along
+ *  unnoticed when a section/category name is copy-pasted in from Word or a
+ *  PDF. They're invisible in every plain-text/HTML view (including the
+ *  on-screen report table), but jsPDF's built-in fonts have no glyph for
+ *  them and mis-measure the string, which spreads every character after it
+ *  out across the whole column instead of wrapping normally — e.g.
+ *  "Child Inconflict with the Law(CICL)" rendering with huge letter gaps in
+ *  every PDF export. Applied on read here so already-saved rows display
+ *  correctly regardless of how they got in. */
+function clean_label_text(string $s): string {
+    return trim(preg_replace('/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}\x{FEFF}]/u', '', $s) ?? $s);
+}
+
 /* Same 6 sections / 27 categories the counselor case workflow already uses
    (see api/get-case-section.php) — every case report table on the coordinator
    and SDO side groups by these instead of a fabricated category list. */
@@ -58,14 +72,14 @@ function fetch_sections(mysqli $conn): array {
                 $sections[$sid] = [
                     'sectionId' => $sid,
                     'sectionCode' => $row['SectionCode'],
-                    'sectionName' => $row['SectionName'],
+                    'sectionName' => clean_label_text($row['SectionName']),
                     'categories' => []
                 ];
             }
             if ($row['CaseId']) {
                 $sections[$sid]['categories'][] = [
                     'categoryId' => (string)$row['CaseId'],
-                    'categoryName' => $row['CategoryName']
+                    'categoryName' => clean_label_text($row['CategoryName'])
                 ];
             }
         }

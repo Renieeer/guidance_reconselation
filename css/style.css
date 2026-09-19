@@ -4987,16 +4987,19 @@ tr:hover {
     to { opacity: 1; transform: translateY(0); }
 }
 
-#reportCasesTable tbody tr.row-clickable {
+#reportCasesTable tbody tr.row-clickable,
+#filterResultsTable tbody tr.row-clickable {
     cursor: pointer;
 }
 
-#reportCasesTable tbody tr.row-clickable:hover {
+#reportCasesTable tbody tr.row-clickable:hover,
+#filterResultsTable tbody tr.row-clickable:hover {
     background-color: #eaf1fb;
     transform: translateX(3px);
 }
 
-#reportCasesTable tbody tr.row-clickable:active {
+#reportCasesTable tbody tr.row-clickable:active,
+#filterResultsTable tbody tr.row-clickable:active {
     transform: translateX(3px) scale(0.995);
 }
 
@@ -10536,54 +10539,8 @@ h4.text-primary {
     }
 }
 
-/* Report Cases filter results — one card per matching case, styled like a
-   search-engine results list (bold title line, small byline, snippet)
-   instead of a table row, since a filtered search can return cases from
-   several different categories/grades at once. */
-.case-result-item {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.case-result-item:hover {
-    border-color: #1d5aa8;
-    box-shadow: 0 4px 14px rgba(29, 90, 168, 0.12);
-}
-
-.case-result-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1a4c88;
-    margin-bottom: 4px;
-}
-
-.case-result-dash {
-    color: #8494a7;
-    font-weight: 400;
-}
-
-.case-result-meta {
-    font-size: 12.5px;
-    color: #5a6b80;
-    margin-bottom: 6px;
-}
-
-.case-result-meta .badge {
-    vertical-align: middle;
-}
-
-.case-result-snippet {
-    font-size: 13.5px;
-    color: #33475b;
-    line-height: 1.5;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-}
+/* Report Cases filter results now render as a real table (#filterResultsTable,
+   row-clickable styling shared with #reportCasesTable above) instead of the
+   card-list this block used to style, so it can be exported to PDF/Excel the
+   same way as the Category of Cases pivot. */
 

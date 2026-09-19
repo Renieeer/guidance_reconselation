@@ -202,7 +202,6 @@ function showCaseDetails(rowIndex) {
     const row = displayRows[rowIndex];
     if (!row) return;
 
-    const modal = document.getElementById('caseModal');
     const totals = rowTotals(row);
     let total = 0;
     visibleGrades.forEach(g => {
@@ -223,7 +222,7 @@ function showCaseDetails(rowIndex) {
     });
     document.getElementById('caseNotes').value = notes;
 
-    modal.style.display = 'flex';
+    openModal('caseModal');
 }
 
 // ---- Filter panel + searchable case list ----
@@ -288,12 +287,13 @@ async function applyFilters() {
 
     const resultsView = document.getElementById('filterResultsView');
     const summary = document.getElementById('filterResultsSummary');
-    const list = document.getElementById('filterResultsList');
 
     document.getElementById('reportTableView').style.display = 'none';
     resultsView.style.display = 'block';
     summary.textContent = 'Searching...';
-    list.innerHTML = '';
+    document.getElementById('filterResultsEmpty').style.display = 'none';
+    document.getElementById('filterResultsTableContainer').style.display = 'none';
+    document.getElementById('filterResultsTableBody').innerHTML = '';
 
     try {
         const response = await fetch(`../../api/case-report.php?${params.toString()}`);
@@ -308,42 +308,182 @@ async function applyFilters() {
     }
 }
 
+function filterResultDateLabel(row) {
+    return row.caseDate
+        ? new Date(`${row.caseDate}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+        : 'No date on file';
+}
+
 function renderFilterResults() {
     const summary = document.getElementById('filterResultsSummary');
-    const list = document.getElementById('filterResultsList');
+    const emptyMsg = document.getElementById('filterResultsEmpty');
+    const tableContainer = document.getElementById('filterResultsTableContainer');
+    const tbody = document.getElementById('filterResultsTableBody');
 
     summary.textContent = filteredCases.length === 0
         ? 'No cases match these filters.'
         : `${filteredCases.length} case${filteredCases.length === 1 ? '' : 's'} found`;
 
     if (filteredCases.length === 0) {
-        list.innerHTML = `<p class="text-muted" style="background:white; border:1px dashed var(--border-color); border-radius:8px; padding:30px; text-align:center;">Try widening the period or clearing a filter.</p>`;
+        emptyMsg.style.display = '';
+        tableContainer.style.display = 'none';
+        tbody.innerHTML = '';
         return;
     }
 
-    list.innerHTML = filteredCases.map((row, index) => {
-        const dateLabel = row.caseDate
-            ? new Date(`${row.caseDate}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-            : 'No date on file';
-        const gradeLabel = row.grade ? `Grade ${row.grade}` : 'Grade N/A';
-        const snippet = row.summary || row.caseTitle || 'No additional notes on file.';
-        return `
-        <div class="case-result-item" data-index="${index}">
-            <div class="case-result-title">${esc(row.studentName)} <span class="case-result-dash">&mdash;</span> ${esc(row.categoryName)}</div>
-            <div class="case-result-meta">
-                <span>${esc(gradeLabel)}</span> &middot;
-                <span>${esc(row.gender || 'N/A')}</span> &middot;
-                ${badgeForCaseStatus(row.status)} &middot;
-                <span>${esc(dateLabel)}</span> &middot;
-                <span>${esc(row.counselorName || 'Unknown counselor')}</span>
-            </div>
-            <div class="case-result-snippet">${esc(snippet)}</div>
-        </div>`;
-    }).join('');
+    emptyMsg.style.display = 'none';
+    tableContainer.style.display = '';
 
-    list.querySelectorAll('.case-result-item').forEach(item => {
-        item.addEventListener('click', () => showFilteredCaseDetails(parseInt(item.getAttribute('data-index'), 10)));
+    tbody.innerHTML = filteredCases.map((row, index) => `
+        <tr class="row-clickable" data-index="${index}">
+            <td><strong>${esc(row.studentName)}</strong></td>
+            <td>${esc(row.categoryName)}</td>
+            <td class="text-center">${esc(row.grade ? `Grade ${row.grade}` : 'N/A')}</td>
+            <td class="text-center">${esc(row.gender || 'N/A')}</td>
+            <td class="text-center">${badgeForCaseStatus(row.status)}</td>
+            <td>${esc(filterResultDateLabel(row))}</td>
+            <td>${esc(row.counselorName || 'Unknown counselor')}</td>
+        </tr>
+    `).join('');
+
+    tbody.querySelectorAll('tr').forEach(tr => {
+        tr.addEventListener('click', () => showFilteredCaseDetails(parseInt(tr.getAttribute('data-index'), 10)));
     });
+}
+
+function isFilterResultsActive() {
+    return document.getElementById('filterResultsView').style.display !== 'none';
+}
+
+// Flat Student/Category/Grade/Gender/Status/Date/Counselor table built from
+// whatever the current filters returned — unlike buildExportTable() above,
+// this has no grade pivot or section subtotals, just one row per real
+// logged case (same list already on screen in filterResultsTableBody).
+function buildFilteredCasesExportRows() {
+    const header = ['Student', 'Category', 'Grade', 'Gender', 'Status', 'Date', 'Counselor'];
+    const body = filteredCases.map(row => [
+        row.studentName || 'Unknown student',
+        row.categoryName || 'Uncategorized',
+        row.grade ? `Grade ${row.grade}` : 'N/A',
+        row.gender || 'N/A',
+        row.status || 'pending',
+        filterResultDateLabel(row),
+        row.counselorName || 'Unknown counselor'
+    ]);
+    return { header, body };
+}
+
+function filteredCasesExportTitle() {
+    return `Filtered Case Report - ${currentSchool || 'School'}`;
+}
+
+// Real cell colors/borders on the downloaded .xlsx need actual
+// style-writing — same ExcelJS reasoning as buildReportCasesWorkbook()
+// above, just a single flat header row instead of a merged grade pivot.
+function buildFilteredCasesWorkbook(header, body, title) {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Filtered Cases');
+    const totalCols = header.length;
+
+    sheet.mergeCells(1, 1, 1, totalCols);
+    const titleCell = sheet.getCell(1, 1);
+    titleCell.value = title;
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    sheet.mergeCells(2, 1, 2, totalCols);
+    const periodCell = sheet.getCell(2, 1);
+    periodCell.value = `Generated: ${new Date().toLocaleDateString()}  |  ${body.length} case${body.length === 1 ? '' : 's'} found`;
+    periodCell.font = { size: 10, color: { argb: 'FF666666' } };
+    periodCell.alignment = { horizontal: 'center' };
+
+    const headRow = 4;
+    header.forEach((label, i) => {
+        const cell = sheet.getCell(headRow, i + 1);
+        cell.value = label;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D5AA8' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = THIN_BORDER;
+    });
+
+    body.forEach((row, i) => {
+        const rowIndex = headRow + 1 + i;
+        row.forEach((value, c) => {
+            const cell = sheet.getCell(rowIndex, c + 1);
+            cell.value = value;
+            cell.border = THIN_BORDER;
+            cell.alignment = { vertical: 'middle', horizontal: c === 0 || c === 1 || c === 6 ? 'left' : 'center', wrapText: true };
+        });
+    });
+
+    sheet.getColumn(1).width = 26;
+    sheet.getColumn(2).width = 28;
+    sheet.getColumn(3).width = 10;
+    sheet.getColumn(4).width = 10;
+    sheet.getColumn(5).width = 14;
+    sheet.getColumn(6).width = 14;
+    sheet.getColumn(7).width = 22;
+
+    return workbook;
+}
+
+function exportFilteredCasesToExcel() {
+    if (filteredCases.length === 0) {
+        showNotification('No cases to export — adjust the filters first.');
+        return;
+    }
+    if (typeof ExcelJS === 'undefined') {
+        showNotification('Excel export library failed to load.');
+        return;
+    }
+
+    const filename = `filtered-${exportFileBaseName()}.xlsx`;
+    const previewTable = document.getElementById('filterResultsTable').cloneNode(true);
+    previewTable.removeAttribute('id');
+
+    showExcelPreview(filename, previewTable, async () => {
+        const { header, body } = buildFilteredCasesExportRows();
+        const workbook = buildFilteredCasesWorkbook(header, body, filteredCasesExportTitle());
+        await downloadExcelJSWorkbook(workbook, filename);
+        showNotification('Excel report exported successfully!');
+    });
+}
+
+function exportFilteredCasesToPDF() {
+    if (filteredCases.length === 0) {
+        showNotification('No cases to export — adjust the filters first.');
+        return;
+    }
+    if (typeof window.jspdf === 'undefined') {
+        showNotification('PDF export library failed to load.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const { header, body } = buildFilteredCasesExportRows();
+
+    doc.setFontSize(14);
+    doc.text(filteredCasesExportTitle(), doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(
+        `Generated: ${new Date().toLocaleDateString()}  |  ${body.length} case${body.length === 1 ? '' : 's'} found`,
+        doc.internal.pageSize.getWidth() / 2, 21, { align: 'center' }
+    );
+
+    doc.autoTable({
+        head: [header],
+        body,
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 45 }, 1: { cellWidth: 55 }, 6: { cellWidth: 40 } }
+    });
+
+    showPdfPreview(doc, `filtered-${exportFileBaseName()}.pdf`);
 }
 
 function badgeForCaseStatus(status) {
@@ -374,7 +514,7 @@ function showFilteredCaseDetails(index) {
         row.summary || 'No additional notes on file.'
     ].filter(Boolean).join('\n');
 
-    document.getElementById('caseModal').style.display = 'flex';
+    openModal('caseModal');
 }
 
 function clearFilters() {
@@ -395,13 +535,9 @@ function clearFilters() {
 
 function setupEventListeners() {
     // Modal controls
-    document.getElementById('closeModal').addEventListener('click', () => {
-        document.getElementById('caseModal').style.display = 'none';
-    });
+    document.getElementById('closeModal').addEventListener('click', () => closeModal('caseModal'));
 
-    document.getElementById('closeCaseModal').addEventListener('click', () => {
-        document.getElementById('caseModal').style.display = 'none';
-    });
+    document.getElementById('closeCaseModal').addEventListener('click', () => closeModal('caseModal'));
 
     document.getElementById('closeNewCaseModal').addEventListener('click', () => {
         document.getElementById('newCaseModal').style.display = 'none';
@@ -418,8 +554,14 @@ function setupEventListeners() {
     });
 
     // Export buttons
-    document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
-    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+    document.getElementById('exportPdfBtn').addEventListener('click', () => {
+        if (isFilterResultsActive()) exportFilteredCasesToPDF();
+        else exportToPDF();
+    });
+    document.getElementById('exportExcelBtn').addEventListener('click', () => {
+        if (isFilterResultsActive()) exportFilteredCasesToExcel();
+        else exportToExcel();
+    });
 
     // Filter panel
     document.getElementById('filterBtn').addEventListener('click', toggleFilterPanel);
@@ -437,7 +579,7 @@ function setupEventListeners() {
     window.addEventListener('click', (e) => {
         const caseModal = document.getElementById('caseModal');
         const newCaseModal = document.getElementById('newCaseModal');
-        if (e.target === caseModal) caseModal.style.display = 'none';
+        if (e.target === caseModal) closeModal('caseModal');
         if (e.target === newCaseModal) newCaseModal.style.display = 'none';
     });
 }

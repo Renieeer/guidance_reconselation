@@ -53,6 +53,50 @@ const SDO_LOGO_RATIOS = {
 const SDO_PDF_CONTENT_TOP = 58;
 const SDO_PDF_FOOTER_RESERVE = 26;
 
+// Centers a report's own title + "Period: ... | Generated: ..." subtitle
+// under the shared letterhead header above, instead of left-aligning at the
+// page margin — every SDO PDF export (Category of Cases, Division-Wide
+// Summary, Cases by School, DMMR, School Reports) calls this so all of them
+// share one title layout instead of each hand-rolling its own doc.text()
+// position/style.
+//
+// A title can run long once the Cases by School export appends its picked
+// School Level/Section/Case Category (e.g. "... (Secondary, A. Behavioral
+// or Conduct Problem, Membership of any Gang / Fraternity / Unsolicited
+// Group)") — centering a single line that's wider than the page just clips
+// it evenly off both edges instead of fixing anything, so the title is
+// wrapped to fit the same margins as the letterhead's own rule line first.
+// Returns the y (mm) where the caller's own content (usually an autoTable)
+// should start, since a wrapped 2-3 line title pushes that down from the
+// fixed SDO_PDF_CONTENT_TOP + 11 every caller used to hardcode.
+function sdoDrawReportTitle(doc, title, subtitle) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const centerX = pageWidth / 2;
+    const maxWidth = pageWidth - margin * 2;
+    const titleLineHeight = 6;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+    const titleLines = doc.splitTextToSize(title, maxWidth);
+    let y = SDO_PDF_CONTENT_TOP;
+    titleLines.forEach(line => {
+        doc.text(line, centerX, y, { align: 'center' });
+        y += titleLineHeight;
+    });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(subtitle, centerX, y, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0);
+
+    return y + 5;
+}
+
 function sdoDrawPdfHeader(doc) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const centerX = pageWidth / 2;

@@ -92,12 +92,36 @@
                         <button type="button" class="btn btn-primary" id="applyFiltersBtn"><i class="bi bi-search"></i> Search</button>
                         <button type="button" class="btn btn-secondary" id="clearFiltersBtn">Clear Filters</button>
                     </div>
+                    <p style="margin: 12px 0 0; padding: 8px 12px; background: var(--ok-bg); border-left: 3px solid var(--ok); border-radius: 4px; font-size: 12.5px; color: #15633f;">
+                        <i class="bi bi-info-circle"></i> After selecting a report type, you can export the results by clicking the Export PDF or Export Excel button.
+                    </p>
                 </div>
 
-                <!-- Filtered Results (Google-style results list) -->
+                <!-- Filtered Results — a real table (Student/Category/Grade/
+                     Gender/Status/Date/Counselor), one row per logged case
+                     matching the current filters, exportable to PDF/Excel
+                     the same way as the Category of Cases pivot below. -->
                 <div id="filterResultsView" style="display: none;">
                     <p class="text-muted" id="filterResultsSummary" style="margin-bottom: 16px;"></p>
-                    <div id="filterResultsList"></div>
+                    <p class="text-muted" id="filterResultsEmpty" style="display: none; background: white; border: 1px dashed var(--border-color); border-radius: 8px; padding: 30px; text-align: center;">Try widening the period or clearing a filter.</p>
+                    <div class="table-container" id="filterResultsTableContainer">
+                        <table id="filterResultsTable">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Category</th>
+                                    <th>Grade</th>
+                                    <th>Gender</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Counselor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="filterResultsTableBody">
+                                <!-- Data will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Report Cases Table -->
@@ -163,7 +187,6 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" id="editCaseBtn">Edit Case</button>
                             <button class="btn btn-primary" id="closeCaseModal">Close</button>
                         </div>
                     </div>

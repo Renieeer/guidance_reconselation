@@ -861,16 +861,16 @@ function generateCategoryOfCasesPdf() {
     const districtTitle = districtLabel(currentDistrict);
     const { pdfHead, body, sectionHeaderRows } = buildExportTable();
 
-    doc.setFontSize(14);
-    doc.text(`Learners Personal-Social Concern - ${districtTitle}`, 14, SDO_PDF_CONTENT_TOP);
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Period: ${PERIOD_LABELS[currentPeriod]}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
+    const contentTop = sdoDrawReportTitle(
+        doc,
+        `Learners Personal-Social Concern - ${districtTitle}`,
+        `Period: ${PERIOD_LABELS[currentPeriod]}  |  Generated: ${new Date().toLocaleDateString()}`
+    );
 
     doc.autoTable({
         head: pdfHead,
         body,
-        startY: SDO_PDF_CONTENT_TOP + 11,
+        startY: contentTop,
         margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', valign: 'middle', halign: 'center' },
@@ -1104,16 +1104,16 @@ async function generateDivisionSummaryPdf(period, start, end, label) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    doc.setFontSize(14);
-    doc.text('Division-Wide Summary Case', 14, SDO_PDF_CONTENT_TOP);
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
+    const contentTop = sdoDrawReportTitle(
+        doc,
+        'Division-Wide Summary Case',
+        `Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`
+    );
 
     doc.autoTable({
         head: [header],
         body,
-        startY: SDO_PDF_CONTENT_TOP + 11,
+        startY: contentTop,
         margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', valign: 'middle' },
@@ -1219,11 +1219,11 @@ async function generateCasesBySchoolPdf(period, start, end, label) {
     const schools = await fetchSchoolBreakdownData(currentDistrict, period, start, end, level, section, category);
     const { body: schoolBody, totals: schoolTotals } = buildSchoolBreakdownExportRows(schools);
 
-    doc.setFontSize(14);
-    doc.text(`Cases by School - ${districtTitle}${titleSuffix}`, 14, SDO_PDF_CONTENT_TOP);
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
+    const contentTop = sdoDrawReportTitle(
+        doc,
+        `Cases by School - ${districtTitle}${titleSuffix}`,
+        `Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`
+    );
 
     doc.autoTable({
         head: [['School', 'Total Cases', 'Male', 'Female']],
@@ -1236,7 +1236,7 @@ async function generateCasesBySchoolPdf(period, start, end, label) {
                 { content: String(schoolTotals.female), styles: { fontStyle: 'bold' } }
             ]
         ],
-        startY: SDO_PDF_CONTENT_TOP + 11,
+        startY: contentTop,
         margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold' },
@@ -1441,16 +1441,16 @@ async function generateDmmrPdf(start, end, label) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    doc.setFontSize(14);
-    doc.text(`Division Monthly Monitoring Report of Learners' Personal-Social Concerns`, 14, SDO_PDF_CONTENT_TOP);
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`, 14, SDO_PDF_CONTENT_TOP + 6);
+    const contentTop = sdoDrawReportTitle(
+        doc,
+        `Division Monthly Monitoring Report of Learners' Personal-Social Concerns`,
+        `Period: ${label}  |  Generated: ${new Date().toLocaleDateString()}`
+    );
 
     doc.autoTable({
         head: pdfHead,
         body,
-        startY: SDO_PDF_CONTENT_TOP + 11,
+        startY: contentTop,
         margin: { top: SDO_PDF_CONTENT_TOP, bottom: SDO_PDF_FOOTER_RESERVE },
         theme: 'grid',
         headStyles: { fillColor: DMMR_HEADER_COLOR, textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, halign: 'center', valign: 'middle' },
