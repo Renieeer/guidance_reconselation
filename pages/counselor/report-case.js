@@ -16,16 +16,11 @@ let counts = {};
 let displayRows = [];
 
 // This same report-case.js is shared verbatim by the coordinator, counselor,
-// and combined ("other-school") login pages — role-specific text (report
-// title, filename) reads the logged-in account's own role instead of being
-// hardcoded, so a counselor's export doesn't say "Coordinator".
-function reportRoleLabel() {
-    const role = (getCurrentUser() && getCurrentUser().role) || '';
-    if (role === 'counselor') return 'Counselor';
-    if (role === 'counselor-and-coordinator') return 'Combined Coordinator & Counselor';
-    return 'Coordinator';
-}
-
+// and combined ("other-school") login pages — the exported filename still
+// reads the logged-in account's own role (below) so files from different
+// roles don't collide, even though the report title itself no longer names
+// a role ("Learners Personal-Social Concern", not "Coordinator Report
+// Cases"/"Counselor Report Cases").
 function reportRoleSlug() {
     const role = (getCurrentUser() && getCurrentUser().role) || '';
     if (role === 'counselor') return 'counselor';
@@ -735,7 +730,7 @@ function exportToExcel() {
 
     showExcelPreview(filename, previewTable, async () => {
         const { body, sectionHeaderRows, subtotalRows } = buildExportTable();
-        const title = `${reportRoleLabel()} Report Cases - ${currentSchool || 'School'}`;
+        const title = `Learners Personal-Social Concern - ${currentSchool || 'School'}`;
         const periodLabel = `Generated: ${new Date().toLocaleDateString()}`;
 
         const workbook = buildReportCasesWorkbook(body, sectionHeaderRows, subtotalRows, title, periodLabel);
@@ -757,7 +752,7 @@ function exportToPDF() {
     const { pdfHead } = buildGradeHeaderRows();
 
     doc.setFontSize(14);
-    doc.text(`${reportRoleLabel()} Report Cases - ${currentSchool || 'School'}`, 14, 15);
+    doc.text(`Learners Personal-Social Concern - ${currentSchool || 'School'}`, 14, 15);
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 21);

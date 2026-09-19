@@ -74,6 +74,55 @@ function fetch_sections(mysqli $conn): array {
     return array_values($sections);
 }
 
+/** Fills in each $caseRow's blank 'categoryId' from its own most recent
+ *  follow_up row. counselor_case_scenarios.category_id is never actually
+ *  populated any more — category moved to being recorded per student, per
+ *  follow-up (see saveFollowUp() in counseling.js) instead of once on the
+ *  case itself — so every case would otherwise fall into its section's
+ *  "uncategorized" bucket even when its follow-ups clearly had a category.
+ *  Matches what the counselor's own "Recent drafts" list already shows
+ *  (getRecordCategoryNames() in counseling.js). Each row needs 'caseUid'
+ *  and 'categoryId' keys; rows come back in the same order. */
+function backfill_case_categories(mysqli $conn, array $caseRows): array {
+    if (empty($caseRows) || !table_exists($conn, 'follow_up')) {
+        return $caseRows;
+    }
+
+    $caseUids = array_values(array_unique(array_column($caseRows, 'caseUid')));
+    $uidPlaceholders = implode(',', array_fill(0, count($caseUids), '?'));
+    $uidTypes = str_repeat('s', count($caseUids));
+    $fuStmt = $conn->prepare("
+        SELECT case_uid, category_id
+        FROM follow_up
+        WHERE case_uid IN ($uidPlaceholders) AND category_id IS NOT NULL AND category_id != ''
+        ORDER BY created_at DESC, Follow_id DESC
+    ");
+    if (!$fuStmt) {
+        return $caseRows;
+    }
+    $fuStmt->bind_param($uidTypes, ...$caseUids);
+    $fuStmt->execute();
+    $fuResult = $fuStmt->get_result();
+    $latestCategoryByCase = [];
+    while ($fuRow = $fuResult->fetch_assoc()) {
+        // First row seen per case_uid is its most recent (ORDER BY
+        // created_at DESC above) — don't let an older follow-up overwrite it.
+        if (!isset($latestCategoryByCase[$fuRow['case_uid']])) {
+            $latestCategoryByCase[$fuRow['case_uid']] = (string)$fuRow['category_id'];
+        }
+    }
+    $fuStmt->close();
+
+    foreach ($caseRows as &$caseRow) {
+        if ($caseRow['categoryId'] === '' && isset($latestCategoryByCase[$caseRow['caseUid']])) {
+            $caseRow['categoryId'] = $latestCategoryByCase[$caseRow['caseUid']];
+        }
+    }
+    unset($caseRow);
+
+    return $caseRows;
+}
+
 /** All school_name values assigned to $district ("" / "Unassigned" = no district set). */
 function schools_in_district(mysqli $conn, string $district): array {
     if ($district === '' || strcasecmp($district, 'Unassigned') === 0) {
@@ -295,48 +344,7 @@ if ($action === 'categories') {
             }
             $stmt->close();
 
-            // counselor_case_scenarios.category_id is never actually
-            // populated any more — category moved to being recorded per
-            // student, per follow-up (see saveFollowUp() in counseling.js)
-            // instead of once on the case itself — so every case fell into
-            // its section's "uncategorized" bucket here even when its
-            // follow-ups clearly had a category. Backfill each case's
-            // category from its own most recent follow_up row instead,
-            // matching what the counselor's own "Recent drafts" list
-            // already shows (getRecordCategoryNames() in counseling.js).
-            if (!empty($caseRows) && table_exists($conn, 'follow_up')) {
-                $caseUids = array_values(array_unique(array_column($caseRows, 'caseUid')));
-                $uidPlaceholders = implode(',', array_fill(0, count($caseUids), '?'));
-                $uidTypes = str_repeat('s', count($caseUids));
-                $fuStmt = $conn->prepare("
-                    SELECT case_uid, category_id
-                    FROM follow_up
-                    WHERE case_uid IN ($uidPlaceholders) AND category_id IS NOT NULL AND category_id != ''
-                    ORDER BY created_at DESC, Follow_id DESC
-                ");
-                if ($fuStmt) {
-                    $fuStmt->bind_param($uidTypes, ...$caseUids);
-                    $fuStmt->execute();
-                    $fuResult = $fuStmt->get_result();
-                    $latestCategoryByCase = [];
-                    while ($fuRow = $fuResult->fetch_assoc()) {
-                        // First row seen per case_uid is its most recent
-                        // (ORDER BY created_at DESC above) — don't let an
-                        // older follow-up overwrite it.
-                        if (!isset($latestCategoryByCase[$fuRow['case_uid']])) {
-                            $latestCategoryByCase[$fuRow['case_uid']] = (string)$fuRow['category_id'];
-                        }
-                    }
-                    $fuStmt->close();
-
-                    foreach ($caseRows as &$caseRow) {
-                        if ($caseRow['categoryId'] === '' && isset($latestCategoryByCase[$caseRow['caseUid']])) {
-                            $caseRow['categoryId'] = $latestCategoryByCase[$caseRow['caseUid']];
-                        }
-                    }
-                    unset($caseRow);
-                }
-            }
+            $caseRows = backfill_case_categories($conn, $caseRows);
 
             $studentInfo = [];
             if (!empty($studentIds)) {
@@ -653,18 +661,38 @@ if ($action === 'school_breakdown') {
     $period = trim((string)($_GET['period'] ?? 'all'));
     $rangeStart = trim((string)($_GET['start'] ?? ''));
     $rangeEnd = trim((string)($_GET['end'] ?? ''));
+    // Optional school_level narrowing ('Secondary'/'East'/'West'/'South') for
+    // the Cases by School export's School Level picker — same levels/blank-
+    // defaults-to-Secondary convention as the DMMR export below.
+    $level = trim((string)($_GET['level'] ?? ''));
+    // Optional Section/Case Category narrowing — same sectionId/categoryId
+    // shape as the 'categories' action (see fetch_sections()), so a
+    // school's total only counts cases under the picked section/category
+    // instead of every case at that school.
+    $sectionFilter = trim((string)($_GET['section'] ?? ''));
+    $categoryFilter = trim((string)($_GET['category'] ?? ''));
+
     [$dateSql, $dateTypes, $dateValues] = case_date_condition($period, $rangeStart, $rangeEnd);
 
     $schools = [];
     if ($district !== '' && strcasecmp($district, 'all') !== 0) {
         $districtLabel = strcasecmp($district, 'Unassigned') === 0 ? 'Unassigned' : $district;
-        foreach (schools_in_district($conn, $district) as $name) {
+        $namesInDistrict = schools_in_district($conn, $district);
+        $levelMap = schools_level_map($conn, $namesInDistrict);
+        foreach ($namesInDistrict as $name) {
+            $schoolLevel = $levelMap[$name] ?? 'Secondary';
+            if ($level !== '' && strcasecmp($level, 'all') !== 0 && strcasecmp($schoolLevel, $level) !== 0) {
+                continue;
+            }
             $schools[$name] = ['school' => $name, 'district' => $districtLabel, 'total' => 0, 'male' => 0, 'female' => 0];
         }
     } else {
-        $result = $conn->query("SELECT school_name, COALESCE(NULLIF(district, ''), 'Unassigned') AS district FROM schools WHERE is_active = 1 ORDER BY district ASC, school_name ASC");
+        $result = $conn->query("SELECT school_name, COALESCE(NULLIF(district, ''), 'Unassigned') AS district, COALESCE(NULLIF(school_level, ''), 'Secondary') AS school_level FROM schools WHERE is_active = 1 ORDER BY district ASC, school_name ASC");
         if ($result) {
             while ($row = $result->fetch_assoc()) {
+                if ($level !== '' && strcasecmp($level, 'all') !== 0 && strcasecmp($row['school_level'], $level) !== 0) {
+                    continue;
+                }
                 $schools[$row['school_name']] = ['school' => $row['school_name'], 'district' => $row['district'], 'total' => 0, 'male' => 0, 'female' => 0];
             }
         }
@@ -676,7 +704,7 @@ if ($action === 'school_breakdown') {
         $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
         $types = str_repeat('s', count($schoolNames));
         $stmt = $conn->prepare("
-            SELECT school_attended, students_json
+            SELECT case_uid, school_attended, section_id, category_id, students_json
             FROM counselor_case_scenarios
             WHERE school_attended IN ($placeholders)$dateSql
         ");
@@ -704,9 +732,43 @@ if ($action === 'school_breakdown') {
                         $studentIds[$sid] = true;
                     }
                 }
-                $caseRows[] = ['school' => $row['school_attended'], 'studentIds' => $ids];
+                $caseRows[] = [
+                    'caseUid' => $row['case_uid'],
+                    'school' => (string)$row['school_attended'],
+                    'sectionId' => (string)$row['section_id'],
+                    'categoryId' => trim((string)($row['category_id'] ?? '')),
+                    'studentIds' => $ids
+                ];
             }
             $stmt->close();
+
+            $caseRows = backfill_case_categories($conn, $caseRows);
+
+            if ($sectionFilter !== '' && strcasecmp($sectionFilter, 'all') !== 0) {
+                $caseRows = array_values(array_filter($caseRows, function ($c) use ($sectionFilter) {
+                    return $c['sectionId'] === $sectionFilter;
+                }));
+            }
+            if ($categoryFilter !== '' && strcasecmp($categoryFilter, 'all') !== 0) {
+                // A blank categoryId (never actually chosen, even after the
+                // follow_up backfill above) can never match a real picked
+                // category — only the section's own 'section-N-uncategorized'
+                // bucket key would, and that's not a selectable dropdown
+                // option here.
+                $caseRows = array_values(array_filter($caseRows, function ($c) use ($categoryFilter) {
+                    return $c['categoryId'] === $categoryFilter;
+                }));
+            }
+
+            // Recomputed from the filtered case rows, not the full query
+            // result above — a section/category filter can drop cases
+            // whose students would otherwise still be looked up.
+            $studentIds = [];
+            foreach ($caseRows as $caseRow) {
+                foreach ($caseRow['studentIds'] as $sid) {
+                    $studentIds[$sid] = true;
+                }
+            }
 
             $studentSex = [];
             if (!empty($studentIds)) {

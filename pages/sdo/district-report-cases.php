@@ -95,14 +95,22 @@
                     <table id="reportCasesTable">
                         <thead>
                             <tr id="reportCasesHeaderRow">
-                                <th>Category of Cases</th>
-                                <th>Grade 7</th>
-                                <th>Grade 8</th>
-                                <th>Grade 9</th>
-                                <th>Grade 10</th>
-                                <th>Grade 11</th>
-                                <th>Grade 12</th>
-                                <th>Totals</th>
+                                <th rowspan="2">Category of Cases</th>
+                                <th colspan="3">Grade 7</th>
+                                <th colspan="3">Grade 8</th>
+                                <th colspan="3">Grade 9</th>
+                                <th colspan="3">Grade 10</th>
+                                <th colspan="3">Grade 11</th>
+                                <th colspan="3">Grade 12</th>
+                                <th rowspan="2">Overall Total</th>
+                            </tr>
+                            <tr id="reportCasesSubHeaderRow">
+                                <th title="Male">M</th><th title="Female">F</th><th title="Total">T</th>
+                                <th title="Male">M</th><th title="Female">F</th><th title="Total">T</th>
+                                <th title="Male">M</th><th title="Female">F</th><th title="Total">T</th>
+                                <th title="Male">M</th><th title="Female">F</th><th title="Total">T</th>
+                                <th title="Male">M</th><th title="Female">F</th><th title="Total">T</th>
+                                <th title="Male">M</th><th title="Female">F</th><th title="Total">T</th>
                             </tr>
                         </thead>
                         <tbody id="casesTableBody">
@@ -166,6 +174,43 @@
                                     <option value="cases_by_school">Cases by School</option>
                                     <option value="division_summary">Division-Wide Summary Case</option>
                                     <option value="dmmr">Division Monthly Monitoring Report of Learners' Personal-Social Concerns</option>
+                                </select>
+                            </div>
+
+                            <!-- Cases by School — lets the SDO narrow the per-school table to
+                                 one school_level group at a time (set per-school in School
+                                 Management's Add/Edit School modal) instead of every active
+                                 school at once. -->
+                            <div class="form-group" id="exportSchoolLevelGroup">
+                                <label for="exportSchoolLevel">School Level</label>
+                                <select id="exportSchoolLevel">
+                                    <option value="all">All Levels</option>
+                                    <option value="Secondary">Secondary</option>
+                                    <option value="East">East</option>
+                                    <option value="West">West</option>
+                                    <option value="South">South</option>
+                                </select>
+                                <p style="margin: 8px 0 0; padding: 8px 12px; background: var(--info-bg); border-left: 3px solid var(--info); border-radius: 4px; font-size: 12.5px; color: #0f2a4f;">
+                                    <i class="bi bi-info-circle"></i> East, West, and South are elementary school levels. Secondary covers junior/senior high schools.
+                                </p>
+                            </div>
+
+                            <!-- Cases by School — further narrows each school's total to one
+                                 real Section/Case Category (options filled in from the same
+                                 6-section/27-category taxonomy as the on-screen table).
+                                 Category cascades off Section and stays "All Categories" until
+                                 a specific section is picked. -->
+                            <div class="form-group" id="exportSectionFilterGroup">
+                                <label for="exportSectionFilter">Section</label>
+                                <select id="exportSectionFilter">
+                                    <option value="all">All Sections</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" id="exportCategoryFilterGroup">
+                                <label for="exportCategoryFilter">Case Category</label>
+                                <select id="exportCategoryFilter" disabled>
+                                    <option value="all">All Categories</option>
                                 </select>
                             </div>
 
