@@ -471,22 +471,20 @@ function createUser(mysqli $conn, array $input): array {
 }
 
 function getAssignments(mysqli $conn): array {
-    // Coordinators/counselors are listed one row per school in this view —
-    // only one account per role is surfaced here (a school with several
-    // per-grade counselors will show one in this summary table — the full
-    // list can still be queried directly if needed).
+    // Coordinator/combined are listed one row per school in this view — only
+    // one account per role is surfaced for those, resolved to exactly one
+    // AccountID via a correlated subquery (active preferred, then most
+    // recently created) so every column for that role comes from the SAME
+    // joined row. The previous approach (a plain GROUP BY with an
+    // independent MAX(CASE...) per column) picked each column from whichever
+    // row happened to have the highest value for THAT column alone — e.g.
+    // AccountID from the new row but the name from the old one, whenever
+    // "Old ..." alphabetically outranked "New ..." — so id/name/email could
+    // end up mismatched.
     //
-    // "Replace Account" (school-management.js) deactivates the old account
-    // and creates a new one for the same role+school, so more than one
-    // users_tables row can now share a (school, Type) pair. Each role is
-    // resolved to exactly one AccountID via a correlated subquery — active
-    // preferred, then most recently created — and every column for that
-    // role comes from the SAME joined row. The previous approach (a plain
-    // GROUP BY with an independent MAX(CASE...) per column) picked each
-    // column from whichever row happened to have the highest value for
-    // THAT column alone — e.g. AccountID from the new row but the name
-    // from the old one, whenever "Old ..." alphabetically outranked
-    // "New ..." — so id/name/email could end up mismatched.
+    // Counselor is different: a school can have SEVERAL counselors active at
+    // once (e.g. one per grade band), so it's fetched as a separate list
+    // query below and attached as an array, rather than picked down to one.
     $query = "SELECT
                 s.school_code,
                 s.school_name,
@@ -508,11 +506,6 @@ function getAssignments(mysqli $conn): array {
                 co.email AS coordinator_email,
                 co.Grade AS coordinator_grade,
                 co.is_active AS coordinator_active,
-                cu.AccountID AS counselor_id,
-                CONCAT(cu.First_name, ' ', cu.Last_name) AS counselor_name,
-                cu.email AS counselor_email,
-                cu.Grade AS counselor_grade,
-                cu.is_active AS counselor_active,
                 cb.AccountID AS combined_id,
                 CONCAT(cb.First_name, ' ', cb.Last_name) AS combined_name,
                 cb.email AS combined_email,
@@ -522,11 +515,6 @@ function getAssignments(mysqli $conn): array {
             LEFT JOIN users_tables co ON co.AccountID = (
                 SELECT u.AccountID FROM users_tables u
                 WHERE (u.school_attended = s.school_code OR u.school_attended = s.school_name) AND u.Type = 'coordinator'
-                ORDER BY u.is_active DESC, u.AccountID DESC LIMIT 1
-            )
-            LEFT JOIN users_tables cu ON cu.AccountID = (
-                SELECT u.AccountID FROM users_tables u
-                WHERE (u.school_attended = s.school_code OR u.school_attended = s.school_name) AND u.Type = 'counselor'
                 ORDER BY u.is_active DESC, u.AccountID DESC LIMIT 1
             )
             LEFT JOIN users_tables cb ON cb.AccountID = (
@@ -543,6 +531,7 @@ function getAssignments(mysqli $conn): array {
     }
 
     $assignments = [];
+    $indexBySchoolCode = [];
 
     while ($row = $result->fetch_assoc()) {
         $assignments[] = [
@@ -558,13 +547,7 @@ function getAssignments(mysqli $conn): array {
                 'grade' => $row['coordinator_grade'],
                 'active' => $row['coordinator_active'] === null ? true : (bool)((int)$row['coordinator_active'])
             ] : null,
-            'counselor' => $row['counselor_name'] ? [
-                'accountId' => (int)$row['counselor_id'],
-                'name' => $row['counselor_name'],
-                'email' => $row['counselor_email'],
-                'grade' => $row['counselor_grade'],
-                'active' => $row['counselor_active'] === null ? true : (bool)((int)$row['counselor_active'])
-            ] : null,
+            'counselors' => [],
             'combined' => $row['combined_name'] ? [
                 'accountId' => (int)$row['combined_id'],
                 'name' => $row['combined_name'],
@@ -573,6 +556,42 @@ function getAssignments(mysqli $conn): array {
                 'active' => $row['combined_active'] === null ? true : (bool)((int)$row['combined_active'])
             ] : null,
             'totalAssigned' => (int)$row['totalAssigned']
+        ];
+        $indexBySchoolCode[$row['school_code']] = count($assignments) - 1;
+    }
+
+    // Every counselor account for a still-active school, active ones first —
+    // school_attended is matched the same OR-on-code-or-name way as above
+    // since older rows store either.
+    $counselorQuery = "SELECT
+                s.school_code,
+                u.AccountID AS counselor_id,
+                CONCAT(u.First_name, ' ', u.Last_name) AS counselor_name,
+                u.email AS counselor_email,
+                u.Grade AS counselor_grade,
+                u.is_active AS counselor_active
+            FROM users_tables u
+            JOIN schools s ON (u.school_attended = s.school_code OR u.school_attended = s.school_name)
+            WHERE u.Type = 'counselor' AND s.is_active = 1
+            ORDER BY u.is_active DESC, u.AccountID ASC";
+    $counselorResult = $conn->query($counselorQuery);
+
+    if (!$counselorResult) {
+        throw new RuntimeException('Failed to load counselor assignments');
+    }
+
+    while ($crow = $counselorResult->fetch_assoc()) {
+        $idx = $indexBySchoolCode[$crow['school_code']] ?? null;
+        if ($idx === null) {
+            continue;
+        }
+
+        $assignments[$idx]['counselors'][] = [
+            'accountId' => (int)$crow['counselor_id'],
+            'name' => $crow['counselor_name'],
+            'email' => $crow['counselor_email'],
+            'grade' => $crow['counselor_grade'],
+            'active' => $crow['counselor_active'] === null ? true : (bool)((int)$crow['counselor_active'])
         ];
     }
 

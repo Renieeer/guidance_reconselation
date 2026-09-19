@@ -61,6 +61,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const user = getCurrentUser();
     currentSchool = (user && user.school_attended) || '';
 
+    // Awaited so Export PDF never races this — reportLetterheadContentTop()
+    // etc. all no-op back to today's plain layout if it hasn't resolved.
+    await loadReportLetterhead(currentSchool);
+
     await loadReportData();
     visibleGrades = computeVisibleGrades();
     renderGradeHeader();
@@ -464,25 +468,29 @@ function exportFilteredCasesToPDF() {
     const doc = new jsPDF({ orientation: 'landscape' });
     const { header, body } = buildFilteredCasesExportRows();
 
+    const contentTop = reportLetterheadContentTop(doc);
     doc.setFontSize(14);
-    doc.text(filteredCasesExportTitle(), doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+    doc.text(filteredCasesExportTitle(), doc.internal.pageSize.getWidth() / 2, contentTop, { align: 'center' });
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(
         `Generated: ${new Date().toLocaleDateString()}  |  ${body.length} case${body.length === 1 ? '' : 's'} found`,
-        doc.internal.pageSize.getWidth() / 2, 21, { align: 'center' }
+        doc.internal.pageSize.getWidth() / 2, contentTop + 6, { align: 'center' }
     );
 
+    const letterheadMargin = reportLetterheadTableMargin(doc);
     doc.autoTable({
         head: [header],
         body,
-        startY: 26,
+        startY: contentTop + 11,
+        ...(letterheadMargin ? { margin: letterheadMargin } : {}),
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', halign: 'center' },
         styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
         columnStyles: { 0: { cellWidth: 45 }, 1: { cellWidth: 55 }, 6: { cellWidth: 40 } }
     });
 
+    stampReportLetterhead(doc);
     showPdfPreview(doc, `filtered-${exportFileBaseName()}.pdf`);
 }
 
@@ -579,6 +587,18 @@ function setupEventListeners() {
     // submit hands off to a "Are you sure?" panel rather than saving right
     // away; only the Yes button there actually calls the API.
     document.getElementById('openAddCaseCategoryBtn').addEventListener('click', openAddCaseCategoryModal);
+
+    document.getElementById('reportSettingsBtn').addEventListener('click', openReportSettingsModal);
+    document.getElementById('closeReportSettingsModal').addEventListener('click', closeReportSettingsModal);
+    document.getElementById('reportSettingsModal').addEventListener('click', (e) => {
+        if (e.target.id === 'reportSettingsModal') closeReportSettingsModal();
+    });
+    document.getElementById('reportLetterheadFileInput').addEventListener('change', handleReportLetterheadFileSelected);
+    document.getElementById('editReportLetterheadCropBtn').addEventListener('click', handleEditReportLetterheadCrop);
+    document.getElementById('reportLetterheadHeaderSlider').addEventListener('input', updateReportLetterheadOverlays);
+    document.getElementById('reportLetterheadFooterSlider').addEventListener('input', updateReportLetterheadOverlays);
+    document.getElementById('saveReportLetterheadBtn').addEventListener('click', handleSaveReportLetterhead);
+    document.getElementById('deleteReportLetterheadBtn').addEventListener('click', handleDeleteReportLetterhead);
     document.getElementById('closeAddCaseCategoryModal').addEventListener('click', closeAddCaseCategoryModal);
     document.getElementById('cancelAddCaseCategory').addEventListener('click', closeAddCaseCategoryModal);
     document.getElementById('addCaseCategoryForm').addEventListener('submit', handleAddCaseCategorySubmit);
@@ -679,6 +699,211 @@ async function confirmAddCaseCategory() {
         showAlert('Error: ' + error.message, 'error');
     } finally {
         yesBtn.disabled = false;
+    }
+}
+
+/* ── Report Settings (per-school PDF header/footer) ── */
+
+// Holds the full-resolution rendered PDF page between file-select and Save
+// — the visible <canvas> is drawn at this same resolution (scaled down only
+// via CSS), so cropping straight from it needs no re-render.
+let reportLetterheadSourceCanvas = null;
+let reportLetterheadOriginalFilename = '';
+
+function openReportSettingsModal() {
+    resetReportLetterheadEditor();
+    renderReportLetterheadCurrentState();
+    openModal('reportSettingsModal');
+}
+
+function closeReportSettingsModal() {
+    closeModal('reportSettingsModal');
+}
+
+function renderReportLetterheadCurrentState() {
+    const letterhead = getCurrentReportLetterhead();
+    const currentBlock = document.getElementById('reportLetterheadCurrent');
+
+    if (!letterhead) {
+        currentBlock.style.display = 'none';
+        return;
+    }
+
+    document.getElementById('reportLetterheadHeaderPreview').src = letterhead.headerImage;
+    document.getElementById('reportLetterheadFooterPreview').src = letterhead.footerImage;
+    document.getElementById('reportLetterheadMeta').textContent =
+        (letterhead.originalFilename ? `Uploaded from "${letterhead.originalFilename}"` : 'Uploaded') +
+        (letterhead.updatedAt ? ` — last updated ${new Date(letterhead.updatedAt.replace(' ', 'T')).toLocaleString()}` : '');
+    // Older rows saved before Edit Crop existed have no stored source
+    // image to re-slice — Replace with a Different PDF is their only path,
+    // called out explicitly instead of just silently hiding the button.
+    document.getElementById('editReportLetterheadCropBtn').style.display = letterhead.sourceImage ? '' : 'none';
+    document.getElementById('reportLetterheadNoEditNotice').style.display = letterhead.sourceImage ? 'none' : 'block';
+    currentBlock.style.display = 'block';
+}
+
+function handleEditReportLetterheadCrop() {
+    const letterhead = getCurrentReportLetterhead();
+    if (!letterhead || !letterhead.sourceImage) {
+        showNotification('This letterhead was saved before Edit Crop existed — upload the PDF again to re-adjust it.', 'error');
+        return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.getElementById('reportLetterheadCanvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+
+        reportLetterheadSourceCanvas = canvas;
+        reportLetterheadOriginalFilename = letterhead.originalFilename || '';
+
+        document.getElementById('reportLetterheadHeaderSlider').value = letterhead.headerPct || 20;
+        document.getElementById('reportLetterheadFooterSlider').value = letterhead.footerPct || 15;
+        document.getElementById('reportLetterheadEditor').style.display = 'block';
+        updateReportLetterheadOverlays();
+    };
+    img.onerror = () => showNotification('Could not load the saved letterhead image.', 'error');
+    img.src = letterhead.sourceImage;
+}
+
+function resetReportLetterheadEditor() {
+    document.getElementById('reportLetterheadFileInput').value = '';
+    document.getElementById('reportLetterheadEditor').style.display = 'none';
+    reportLetterheadSourceCanvas = null;
+    reportLetterheadOriginalFilename = '';
+}
+
+// pdf.js is only ever needed on this settings modal — every PDF export path
+// stays on plain jsPDF/autoTable, so this stays out of the page's default
+// script tags and is fetched once, lazily, the first time it's actually used.
+let reportLetterheadPdfJsPromise = null;
+function loadPdfJsIfNeeded() {
+    if (window.pdfjsLib) return Promise.resolve();
+    if (reportLetterheadPdfJsPromise) return reportLetterheadPdfJsPromise;
+
+    reportLetterheadPdfJsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Failed to load the PDF renderer'));
+        document.head.appendChild(script);
+    }).then(() => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    });
+
+    return reportLetterheadPdfJsPromise;
+}
+
+async function handleReportLetterheadFileSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    reportLetterheadOriginalFilename = file.name;
+
+    try {
+        await loadPdfJsIfNeeded();
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+        // 2x scale for print-quality crops — the visible canvas is shown
+        // shrunk via CSS (max-width: 100%), the full pixel data is kept for
+        // the actual header/footer crops at Save time.
+        const viewport = page.getViewport({ scale: 2 });
+
+        const canvas = document.getElementById('reportLetterheadCanvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+        reportLetterheadSourceCanvas = canvas;
+        document.getElementById('reportLetterheadEditor').style.display = 'block';
+        updateReportLetterheadOverlays();
+    } catch (err) {
+        console.error('Error rendering PDF letterhead:', err);
+        showNotification('Could not read that PDF — try a different file.', 'error');
+    }
+}
+
+// Redraws the two highlight bands over the canvas preview as the sliders
+// move — pure percentage-of-container sizing, so it tracks the canvas's
+// displayed (CSS-scaled) size regardless of its actual pixel resolution.
+function updateReportLetterheadOverlays() {
+    const headerPct = Number(document.getElementById('reportLetterheadHeaderSlider').value);
+    const footerPct = Number(document.getElementById('reportLetterheadFooterSlider').value);
+    document.getElementById('reportLetterheadHeaderPct').textContent = headerPct;
+    document.getElementById('reportLetterheadFooterPct').textContent = footerPct;
+    document.getElementById('reportLetterheadHeaderOverlay').style.height = `${headerPct}%`;
+    document.getElementById('reportLetterheadFooterOverlay').style.height = `${footerPct}%`;
+}
+
+function cropCanvasRegion(sourceCanvas, yStart, height) {
+    const cropped = document.createElement('canvas');
+    cropped.width = sourceCanvas.width;
+    cropped.height = height;
+    cropped.getContext('2d').drawImage(sourceCanvas, 0, yStart, sourceCanvas.width, height, 0, 0, sourceCanvas.width, height);
+    return cropped;
+}
+
+function canvasToPngBlob(canvas) {
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+async function handleSaveReportLetterhead() {
+    if (!reportLetterheadSourceCanvas) {
+        showNotification('Choose a PDF first.', 'error');
+        return;
+    }
+
+    const headerPctValue = Number(document.getElementById('reportLetterheadHeaderSlider').value);
+    const footerPctValue = Number(document.getElementById('reportLetterheadFooterSlider').value);
+    const fullHeight = reportLetterheadSourceCanvas.height;
+    const headerHeightPx = Math.round(fullHeight * (headerPctValue / 100));
+    const footerHeightPx = Math.round(fullHeight * (footerPctValue / 100));
+
+    const headerCanvas = cropCanvasRegion(reportLetterheadSourceCanvas, 0, headerHeightPx);
+    const footerCanvas = cropCanvasRegion(reportLetterheadSourceCanvas, fullHeight - footerHeightPx, footerHeightPx);
+
+    const saveBtn = document.getElementById('saveReportLetterheadBtn');
+    saveBtn.disabled = true;
+
+    try {
+        // Also saves the full source render + exact slider percentages used
+        // (not just the two final crops) so Edit Crop can re-slice this
+        // same page later without asking for the PDF again.
+        const [headerBlob, footerBlob, sourceBlob] = await Promise.all([
+            canvasToPngBlob(headerCanvas),
+            canvasToPngBlob(footerCanvas),
+            canvasToPngBlob(reportLetterheadSourceCanvas)
+        ]);
+        await saveReportLetterhead(
+            headerBlob, footerBlob,
+            headerCanvas.width / headerCanvas.height,
+            footerCanvas.width / footerCanvas.height,
+            reportLetterheadOriginalFilename,
+            sourceBlob, headerPctValue, footerPctValue
+        );
+        showNotification('Report header/footer saved!', 'success');
+        resetReportLetterheadEditor();
+        renderReportLetterheadCurrentState();
+    } catch (err) {
+        showNotification(err.message || 'Failed to save the report header/footer.', 'error');
+    } finally {
+        saveBtn.disabled = false;
+    }
+}
+
+async function handleDeleteReportLetterhead() {
+    if (!confirm("Remove this school's report header & footer? Future exports go back to a plain title.")) return;
+
+    try {
+        await deleteReportLetterhead();
+        showNotification('Report header/footer removed.', 'success');
+        renderReportLetterheadCurrentState();
+    } catch (err) {
+        showNotification(err.message || 'Failed to delete the report header/footer.', 'error');
     }
 }
 
@@ -991,16 +1216,20 @@ function exportToPDF() {
     const { body, sectionHeaderRows, subtotalRows } = buildExportTable();
     const { pdfHead } = buildGradeHeaderRows();
 
+    const contentTop = reportLetterheadContentTop(doc);
+    const pageCenterX = doc.internal.pageSize.getWidth() / 2;
     doc.setFontSize(14);
-    doc.text(`Learners Personal-Social Concern - ${currentSchool || 'School'}`, 14, 15);
+    doc.text(`Learners Personal-Social Concern - ${currentSchool || 'School'}`, pageCenterX, contentTop, { align: 'center' });
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageCenterX, contentTop + 6, { align: 'center' });
 
+    const letterheadMargin = reportLetterheadTableMargin(doc);
     doc.autoTable({
         head: pdfHead,
         body,
-        startY: 26,
+        startY: contentTop + 11,
+        ...(letterheadMargin ? { margin: letterheadMargin } : {}),
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
         styles: { fontSize: 7, cellPadding: 2 },
@@ -1016,6 +1245,7 @@ function exportToPDF() {
         }
     });
 
+    stampReportLetterhead(doc);
     showPdfPreview(doc, `${exportFileBaseName()}.pdf`);
 }
 

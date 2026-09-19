@@ -45,10 +45,10 @@
                                         <label for="assignType">Assign Role</label>
                                         <select id="assignType" name="assignType" required>
                                             <option value="">Select assignment</option>
-                                            <option value="coordinator">Coordinator only</option>
+                                            <option value="coordinator">Coordinator/Focalperson only</option>
                                             <option value="counselor">Counselor only</option>
-                                            <option value="both">Coordinator and Counselor (separate logins)</option>
-                                            <option value="combined">Combined Coordinator &amp; Counselor (single login)</option>
+                                            <option value="both">Coordinator/Focalperson and Counselor (separate logins)</option>
+                                            <option value="combined">Combined Coordinator/Focalperson &amp; Counselor (single login)</option>
                                         </select>
                                     </div>
                                 </div>
@@ -70,7 +70,7 @@
                                 </div>
 
                         <div id="coordinatorFields" class="assignment-person-card" style="display: none;">
-                            <h3>Coordinator Details</h3>
+                            <h3>Coordinator/Focalperson Details</h3>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="coordinatorFirstName">First Name</label>
@@ -148,7 +148,7 @@
                         </div>
 
                         <div id="combinedFields" class="assignment-person-card" style="display: none;">
-                            <h3>Combined Coordinator &amp; Counselor Details</h3>
+                            <h3>Combined Coordinator/Focalperson &amp; Counselor Details</h3>
                             <p class="text-muted" style="margin-top:-6px;">One login that acts as both coordinator and counselor for its assigned grades — e.g. a Senior High (Grade 11/12) team that manages itself within the same school.</p>
                             <div class="form-row">
                                 <div class="form-group">

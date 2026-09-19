@@ -255,6 +255,7 @@
          which the free SheetJS "Community Edition" build can't write; see
          buildReportCasesWorkbook() in report-case.js. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="report-letterhead.js?v=<?php echo filemtime(__DIR__ . '/report-letterhead.js'); ?>"></script>
     <script src="report-case.js?v=<?php echo filemtime(__DIR__ . '/report-case.js'); ?>"></script>
 </body>
 </html>

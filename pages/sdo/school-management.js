@@ -348,7 +348,9 @@ function openAssignRoleModal(btn) {
 
     const intro = document.getElementById('schoolAssignmentIntro');
     if (intro) {
-        const roleLabel = role === 'combined' ? 'a combined coordinator & counselor' : `a ${role}`;
+        const roleLabel = role === 'combined' ? 'a combined coordinator/focalperson & counselor'
+            : role === 'coordinator' ? 'a coordinator/focalperson'
+            : `a ${role}`;
         intro.textContent = pendingReplaceAccountId
             ? `Replace the ${roleLabel} account for ${schoolName}. The previous account will be deactivated and kept on record, not deleted.`
             : `Assign ${roleLabel} account to ${schoolName}.`;
@@ -439,10 +441,11 @@ async function loadSchoolAssignments() {
 function schoolMatchesSearch(item, search) {
     if (!search) return true;
 
+    const counselorTerms = (item.counselors || []).flatMap(c => [c.name, c.email]);
     const haystack = [
         item.schoolName,
         item.coordinator?.name, item.coordinator?.email,
-        item.counselor?.name, item.counselor?.email,
+        ...counselorTerms,
         item.combined?.name, item.combined?.email
     ].filter(Boolean).join(' ').toLowerCase();
 
@@ -619,7 +622,7 @@ function refreshAssignmentGradeOptions() {
 // count). Clicking it opens the full details in a floating modal instead of
 // expanding in place, so reviewing/editing one school never disturbs the grid.
 function buildFolderCard(item) {
-    const roleCount = [item.coordinator, item.counselor, item.combined].filter(Boolean).length;
+    const roleCount = [Boolean(item.coordinator), Boolean(item.counselors && item.counselors.length), Boolean(item.combined)].filter(Boolean).length;
     const dots = [0, 1, 2].map(i =>
         `<span class="school-folder-dot ${i < roleCount ? 'is-filled' : ''}"></span>`
     ).join('');
@@ -686,8 +689,8 @@ function buildSchoolDetailContent(item) {
 
     return `
         ${buildSchoolInfoEdit(item)}
-        ${buildRoleSlot('COORDINATOR', item.coordinator, 'coordinator', item.schoolName, item.schoolLevel)}
-        ${buildRoleSlot('COUNSELOR', item.counselor, 'counselor', item.schoolName, item.schoolLevel)}
+        ${buildRoleSlot('COORDINATOR/FOCALPERSON', item.coordinator, 'coordinator', item.schoolName, item.schoolLevel)}
+        ${buildCounselorRoleSlot(item.counselors, item.schoolName, item.schoolLevel)}
         ${buildRoleSlot('COMBINED', item.combined, 'combined', item.schoolName, item.schoolLevel)}
         <div class="school-folder-footer">
             <span class="school-folder-id">ID ${escapeHtml(String(item.schoolCode || '').toUpperCase())} &middot; ${escapeHtml(item.schoolLevel || 'Secondary')}</span>
@@ -767,6 +770,82 @@ function buildRoleSlot(label, person, roleKey, schoolName, schoolLevel) {
                 <span class="badge ${badgeClass}">${badgeLabel}</span>
             </div>
             <div class="school-role-name">${escapeHtml(person.name)}</div>
+            ${email}
+            ${details}
+        </div>
+    `;
+}
+
+// Counselor is the one role a school can have more than one active account
+// for at a time (e.g. one counselor per grade band) — unlike
+// coordinator/combined (buildRoleSlot above), which stay single-account.
+// Renders one slot header plus one buildCounselorAccountBlock() per account,
+// and an "assign"/"add another" button (edit mode only) that's available
+// even when accounts already exist.
+function buildCounselorRoleSlot(counselors, schoolName, schoolLevel) {
+    const list = counselors || [];
+
+    const assignBtn = editMode
+        ? `<button type="button" class="school-role-assign-btn" data-assign-role="counselor" data-school-name="${escapeHtml(schoolName)}" data-school-level="${escapeHtml(schoolLevel || 'Secondary')}">+ ${list.length ? 'Add another counselor' : 'Assign an account'}</button>`
+        : '';
+
+    if (!list.length) {
+        return `
+            <div class="school-role-slot">
+                <div class="school-role-slot-header">
+                    <span class="school-role-label">COUNSELOR</span>
+                    <span class="badge badge-empty">Empty</span>
+                </div>
+                <p class="school-role-empty-text">No account assigned to this role yet.</p>
+                ${assignBtn}
+            </div>
+        `;
+    }
+
+    const activeCount = list.filter(p => p.active !== false).length;
+    const countLabel = `${list.length} account${list.length === 1 ? '' : 's'}${activeCount !== list.length ? `, ${activeCount} active` : ''}`;
+
+    return `
+        <div class="school-role-slot">
+            <div class="school-role-slot-header">
+                <span class="school-role-label">COUNSELOR</span>
+                <span class="badge badge-completed">${countLabel}</span>
+            </div>
+            ${list.map(person => buildCounselorAccountBlock(person, schoolName, schoolLevel)).join('')}
+            ${assignBtn}
+        </div>
+    `;
+}
+
+// One counselor account's own name/email/active badge + (edit mode) its own
+// grade checkboxes, Save, Activate/Deactivate, and Replace Account — mirrors
+// buildRoleSlot's non-empty branch, just without the outer slot header since
+// buildCounselorRoleSlot already drew one shared header above the list.
+function buildCounselorAccountBlock(person, schoolName, schoolLevel) {
+    const isActive = person.active !== false;
+    const badgeClass = isActive ? 'badge-completed' : 'badge-rejected';
+    const badgeLabel = isActive ? 'Active' : 'Inactive';
+    const email = person.email ? `<div class="school-role-email">${escapeHtml(person.email)}</div>` : '';
+
+    const details = editMode ? (() => {
+        const toggleBtnClass = isActive ? 'btn-danger' : 'btn-success';
+        const toggleLabel = isActive ? 'Deactivate' : 'Activate';
+        return `
+            <div class="school-role-controls">
+                ${buildGradeCheckboxes(person.accountId, person.grade || '', schoolLevel)}
+                <button type="button" class="btn btn-secondary btn-sm" data-save-grade data-account-id="${person.accountId}">Save</button>
+                <button type="button" class="btn ${toggleBtnClass} btn-sm" data-toggle-active data-account-id="${person.accountId}" data-active="${isActive ? '1' : '0'}">${toggleLabel}</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-assign-role="counselor" data-school-name="${escapeHtml(schoolName)}" data-school-level="${escapeHtml(schoolLevel || 'Secondary')}" data-replace-account-id="${person.accountId}">Replace Account</button>
+            </div>
+        `;
+    })() : `<div class="text-sm text-muted">${gradeDisplayLabel(person.grade, schoolLevel)}</div>`;
+
+    return `
+        <div class="school-role-account">
+            <div class="school-role-account-header">
+                <div class="school-role-name">${escapeHtml(person.name)}</div>
+                <span class="badge ${badgeClass}">${badgeLabel}</span>
+            </div>
             ${email}
             ${details}
         </div>

@@ -7346,6 +7346,26 @@ footer {
     display: none;
 }
 
+.report-settings-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition, all 0.2s ease);
+}
+
+.report-settings-btn:hover {
+    background: rgba(37, 99, 235, 0.2);
+    transform: rotate(20deg);
+}
+
 @keyframes caseFormSlideIn {
     from { opacity: 0; transform: translateY(-10px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -8801,6 +8821,28 @@ footer {
     gap: 6px;
     flex-wrap: wrap;
     margin-top: 10px;
+}
+
+/* One counselor account's block inside a COUNSELOR slot that can hold
+   several at once — a light card per account so each account's own
+   name/email/badge/controls read as a distinct row, not a run-on list. */
+.school-role-account {
+    padding: 10px 12px;
+    margin-top: 10px;
+    border: 1px solid #e7edf4;
+    border-radius: 10px;
+    background: #fafbfd;
+}
+
+.school-role-account-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.school-role-account .school-role-name {
+    margin-top: 0;
 }
 
 .school-role-controls select,

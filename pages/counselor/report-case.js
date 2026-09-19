@@ -61,6 +61,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     const user = getCurrentUser();
     currentSchool = (user && user.school_attended) || '';
 
+    // Awaited so Export PDF never races this — reportLetterheadContentTop()
+    // etc. all no-op back to today's plain layout if it hasn't resolved.
+    // Same per-school letterhead the coordinator manages under Report
+    // Settings — this page only ever reads it, no CRUD UI here.
+    await loadReportLetterhead(currentSchool);
+
     await loadReportData();
     visibleGrades = computeVisibleGrades();
     renderGradeHeader();
@@ -464,25 +470,29 @@ function exportFilteredCasesToPDF() {
     const doc = new jsPDF({ orientation: 'landscape' });
     const { header, body } = buildFilteredCasesExportRows();
 
+    const contentTop = reportLetterheadContentTop(doc);
     doc.setFontSize(14);
-    doc.text(filteredCasesExportTitle(), doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
+    doc.text(filteredCasesExportTitle(), doc.internal.pageSize.getWidth() / 2, contentTop, { align: 'center' });
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(
         `Generated: ${new Date().toLocaleDateString()}  |  ${body.length} case${body.length === 1 ? '' : 's'} found`,
-        doc.internal.pageSize.getWidth() / 2, 21, { align: 'center' }
+        doc.internal.pageSize.getWidth() / 2, contentTop + 6, { align: 'center' }
     );
 
+    const letterheadMargin = reportLetterheadTableMargin(doc);
     doc.autoTable({
         head: [header],
         body,
-        startY: 26,
+        startY: contentTop + 11,
+        ...(letterheadMargin ? { margin: letterheadMargin } : {}),
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', halign: 'center' },
         styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
         columnStyles: { 0: { cellWidth: 45 }, 1: { cellWidth: 55 }, 6: { cellWidth: 40 } }
     });
 
+    stampReportLetterhead(doc);
     showPdfPreview(doc, `filtered-${exportFileBaseName()}.pdf`);
 }
 
@@ -893,16 +903,20 @@ function exportToPDF() {
     const { body, sectionHeaderRows, subtotalRows } = buildExportTable();
     const { pdfHead } = buildGradeHeaderRows();
 
+    const contentTop = reportLetterheadContentTop(doc);
+    const pageCenterX = doc.internal.pageSize.getWidth() / 2;
     doc.setFontSize(14);
-    doc.text(`Learners Personal-Social Concern - ${currentSchool || 'School'}`, 14, 15);
+    doc.text(`Learners Personal-Social Concern - ${currentSchool || 'School'}`, pageCenterX, contentTop, { align: 'center' });
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 21);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageCenterX, contentTop + 6, { align: 'center' });
 
+    const letterheadMargin = reportLetterheadTableMargin(doc);
     doc.autoTable({
         head: pdfHead,
         body,
-        startY: 26,
+        startY: contentTop + 11,
+        ...(letterheadMargin ? { margin: letterheadMargin } : {}),
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
         styles: { fontSize: 7, cellPadding: 2 },
@@ -918,6 +932,7 @@ function exportToPDF() {
         }
     });
 
+    stampReportLetterhead(doc);
     showPdfPreview(doc, `${exportFileBaseName()}.pdf`);
 }
 
