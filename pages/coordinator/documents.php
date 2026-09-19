@@ -452,6 +452,19 @@
             loadDocuments();
         });
 
+        // login.php only ever stores one JSON blob under 'user' (see
+        // js/auth.js) — there is no flat 'userType'/'schoolAttended'/
+        // 'userId' sessionStorage key anywhere in the app. Reading those
+        // directly (as this page used to) always returns null, so every
+        // request below silently sent an empty school_attended/user_id.
+        function getCurrentUser() {
+            try {
+                return JSON.parse(sessionStorage.getItem('user') || sessionStorage.getItem('userInfo') || '{}');
+            } catch (err) {
+                return {};
+            }
+        }
+
         // Setup user info
         function setupUserInfo() {
             renderSidebarAvatar();
@@ -503,11 +516,20 @@
                 e.preventDefault();
                 fileInputLabel.style.background = '#f0f9ff';
                 fileInputLabel.style.borderColor = '#3b82f6';
-                
+
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
                     fileInput.files = files;
+                    updateFileInputLabel(files[0]);
                 }
+            });
+
+            // Selecting via the native file dialog (label click) only fires
+            // 'change' on the input, not 'drop' — without this the label
+            // text never updates so a click-selected file looks like nothing
+            // happened, even though fileInput.files is actually populated.
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) updateFileInputLabel(fileInput.files[0]);
             });
 
             // Document filter tabs
@@ -531,6 +553,34 @@
         // Hide upload modal
         function hideUploadForm() {
             document.getElementById('uploadModal').classList.remove('show');
+            resetFileInputLabel();
+        }
+
+        // Swaps the dropzone's placeholder text/icon for the picked file's
+        // name so selecting a file (click OR drag-drop) gives visible
+        // confirmation instead of silently leaving the placeholder text up.
+        function updateFileInputLabel(file) {
+            const label = document.querySelector('.file-input-label');
+            const icon = label.querySelector('i');
+            const span = label.querySelector('span');
+            icon.classList.remove('fa-image');
+            icon.classList.add('fa-check-circle');
+            span.textContent = file.name;
+            label.style.background = '#f0fdf4';
+            label.style.borderColor = '#22c55e';
+            label.style.color = '#15803d';
+        }
+
+        function resetFileInputLabel() {
+            const label = document.querySelector('.file-input-label');
+            const icon = label.querySelector('i');
+            const span = label.querySelector('span');
+            icon.classList.remove('fa-check-circle');
+            icon.classList.add('fa-image');
+            span.textContent = 'Click to select or drag and drop images (JPG, PNG)';
+            label.style.background = '#f0f9ff';
+            label.style.borderColor = '#3b82f6';
+            label.style.color = '#3b82f6';
         }
 
         // Handle file upload — general school resources, not tied to any
@@ -549,12 +599,13 @@
                 return;
             }
 
+            const currentUser = getCurrentUser();
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('description', description);
-            formData.append('user_type', sessionStorage.getItem('userType') || '');
-            formData.append('school_attended', sessionStorage.getItem('schoolAttended') || '');
-            formData.append('user_id', sessionStorage.getItem('userId') || '');
+            formData.append('user_type', currentUser.user_type || currentUser.role || '');
+            formData.append('school_attended', currentUser.school_attended || '');
+            formData.append('user_id', currentUser.id || '');
 
             uploadBtn.disabled = true;
             progressDiv.style.display = 'block';
@@ -571,6 +622,7 @@
                     showNotification('Document uploaded successfully!', 'success');
                     form.reset();
                     document.getElementById('fileInput').value = '';
+                    resetFileInputLabel();
                     progressDiv.style.display = 'none';
                     loadDocuments();
                     hideUploadForm();
@@ -588,11 +640,12 @@
         // Load every document uploaded for this school — the whole point of
         // a shared "Document Library" rather than one student's folder.
         async function loadDocuments() {
-            const userType = sessionStorage.getItem('userType');
-            const schoolAttended = sessionStorage.getItem('schoolAttended');
+            const currentUser = getCurrentUser();
+            const userType = currentUser.user_type || currentUser.role || '';
+            const schoolAttended = currentUser.school_attended || '';
 
             try {
-                const response = await fetch(`../../api/list-documents.php?user_type=${userType}&school_attended=${schoolAttended || ''}`);
+                const response = await fetch(`../../api/list-documents.php?user_type=${userType}&school_attended=${schoolAttended}`);
                 const data = await response.json();
 
                 if (data.success && data.documents.length > 0) {
@@ -665,10 +718,11 @@
 
         // View document
         function viewDocument(documentId) {
-            const userType = sessionStorage.getItem('userType');
-            const schoolAttended = sessionStorage.getItem('schoolAttended');
+            const currentUser = getCurrentUser();
+            const userType = currentUser.user_type || currentUser.role || '';
+            const schoolAttended = currentUser.school_attended || '';
 
-            const imageUrl = `../../api/download-document.php?document_id=${documentId}&user_type=${userType}&school_attended=${schoolAttended || ''}&user_id=${sessionStorage.getItem('userId') || 0}`;
+            const imageUrl = `../../api/download-document.php?document_id=${documentId}&user_type=${userType}&school_attended=${schoolAttended}&user_id=${currentUser.id || 0}`;
 
             document.getElementById('previewImage').src = imageUrl;
             document.getElementById('previewModal').classList.add('show');
@@ -685,9 +739,10 @@
                 return;
             }
 
-            const userType = sessionStorage.getItem('userType');
-            const schoolAttended = sessionStorage.getItem('schoolAttended');
-            const userId = sessionStorage.getItem('userId');
+            const currentUser = getCurrentUser();
+            const userType = currentUser.user_type || currentUser.role || '';
+            const schoolAttended = currentUser.school_attended || '';
+            const userId = currentUser.id || '';
 
             try {
                 const response = await fetch('../../api/delete-document.php', {
