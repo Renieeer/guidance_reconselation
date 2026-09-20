@@ -106,6 +106,7 @@ async function refreshScheduleEventsSafely() {
 
 async function initSchedulePage() {
     initPage();
+    await refreshGradeScope();
     setupCalendarControls();
     setupCreateScheduleModal();
     setupRequestModal();

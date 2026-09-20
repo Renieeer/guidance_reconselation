@@ -3,9 +3,10 @@
 let currentReferral = null;
 let allReferrals = [];
 
-function initReferralsPage() {
+async function initReferralsPage() {
     initPage();
-    
+    await refreshGradeScope();
+
     const params = new URLSearchParams(window.location.search);
     const referralId = params.get('id');
 

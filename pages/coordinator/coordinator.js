@@ -21,9 +21,10 @@ function initSidebarActive() {
     });
 }
 
-function loadCoordinatorDashboard() {
+async function loadCoordinatorDashboard() {
     initPage();
     initSidebarActive();
+    await refreshGradeScope();
 
     const user = getCurrentUser();
     const school = (user && user.school_attended) || '';

@@ -134,11 +134,17 @@ try {
             $conn->begin_transaction();
             $transactionStarted = true;
 
-            $stmt = $conn->prepare('UPDATE schools SET school_name = ?, school_level = ? WHERE school_code = ?');
+            // district is auto-set to match the school's own name at creation
+            // (see upsertSchoolRecord() in api/school-config.php) and has no
+            // separate editor, so a rename needs to carry district along with
+            // it to keep that invariant — otherwise the school keeps reporting
+            // under its old district name in School Reports/District Report
+            // Cases until fixed directly in the DB.
+            $stmt = $conn->prepare('UPDATE schools SET school_name = ?, school_level = ?, district = ? WHERE school_code = ?');
             if (!$stmt) {
                 throw new RuntimeException('Failed to prepare school info update statement');
             }
-            $stmt->bind_param('sss', $newSchoolName, $schoolLevel, $schoolCode);
+            $stmt->bind_param('ssss', $newSchoolName, $schoolLevel, $newSchoolName, $schoolCode);
             if (!$stmt->execute()) {
                 $stmt->close();
                 throw new RuntimeException('Failed to update school info');

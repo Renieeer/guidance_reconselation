@@ -93,8 +93,8 @@ function displayReferralProgress(referrals) {
         1: 'Interview/Background',
         2: 'Initial Risk Assessment',
         3: 'Parent Call-up/Consent',
-        4: 'Counseling',
-        5: 'Intervention',
+        4: 'Intervention',
+        5: 'Counseling',
         6: 'Student Follow-up'
     };
 

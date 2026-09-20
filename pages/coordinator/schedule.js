@@ -82,6 +82,7 @@ async function refreshScheduleEventsSafely() {
 
 async function initSchedulePage() {
     initPage();
+    await refreshGradeScope();
     setupCalendarControls();
     await loadScheduleEvents();
     loadAppointmentRequests();

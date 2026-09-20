@@ -1133,6 +1133,63 @@ async function generateDivisionSummaryPdf(period, start, end, label) {
     showPdfPreview(doc, filename);
 }
 
+// Division-Wide Summary's table is a plain 2-column (Category of Cases,
+// Total Cases) rollup, not the grade-grouped Male/Female/Total triplets
+// buildCategoryOfCasesWorkbook() builds — that one needs a gradesList this
+// report doesn't have. Its own builder instead, same styling approach as
+// buildCasesBySchoolWorkbook() above. Only sectionHeaderRows gets styled
+// (subtotal rows aren't a thing in this collapsed table — buildDivisionSummaryTable
+// still tracks them, but generateDivisionSummaryPdf's own table doesn't use
+// them either, only sectionHeaderRows).
+function buildDivisionSummaryWorkbook(body, sectionHeaderRows, title, periodLabel) {
+    const totalCols = 2;
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Division Summary');
+
+    sheet.mergeCells(1, 1, 1, totalCols);
+    const titleCell = sheet.getCell(1, 1);
+    titleCell.value = title;
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: 'center' };
+
+    sheet.mergeCells(2, 1, 2, totalCols);
+    const periodCell = sheet.getCell(2, 1);
+    periodCell.value = `Period: ${periodLabel}`;
+    periodCell.font = { size: 10, color: { argb: 'FF666666' } };
+    periodCell.alignment = { horizontal: 'center' };
+
+    const headRow = 4;
+    ['Category of Cases', 'Total Cases'].forEach((label, i) => {
+        const cell = sheet.getCell(headRow, i + 1);
+        cell.value = label;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D5AA8' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = THIN_BORDER;
+    });
+
+    let rowIndex = headRow + 1;
+    body.forEach((row, i) => {
+        const isSectionHeader = sectionHeaderRows.includes(i);
+        row.forEach((value, c) => {
+            const cell = sheet.getCell(rowIndex, c + 1);
+            cell.value = value;
+            cell.border = THIN_BORDER;
+            cell.alignment = { vertical: 'middle', horizontal: c === 0 ? 'left' : 'center', wrapText: true };
+            if (isSectionHeader) {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                cell.font = { bold: true };
+            }
+        });
+        rowIndex++;
+    });
+
+    sheet.getColumn(1).width = 40;
+    sheet.getColumn(2).width = 14;
+
+    return workbook;
+}
+
 async function generateDivisionSummaryExcel(period, start, end, label) {
     if (typeof ExcelJS === 'undefined') {
         showAlert('error', 'Excel export library failed to load.');
@@ -1141,7 +1198,7 @@ async function generateDivisionSummaryExcel(period, start, end, label) {
 
     const { sections: divisionSections, counts: divisionCounts, grades: divisionGrades } = await fetchCategoryReport(ALL_DISTRICTS, period, start, end);
     const rows = buildDisplayRows(divisionSections, divisionCounts, divisionGrades);
-    const { header, body, sectionHeaderRows, subtotalRows } = buildDivisionSummaryTable(rows, divisionCounts, divisionGrades);
+    const { header, body, sectionHeaderRows } = buildDivisionSummaryTable(rows, divisionCounts, divisionGrades);
 
     const title = 'Division-Wide Summary Case';
     const filename = `Division-Wide-Summary_${label.replace(/\s+/g, '-')}_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -1157,7 +1214,7 @@ async function generateDivisionSummaryExcel(period, start, end, label) {
     ];
 
     showExcelPreview(filename, sheets, async () => {
-        const workbook = buildCategoryOfCasesWorkbook(header, body, sectionHeaderRows, subtotalRows, title, label);
+        const workbook = buildDivisionSummaryWorkbook(body, sectionHeaderRows, title, label);
         await downloadExcelJSWorkbook(workbook, filename);
         showAlert('success', 'Excel report exported successfully!');
     });

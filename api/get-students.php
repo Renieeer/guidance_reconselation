@@ -26,7 +26,17 @@ function bindDynamicParams(mysqli_stmt $stmt, string $types, array &$params): vo
     call_user_func_array([$stmt, 'bind_param'], $bindings);
 }
 
-function formatGradeLabel($grade): string {
+// Elementary schools store a LITERAL grade number (1-6) in student_table.Grade
+// — same as secondary schools store a literal 7-12 for any record created
+// through the current grade dropdown (see gradesForSchoolLevel() in
+// api/school-config.php). Only OLD secondary records predating that still
+// use a legacy 1-4 shorthand for Grade 7-10 (mirrors normalizeGradeValue()'s
+// isElementarySchool guard in pages/student/student-information.js — that
+// legacy map only ever went up to 4->10, nothing for 5/6, since Grade 11/12
+// never had a shorthand code). Applying it unconditionally regardless of
+// school level — as this used to — mislabels a real elementary Grade 6
+// student as "Grade 12", since '6' collides with the old secondary shorthand.
+function formatGradeLabel($grade, bool $isElementary): string {
     $grade = trim((string)$grade);
     if ($grade === '') {
         return '';
@@ -36,27 +46,55 @@ function formatGradeLabel($grade): string {
         return 'Grade ' . $matches[1];
     }
 
-    $gradeMap = [
-        '1' => 'Grade 7',
-        '2' => 'Grade 8',
-        '3' => 'Grade 9',
-        '4' => 'Grade 10',
-        '5' => 'Grade 11',
-        '6' => 'Grade 12',
-    ];
+    if (!$isElementary) {
+        $legacyMap = [
+            '1' => 'Grade 7',
+            '2' => 'Grade 8',
+            '3' => 'Grade 9',
+            '4' => 'Grade 10',
+        ];
 
-    if (isset($gradeMap[$grade])) {
-        return $gradeMap[$grade];
-    }
-
-    if (ctype_digit($grade)) {
-        $gradeNumber = (int)$grade;
-        if ($gradeNumber >= 7 && $gradeNumber <= 12) {
-            return 'Grade ' . $gradeNumber;
+        if (isset($legacyMap[$grade])) {
+            return $legacyMap[$grade];
         }
     }
 
+    if (ctype_digit($grade)) {
+        return 'Grade ' . $grade;
+    }
+
     return $grade;
+}
+
+/** Batch-looks-up each given school name/code's level in one query, keyed
+ *  by every alias (name AND code) so a row's school_attended — which can
+ *  hold either — resolves either way. Missing/unknown schools default to
+ *  non-elementary (the old, pre-fix behavior) rather than guessing. */
+function elementary_flags_by_school(mysqli $conn, array $schoolNames): array {
+    $schoolNames = array_values(array_unique(array_filter($schoolNames, static fn($v) => trim((string)$v) !== '')));
+    if (empty($schoolNames) || !tableExists($conn, 'schools')) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($schoolNames), '?'));
+    $types = str_repeat('s', count($schoolNames));
+    $stmt = $conn->prepare("SELECT school_name, school_code, school_level FROM schools WHERE school_name IN ($placeholders) OR school_code IN ($placeholders)");
+    if (!$stmt) {
+        return [];
+    }
+    $stmt->bind_param($types . $types, ...array_merge($schoolNames, $schoolNames));
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $flags = [];
+    while ($row = $result->fetch_assoc()) {
+        $isElementary = in_array($row['school_level'], ['East', 'West', 'South'], true);
+        $flags[$row['school_name']] = $isElementary;
+        $flags[$row['school_code']] = $isElementary;
+    }
+    $stmt->close();
+
+    return $flags;
 }
 
 try {
@@ -199,12 +237,17 @@ try {
     if (!$stmt->execute()) throw new Exception('Execute failed: ' . $stmt->error);
 
     $result   = $stmt->get_result();
+    $rawStudents = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    $elementaryFlags = elementary_flags_by_school($conn, array_column($rawStudents, 'school_attended'));
+
     $students = [];
-    while ($row = $result->fetch_assoc()) {
-        $row['grade_name'] = formatGradeLabel($row['grade_id'] ?? $row['grade_level'] ?? $row['Grade'] ?? '');
+    foreach ($rawStudents as $row) {
+        $isElementary = $elementaryFlags[$row['school_attended'] ?? ''] ?? false;
+        $row['grade_name'] = formatGradeLabel($row['grade_id'] ?? $row['grade_level'] ?? $row['Grade'] ?? '', $isElementary);
         $students[] = $row;
     }
-    $stmt->close();
 
     $response = [
         'success' => true,

@@ -171,8 +171,8 @@
                                     <div style="color: #6b7280;">📋 Interview/Background</div>
                                     <div style="color: #6b7280;">👀 Initial Risk Assessment</div>
                                     <div style="color: #6b7280;">📅 Parent Call-up/Consent</div>
-                                    <div style="color: #6b7280;">⚙️ Counseling</div>
-                                    <div style="color: #6b7280;">✅ Intervention</div>
+                                    <div style="color: #6b7280;">⚙️ Intervention</div>
+                                    <div style="color: #6b7280;">✅ Counseling</div>
                                     <div style="color: #6b7280;">🎯 Student Follow-up</div>
                                 </div>
                             </div>

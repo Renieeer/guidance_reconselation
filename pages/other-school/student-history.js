@@ -58,8 +58,9 @@ function getUserSchool() {
     }
 }
 
-function shInit() {
+async function shInit() {
     initPage();
+    await refreshGradeScope();
 
     const school = getUserSchool();
     if (school && school !== 'Unknown') {

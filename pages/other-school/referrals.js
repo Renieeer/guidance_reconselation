@@ -50,9 +50,10 @@ let externalReferralEverFlagged = false;
 let interventionOtherTags = [];
 let interventionSuggestions = [];
 
-function loadReferralStatus() {
+async function loadReferralStatus() {
     initPage();
-    
+    await refreshGradeScope();
+
     const params = new URLSearchParams(window.location.search);
     const referralId = params.get('id');
 

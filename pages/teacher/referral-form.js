@@ -7,6 +7,10 @@ function initReferralForm() {
     initPage();
     setTodayDate('referralDate');
     populateTeacherSchool();
+    // Kicked off early (in parallel with everything else below) so it's
+    // almost always already resolved by the time a person card's grade
+    // dropdown needs it — see loadGradeOptionsOnce()/populateGradeOptions().
+    loadGradeOptionsOnce();
     setupPeopleList();
     setupPersonEditModal();
     setupReasonChecklist();
@@ -221,14 +225,13 @@ function createPersonCard() {
                     </div>
                     <div class="form-field">
                         <label>Grade & Level:</label>
+                        <!-- Options filled in by populateGradeOptions() once
+                             loadGradeOptionsOnce() resolves — Grade 1-6 for
+                             an elementary school (East/West/South), Grade
+                             7-12 for Secondary, per api/school-config.php's
+                             gradesForSchoolLevel(). -->
                         <select class="person-grade" required>
                             <option value="">Select Grade</option>
-                            <option value="Grade 7">Grade 7</option>
-                            <option value="Grade 8">Grade 8</option>
-                            <option value="Grade 9">Grade 9</option>
-                            <option value="Grade 10">Grade 10</option>
-                            <option value="Grade 11">Grade 11</option>
-                            <option value="Grade 12">Grade 12</option>
                         </select>
                     </div>
                     <div class="form-field">
@@ -271,6 +274,8 @@ function createPersonCard() {
     card.querySelector('.referral-person-chip').addEventListener('click', () => {
         setCardCollapsed(card, false);
     });
+
+    loadGradeOptionsOnce().then(grades => populateGradeOptions(card, grades));
 
     return card;
 }
@@ -606,14 +611,20 @@ function populateStudentFromSearch(card, student) {
         studentIdField.value = student.id; // This is accounts.id
     }
 
-    // Grade
+    // Grade — student.grade_name (from api/get-students.php) is always the
+    // real, elementary-aware label already, so this local map is only a
+    // last-resort fallback if that field is ever missing. It intentionally
+    // stops at 4->10: that's the old secondary-only shorthand this app used
+    // before grades were stored as literal numbers, and it never had a 5/6
+    // code — an elementary student's raw "5"/"6" is already the literal
+    // grade, not a legacy code, so mapping it to Grade 11/12 here would
+    // reintroduce the exact bug api/get-students.php's formatGradeLabel()
+    // was just fixed for.
     const gradeMap = {
         '1': 'Grade 7',
         '2': 'Grade 8',
         '3': 'Grade 9',
-        '4': 'Grade 10',
-        '5': 'Grade 11',
-        '6': 'Grade 12'
+        '4': 'Grade 10'
     };
 
     const gradeEl = card.querySelector('.person-grade');
@@ -641,6 +652,56 @@ function populateStudentFromSearch(card, student) {
         const dob = student.date_of_birth || student.DateOfBirth;
         const computedAge = calculateAge(dob);
         ageEl.value = computedAge !== '' ? computedAge : (student.age || student.Age || '');
+    }
+}
+
+// The Grade & Level dropdown on each person card must offer Grade 1-6 for
+// an elementary school (East/West/South) and Grade 7-12 for Secondary — a
+// hardcoded Grade 7-12 list (the old markup) left no valid option to select
+// for an elementary student's real grade, and even silently failed to
+// pre-fill it from a search result since the value wouldn't match any
+// <option>. Fetched once and cached/shared across every person card
+// (api/school-config.php's getGrades, the same endpoint
+// pages/student/student-information.js's loadGrades() already uses).
+let gradeOptionsPromise = null;
+
+function loadGradeOptionsOnce() {
+    if (gradeOptionsPromise) {
+        return gradeOptionsPromise;
+    }
+
+    const user = getCurrentUser();
+    const school = (user && user.school_attended) || localStorage.getItem('teacherSchool') || '';
+
+    gradeOptionsPromise = fetch(`../../api/school-config.php?action=getGrades&school=${encodeURIComponent(school)}`)
+        .then(r => r.json())
+        .then(result => {
+            if (result.success && Array.isArray(result.grades) && result.grades.length) {
+                return result.grades.map(g => g.grade_name);
+            }
+            throw new Error('No grades returned');
+        })
+        .catch(error => {
+            // Falls back to the old fixed secondary range so the form still
+            // works rather than being left with an empty dropdown.
+            console.error('Error loading grade options, falling back to Grade 7-12:', error);
+            return ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+        });
+
+    return gradeOptionsPromise;
+}
+
+function populateGradeOptions(card, grades) {
+    const select = card.querySelector('.person-grade');
+    if (!select) return;
+
+    // Preserves whatever's already selected (e.g. populateStudentFromSearch
+    // ran first and this resolved late) instead of always resetting to blank.
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Select Grade</option>' +
+        grades.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+    if (currentValue && grades.includes(currentValue)) {
+        select.value = currentValue;
     }
 }
 

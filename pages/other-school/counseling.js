@@ -44,8 +44,9 @@ function formatGradeLabel(grade) {
     return value;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initPage();
+    await refreshGradeScope();
     loadSectionData().then(() => {
         initCounselingCasePage();
         applyReferralPrefill();

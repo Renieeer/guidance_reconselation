@@ -21,9 +21,10 @@ function initSidebarActive() {
     });
 }
 
-function loadCounselorDashboard() {
+async function loadCounselorDashboard() {
     initPage();
     initSidebarActive();
+    await refreshGradeScope();
 
     const user = getCurrentUser();
     const school = (user && user.school_attended) || '';

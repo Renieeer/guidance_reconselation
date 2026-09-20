@@ -57,6 +57,7 @@ function renderGradeHeader() {
 // Initialize
 document.addEventListener('DOMContentLoaded', async function() {
     initPage();
+    await refreshGradeScope();
 
     const user = getCurrentUser();
     currentSchool = (user && user.school_attended) || '';

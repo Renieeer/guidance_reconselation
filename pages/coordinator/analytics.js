@@ -770,6 +770,7 @@ function render() {
 
 async function init() {
     initPage();
+    await refreshGradeScope();
     const school = getUserSchool();
     if (!school) {
         $('#reportPanel').innerHTML = emptyNote('No school on file for this account — cannot load reports.', 'bi-building');

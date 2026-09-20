@@ -40,7 +40,7 @@ try {
                     u.email,
                     u.Type,
                     u.school_attended,
-                    u.Grade,
+                    COALESCE(NULLIF(u.Grade, ''), st.Grade) AS Grade,
                     u.created_at,
                     u.is_active,
                     st.Age AS Age

@@ -373,6 +373,30 @@ function getCurrentGradeScope() {
     return (user && user.grade_scope) ? String(user.grade_scope) : '';
 }
 
+// `grade_scope` above is only ever set at login time (js/auth.js), from a
+// snapshot of users_tables.Grade — there are no server sessions in this app,
+// so nothing else keeps it in sync. If SDO edits a counselor/coordinator/
+// combined account's grade assignment while that account is already logged
+// in, its open tabs would otherwise keep reporting the OLD (or no)
+// restriction until the next login. Every grade-scoped report/dashboard
+// page awaits this once on load, before reading getCurrentGradeScope(), to
+// pull the current value from the server first. Silently keeps the cached
+// value on failure (offline, etc.) rather than blocking the page.
+async function refreshGradeScope() {
+    const user = getCurrentUser();
+    if (!user || !user.id) return;
+
+    try {
+        const response = await fetch(`../../api/profile.php?id=${encodeURIComponent(user.id)}`);
+        const result = await response.json();
+        if (result.success && result.data) {
+            syncStoredUser({ grade_scope: result.data.grade || '' });
+        }
+    } catch (err) {
+        // Keep using the cached scope from login.
+    }
+}
+
 // isElementary switches the accepted range to 1-6 (East/West/South schools);
 // every existing caller omits it and keeps the original 7-12 behavior.
 function gradeScopeToList(scope, isElementary = false) {

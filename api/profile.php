@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once 'conn.php';
 require_once 'profile-schema.php';
+require_once 'grade-scope.php';
 
 // Profile photos live in users_tables.profile_image_data (a BLOB) — see
 // ensure_users_table_profile_image_blob_columns() — and are streamed back
@@ -37,7 +38,7 @@ function send_json(int $statusCode, array $payload): void {
 }
 
 function fetch_profile(mysqli $conn, int $id): ?array {
-    $stmt = $conn->prepare("SELECT AccountID, First_name, Last_name, email, Type, school_attended, profile_image FROM users_tables WHERE AccountID = ?");
+    $stmt = $conn->prepare("SELECT AccountID, First_name, Last_name, email, Type, school_attended, Grade, profile_image FROM users_tables WHERE AccountID = ?");
     $stmt->bind_param('i', $id);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -55,6 +56,13 @@ function fetch_profile(mysqli $conn, int $id): ?array {
         'email' => $row['email'],
         'role' => $row['Type'],
         'school' => $row['school_attended'],
+        // Current comma-separated grade-scope assignment (e.g. "7,8,9,10") —
+        // read fresh here rather than trusted from the client's login-time
+        // sessionStorage snapshot, so an SDO grade reassignment made while a
+        // counselor/coordinator/combined account is already logged in takes
+        // effect the moment their next report page calls refreshGradeScope()
+        // (js/utils.js), instead of only after they log out and back in.
+        'grade' => $row['Grade'],
         // Root-relative (no "../../") — every consumer (this page's own JS,
         // and the sidebar avatar rendered from every pages/<role>/*.php)
         // prepends its own path prefix, so the stored/transmitted value
@@ -68,6 +76,7 @@ function fetch_profile(mysqli $conn, int $id): ?array {
 try {
     ensure_users_table_profile_image_column($conn);
     ensure_users_table_profile_image_blob_columns($conn);
+    ensure_users_table_grade_column($conn);
 
     $method = $_SERVER['REQUEST_METHOD'];
 

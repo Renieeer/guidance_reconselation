@@ -21,9 +21,10 @@ function initSidebarActive() {
     });
 }
 
-function loadCombinedDashboard() {
+async function loadCombinedDashboard() {
     initPage();
     initSidebarActive();
+    await refreshGradeScope();
 
     const user = getCurrentUser();
     const school = (user && user.school_attended) || '';
