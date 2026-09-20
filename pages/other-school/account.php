@@ -34,13 +34,34 @@
                     <!-- Search Bar -->
                     <div style="padding: 20px; border-bottom: 1px solid #eee;">
                         <div class="search-container">
-                            <input 
-                                type="text" 
-                                id="searchInput" 
+                            <input
+                                type="text"
+                                id="searchInput"
                                 placeholder="Search by name or email..."
                             >
+                            <select id="gradeFilter" title="Filter by grade">
+                                <option value="">All Grades</option>
+                                <option value="7">Grade 7</option>
+                                <option value="8">Grade 8</option>
+                                <option value="9">Grade 9</option>
+                                <option value="10">Grade 10</option>
+                                <option value="11">Grade 11</option>
+                                <option value="12">Grade 12</option>
+                            </select>
+                            <select id="pageSizeFilter" title="Accounts per page">
+                                <option value="10">Show 10</option>
+                                <option value="20" selected>Show 20</option>
+                                <option value="30">Show 30</option>
+                                <option value="all">Show All</option>
+                            </select>
+                            <label style="display:flex; align-items:center; gap:6px; font-size:14px; color:#555; white-space:nowrap;">
+                                <input type="checkbox" id="showInactiveFilter"> Show inactive students
+                            </label>
                             <button class="btn btn-primary" onclick="searchAccounts()">
                                 <i class="bi bi-search"></i> Search
+                            </button>
+                            <button class="btn btn-success" id="exportAccountsExcelBtn" onclick="exportStudentAccountsToExcel()">
+                                <i class="bi bi-file-earmark-excel"></i> Export Excel
                             </button>
                         </div>
                     </div>
@@ -53,19 +74,22 @@
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Type</th>
+                                    <th>Grade</th>
+                                    <th>Status</th>
                                     <th>Created</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="accountsTableBody">
                                 <tr>
-                                    <td colspan="5" class="no-accounts">
+                                    <td colspan="7" class="no-accounts">
                                         <i class="bi bi-hourglass-split" style="font-size: 24px; margin-bottom: 10px;"></i>
                                         <p>Loading accounts...</p>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
+                        <div id="accountsPagination" class="accounts-pagination"></div>
                     </div>
                 </div>
             </div>
@@ -160,8 +184,9 @@
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
-    <script src="account.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="account.js?v=<?php echo filemtime(__DIR__ . '/account.js'); ?>"></script>
 </body>
 </html>

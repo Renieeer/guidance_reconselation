@@ -151,7 +151,7 @@ function showProfilePopupView() {
     }
     if (emailEl) emailEl.textContent = user.email || '';
 
-    renderProfilePopupAvatar('profileSummaryAvatar', userAvatarUrl(user), user);
+    renderProfilePopupAvatar('profileSummaryAvatar', displayAvatarUrl(user), user);
     resetProfilePopupScroll();
 }
 
@@ -173,8 +173,8 @@ function showProfilePopupEdit() {
     document.getElementById('profileEditPassword').value = '';
     document.getElementById('profileEditPasswordConfirm').value = '';
 
-    const photoUrl = userAvatarUrl(user);
-    renderProfilePopupAvatar('profileEditAvatar', photoUrl, user);
+    const photoUrl = userAvatarUrl(user); // real uploaded photo only — decides Remove Photo's visibility
+    renderProfilePopupAvatar('profileEditAvatar', displayAvatarUrl(user), user);
     const removeBtn = document.getElementById('profileEditRemovePhotoBtn');
     if (removeBtn) removeBtn.hidden = !photoUrl;
 
@@ -229,7 +229,7 @@ function onProfilePopupAvatarSelected(e) {
         .catch(error => {
             showAlert('Error: ' + error.message, 'error');
             const user = getCurrentUser();
-            renderProfilePopupAvatar('profileEditAvatar', userAvatarUrl(user), user);
+            renderProfilePopupAvatar('profileEditAvatar', displayAvatarUrl(user), user);
         })
         .finally(() => { e.target.value = ''; });
 }
@@ -252,7 +252,7 @@ function removeProfilePopupPhoto() {
             showAlert('Profile photo removed.', 'success');
             syncStoredUser({ profile_image: null });
 
-            renderProfilePopupAvatar('profileEditAvatar', null, getCurrentUser());
+            renderProfilePopupAvatar('profileEditAvatar', displayAvatarUrl(getCurrentUser()), getCurrentUser());
             const removeBtn = document.getElementById('profileEditRemovePhotoBtn');
             if (removeBtn) removeBtn.hidden = true;
         })

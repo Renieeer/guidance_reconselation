@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once 'conn.php';
 require_once 'grade-scope.php';
+require_once 'school-config.php';
 
 function tableExists(mysqli $conn, string $tableName): bool {
     $result = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($tableName) . "'");
@@ -77,10 +78,14 @@ try {
     // able to pull a student outside their scope by guessing/iterating IDs,
     // even though the primary filtering happens at the list level.
     $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
-    if (!empty($gradeScope) && !grade_matches_scope($student['Grade'] ?? null, $gradeScope)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'This student is outside your assigned grade scope']);
-        exit;
+    if (!empty($gradeScope)) {
+        ensureSchoolsTable($conn);
+        $isElementary = student_account_school_is_elementary($conn, $student['AccountID'] ?? null);
+        if (!grade_matches_scope($student['Grade'] ?? null, $gradeScope, $isElementary)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'This student is outside your assigned grade scope']);
+            exit;
+        }
     }
 
     if (isset($student['Grade']) && !isset($student['grade_id'])) {

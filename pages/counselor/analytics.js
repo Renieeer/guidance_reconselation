@@ -156,7 +156,7 @@ function panelHeader(key, subtitle, onExportPdf, onExportExcel) {
     const m = meta(key);
     const h = el(`<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:22px;">
         <div>
-            <h2 class="card-title" style="margin-bottom:6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">${esc(m.name)} <span class="pill pill-soft" style="font-weight:700; font-size:11px;">Report ${m.code}</span></h2>
+            <h2 class="card-title" style="margin-bottom:6px;">${esc(m.name)}</h2>
             <p class="text-muted" style="margin:0; max-width:64ch;">${esc(subtitle)}</p>
         </div>
         <div style="display:flex; gap:10px;">
@@ -199,17 +199,100 @@ function newPdf() {
     return new window.jspdf.jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
 }
 
+// Per-school PDF header/footer set up by the Coordinator under Report Case
+// → Report Settings (pages/*/report-letterhead.js, keyed by school_code) —
+// this page only ever reads it, no CRUD UI here, so a Counselor/Coordinator/
+// other-school account at the same school automatically sees whatever the
+// Coordinator configured. Point-unit equivalents of report-letterhead.js's
+// own mm-based constants/functions, since this file's jsPDF docs use 'pt'.
+const ANALYTICS_LETTERHEAD_MARGIN = 40; // matches the page's existing left/right text margin
+const ANALYTICS_LETTERHEAD_IMAGE_TOP = 24; // pt from the page edge to the header image / up from the bottom edge to the footer image
+const ANALYTICS_LETTERHEAD_GAP = 22; // pt breathing room between an image band and the report's own title/table
+
+function analyticsLetterheadImageWidth(doc) {
+    return doc.internal.pageSize.getWidth() - ANALYTICS_LETTERHEAD_MARGIN * 2;
+}
+
+function analyticsLetterheadHeaderHeight(doc) {
+    const lh = getCurrentReportLetterhead();
+    return lh ? analyticsLetterheadImageWidth(doc) / lh.headerRatio : 0;
+}
+
+function analyticsLetterheadFooterHeight(doc) {
+    const lh = getCurrentReportLetterhead();
+    return lh ? analyticsLetterheadImageWidth(doc) / lh.footerRatio : 0;
+}
+
+// autoTable's `margin.bottom` — undefined (no key at all) when no letterhead
+// is set, so a school that never touches Report Settings keeps today's exact
+// default pagination margins.
+function analyticsAutoTableMargin(doc) {
+    if (!getCurrentReportLetterhead()) return { left: 40, right: 40 };
+    return { left: 40, right: 40, bottom: ANALYTICS_LETTERHEAD_IMAGE_TOP + analyticsLetterheadFooterHeight(doc) + ANALYTICS_LETTERHEAD_GAP };
+}
+
+// Stamps the header/footer image onto every page of a finished jsPDF
+// document — called from showPdfPreview(), after autoTable has finished
+// paginating, so it covers every export in this file from one place.
+function stampAnalyticsReportLetterhead(doc) {
+    const lh = getCurrentReportLetterhead();
+    if (!lh) return;
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const imgWidth = analyticsLetterheadImageWidth(doc);
+    const headerHeight = analyticsLetterheadHeaderHeight(doc);
+    const footerHeight = analyticsLetterheadFooterHeight(doc);
+    const pageCount = doc.internal.getNumberOfPages();
+
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.addImage(lh.headerImage, 'PNG', ANALYTICS_LETTERHEAD_MARGIN, ANALYTICS_LETTERHEAD_IMAGE_TOP, imgWidth, headerHeight);
+        doc.addImage(lh.footerImage, 'PNG', ANALYTICS_LETTERHEAD_MARGIN, pageHeight - ANALYTICS_LETTERHEAD_IMAGE_TOP - footerHeight, imgWidth, footerHeight);
+    }
+    doc.setPage(pageCount);
+}
+
 function pdfHeader(doc, title, subtitle) {
-    const school = getUserSchool();
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(18, 58, 107);
-    doc.text(title, 40, 44);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(100, 110, 130);
-    doc.text(school || '', 40, 60);
-    doc.text(subtitle || '', 40, 74);
-    doc.text(`Generated ${new Date().toLocaleString()}`, 40, 88);
+    const hasLetterhead = !!getCurrentReportLetterhead();
+
+    if (!hasLetterhead) {
+        // Unchanged from before the letterhead feature existed — a school
+        // that's never touched Report Settings sees zero layout change.
+        const school = getUserSchool();
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(18, 58, 107);
+        doc.text(title, 40, 44);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(100, 110, 130);
+        doc.text(school || '', 40, 60);
+        doc.text(subtitle || '', 40, 74);
+        doc.text(`Generated ${new Date().toLocaleString()}`, 40, 88);
+        doc.setDrawColor(220, 224, 232);
+        doc.line(40, 98, doc.internal.pageSize.getWidth() - 40, 98);
+        return 120;
+    }
+
+    // With a letterhead, its header image already carries the school's own
+    // name/seal (centered) — the title block is centered to match it and
+    // given real breathing room below the image, instead of a left-aligned
+    // block crammed right under the letterhead's own last text line.
+    const pageCenterX = doc.internal.pageSize.getWidth() / 2;
+    let y = ANALYTICS_LETTERHEAD_IMAGE_TOP + analyticsLetterheadHeaderHeight(doc) + ANALYTICS_LETTERHEAD_GAP;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(18, 58, 107);
+    doc.text(title, pageCenterX, y, { align: 'center' });
+    y += 18;
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(100, 110, 130);
+    if (subtitle) {
+        doc.text(subtitle, pageCenterX, y, { align: 'center' });
+        y += 13;
+    }
+    doc.text(`Generated ${new Date().toLocaleString()}`, pageCenterX, y, { align: 'center' });
+    y += 14;
+
     doc.setDrawColor(220, 224, 232);
-    doc.line(40, 98, doc.internal.pageSize.getWidth() - 40, 98);
-    return 120;
+    doc.line(40, y, doc.internal.pageSize.getWidth() - 40, y);
+    return y + 22;
 }
 
 function ensurePdfModal() {
@@ -241,6 +324,7 @@ function closePdfPreview() {
 }
 
 function showPdfPreview(doc, filename) {
+    stampAnalyticsReportLetterhead(doc);
     ensurePdfModal();
     if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
     pdfPreviewUrl = doc.output('bloburl');
@@ -259,7 +343,7 @@ function renderAppointments(key) {
     const isOnline = key === 'online';
     const rows = appointments.filter(a => a.booking_type === key);
     const frag = document.createDocumentFragment();
-    const exportTitle = `${meta(key).name} — Report ${meta(key).code}`;
+    const exportTitle = meta(key).name;
     const exportHeader = ['Date', 'Time', 'Student', 'Reason', 'Status'];
     const exportBody = () => rows.map(r => [r.preferred_date, r.preferred_time, r.student_name, r.reason, r.status]);
     frag.append(panelHeader(key,
@@ -267,7 +351,7 @@ function renderAppointments(key) {
         () => {
             const doc = newPdf();
             const st2 = countBy(rows, r => r.status);
-            let y = pdfHeader(doc, `${meta(key).name} — Report ${meta(key).code}`,
+            let y = pdfHeader(doc, meta(key).name,
                 isOnline ? 'Student self-booked appointments' : 'Staff-scheduled appointments');
 
             doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
@@ -291,7 +375,7 @@ function renderAppointments(key) {
                     body: rows.map(r => [r.preferred_date, r.preferred_time, r.student_name, r.reason, r.status]),
                     styles: { fontSize: 9 },
                     headStyles: { fillColor: [18, 58, 107] },
-                    margin: { left: 40, right: 40 },
+                    margin: analyticsAutoTableMargin(doc),
                 });
             } else {
                 doc.setTextColor(120, 130, 150);
@@ -342,7 +426,7 @@ function renderReferrals() {
     const reasons = Object.entries(agg).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
     const total = referrals.length;
 
-    const referralsExportTitle = 'Referral Distribution — Report 7.3';
+    const referralsExportTitle = 'Referral Distribution';
     const referralsExportHeader = ['Reason', 'Count', '% of total'];
     const referralsExportBody = () => {
         const body = reasons.map(r => [r.reason, r.count, total ? ((r.count / total) * 100).toFixed(1) + '%' : '0%']);
@@ -353,7 +437,7 @@ function renderReferrals() {
         'Every referral reason on record for your school — the full breakdown, not just the top few.',
         () => {
             const doc = newPdf();
-            let y = pdfHeader(doc, 'Referral Distribution — Report 7.3', 'Every referral reason on record for your school');
+            let y = pdfHeader(doc, 'Referral Distribution', 'Every referral reason on record for your school');
 
             doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
             doc.text(`Total referrals: ${total}   Distinct reasons: ${reasons.length}`, 40, y);
@@ -372,7 +456,7 @@ function renderReferrals() {
                     body: reasons.map(r => [r.reason, r.count, ((r.count / total) * 100).toFixed(1) + '%']),
                     styles: { fontSize: 9 },
                     headStyles: { fillColor: [18, 58, 107] },
-                    margin: { left: 40, right: 40 },
+                    margin: analyticsAutoTableMargin(doc),
                 });
             } else {
                 doc.setTextColor(120, 130, 150);
@@ -585,7 +669,7 @@ function exportChildPdf() {
     const studentReferrals = cached.data.referrals || [];
 
     const doc = newPdf();
-    let y = pdfHeader(doc, 'Child Summary Case — Report 7.5', s.name);
+    let y = pdfHeader(doc, 'Child Summary Case', s.name);
 
     doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
     doc.text(`LRN: ${s.lrn || 'N/A'}`, 40, y); y += 16;
@@ -610,7 +694,7 @@ function exportChildPdf() {
             : [['No counseling cases on record.', '', '', '', '']],
         styles: { fontSize: 9 },
         headStyles: { fillColor: [18, 58, 107] },
-        margin: { left: 40, right: 40 },
+        margin: analyticsAutoTableMargin(doc),
     });
 
     if (studentReferrals.length > 0) {
@@ -620,7 +704,7 @@ function exportChildPdf() {
             body: studentReferrals.map(r => [r.referral_code || r.id, r.date_submitted, r.referral_reason, r.status]),
             styles: { fontSize: 9 },
             headStyles: { fillColor: [18, 58, 107] },
-            margin: { left: 40, right: 40 },
+            margin: analyticsAutoTableMargin(doc),
         });
     }
 
@@ -693,10 +777,13 @@ async function init() {
     }
 
     try {
+        // loadReportLetterhead is awaited alongside the rest so Export PDF
+        // never races it — see report-letterhead.js.
         const [apptRes, refRes, studentsRes] = await Promise.all([
             fetch(`../../api/appointment-request.php?school=${encodeURIComponent(school)}`).then(r => r.json()),
             fetch(`../../api/referral.php?role=${encodeURIComponent(getReferralApiRole())}&school=${encodeURIComponent(school)}`).then(r => r.json()),
             fetch(`../../api/get-students.php?school=${encodeURIComponent(school)}`).then(r => r.json()),
+            loadReportLetterhead(school),
         ]);
         appointments = apptRes.success ? (apptRes.data || []) : [];
         referrals = refRes.success ? (refRes.data || []) : [];

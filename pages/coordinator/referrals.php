@@ -195,8 +195,8 @@
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
     <script src="referrals.js?v=<?php echo filemtime(__DIR__ . '/referrals.js'); ?>"></script>
 </body>
 </html>

@@ -184,8 +184,8 @@
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="account.js?v=<?php echo filemtime(__DIR__ . '/account.js'); ?>"></script>
 </body>

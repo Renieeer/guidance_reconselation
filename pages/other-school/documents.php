@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Documents - Guidance System</title>
+    <title>Document Library - Guidance System</title>
     <link rel="stylesheet" href="../../css/style.css?v=<?php echo filemtime(__DIR__ . '/../../css/style.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -244,6 +244,130 @@
             font-size: 14px;
         }
 
+        /* ── Student Documents tab (counselor feature) ── */
+        .search-section {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-family: inherit;
+        }
+
+        .search-btn {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .search-btn:hover {
+            background: #2563eb;
+        }
+
+        .documents-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .documents-table th {
+            background: #f1f5f9;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary-color);
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .documents-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+
+        .documents-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .doc-type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-inventory {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-referral {
+            background: #fce7f3;
+            color: #be185d;
+        }
+
+        .badge-follow-up {
+            background: #dbeafe;
+            color: #0369a1;
+        }
+
+        .badge-case {
+            background: #fecdd3;
+            color: #7c1c2f;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-view {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .btn-view:hover {
+            background: #bae6fd;
+        }
+
+        .btn-delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .btn-delete:hover {
+            background: #fecaca;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -347,20 +471,42 @@
                 font-size: 13px;
                 white-space: nowrap;
             }
+
+            .search-section {
+                flex-direction: column;
+            }
+
+            .documents-table {
+                font-size: 12px;
+            }
+
+            .documents-table th,
+            .documents-table td {
+                padding: 8px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .action-btn {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
     <div class="main-wrapper">
         <!-- Sidebar -->
-        <?php include '../../includes/sidebar-coordinator.php'; ?><!-- Main Content -->
+        <?php include '../../includes/sidebar-other-school.php'; ?><!-- Main Content -->
         <div class="main-content">
             <!-- Page Hero -->
             <div class="page-hero">
                 <div>
                     <div class="page-hero-eyebrow"><i class="bi bi-folder-check"></i> Resources</div>
                     <h2 class="page-hero-title">Document Library</h2>
-                    <p class="page-hero-text">Access and manage guidance documents, forms, and resources for your school.</p>
+                    <p class="page-hero-text">The school-wide document library (Coordinator) and per-student document search (Counselor), both in one place.</p>
                 </div>
                 <button type="button" class="btn btn-primary" id="openUploadBtn">
                     <i class="fas fa-upload"></i> Upload File
@@ -372,14 +518,46 @@
                 <div class="document-container">
                     <!-- Documents Section -->
                     <div class="documents-section">
-                        <h3><i class="fas fa-folder"></i> Student Documents</h3>
-                        
-                        <div class="document-tabs">
-                            <button class="document-tab active" data-filter="all">All Documents</button>
+                        <div class="document-tabs" id="docSectionTabs">
+                            <button type="button" class="document-tab active" data-section="library"><i class="fas fa-folder"></i> School Library</button>
+                            <button type="button" class="document-tab" data-section="student"><i class="fas fa-user"></i> Student Documents</button>
                         </div>
 
-                        <div id="documentGrid" class="document-grid">
-                            <!-- Documents will be loaded here -->
+                        <!-- School Library (Coordinator feature) — every document uploaded for this school -->
+                        <div id="librarySection">
+                            <div id="documentGrid" class="document-grid">
+                                <!-- Documents will be loaded here -->
+                            </div>
+                        </div>
+
+                        <!-- Student Documents (Counselor feature) — per-student document search -->
+                        <div id="studentSection" style="display: none;">
+                            <div class="search-section">
+                                <input type="text" id="studentSearch" class="search-input" placeholder="Search by Student ID or Name...">
+                                <button class="search-btn" onclick="searchDocuments()">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                            <table class="documents-table" id="documentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Document Type</th>
+                                        <th>File Name</th>
+                                        <th>Uploaded</th>
+                                        <th>Size</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody">
+                                    <tr>
+                                        <td colspan="6" class="empty-state">
+                                            <i class="fas fa-inbox" style="font-size: 24px; margin-bottom: 8px;"></i>
+                                            <p>Search for a student to view their documents</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -387,15 +565,35 @@
         </div>
     </div>
 
-    <!-- Upload Document Modal -->
+    <!-- Upload Document Modal — shared by both tabs; the Student ID/Document
+         Type fields only appear (and are only required) when uploading from
+         the Student Documents tab, matching the counselor's own flow. -->
     <div id="uploadModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h4><i class="fas fa-cloud-upload-alt"></i> Upload Document for Student</h4>
+                <h4 id="uploadModalTitle"><i class="fas fa-cloud-upload-alt"></i> Upload Document</h4>
                 <button class="modal-close" onclick="hideUploadForm()">&times;</button>
             </div>
             <div class="modal-body upload-modal-body">
                 <form id="uploadForm">
+                    <div class="form-row" id="studentFieldsRow" style="display: none;">
+                        <div class="form-group">
+                            <label for="uploadStudentId">Student ID <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="uploadStudentId" name="student_id" placeholder="e.g., 22">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="documentType">Document Type <span style="color: #ef4444;">*</span></label>
+                            <select id="documentType" name="document_type">
+                                <option value="">Select Document Type</option>
+                                <option value="inventory">Individual Inventory Form</option>
+                                <option value="referral">Referral Form</option>
+                                <option value="follow-up">Follow-up Form</option>
+                                <option value="case">Case Document</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label for="fileInput">Select Image File <span style="color: #ef4444;">*</span></label>
                         <div class="file-input-wrapper">
@@ -445,6 +643,10 @@
     <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
     <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
     <script>
+        // Which tab is active — decides what the shared Upload modal asks
+        // for and which list gets refreshed after a successful upload.
+        let activeSection = 'library';
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             setupUserInfo();
@@ -532,12 +734,14 @@
                 if (fileInput.files.length > 0) updateFileInputLabel(fileInput.files[0]);
             });
 
-            // Document filter tabs
-            document.querySelectorAll('.document-tab').forEach(tab => {
+            // School Library / Student Documents tabs
+            document.querySelectorAll('#docSectionTabs .document-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
-                    document.querySelectorAll('.document-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('#docSectionTabs .document-tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
-                    filterDocuments(tab.dataset.filter);
+                    activeSection = tab.dataset.section;
+                    document.getElementById('librarySection').style.display = activeSection === 'library' ? '' : 'none';
+                    document.getElementById('studentSection').style.display = activeSection === 'student' ? '' : 'none';
                 });
             });
 
@@ -545,8 +749,31 @@
             document.getElementById('logoutBtn').addEventListener('click', logout);
         }
 
-        // Show upload modal
+        // Show upload modal — the Student ID/Document Type fields only show
+        // (and are only required) when uploading from the Student
+        // Documents tab, matching the counselor's own upload flow exactly;
+        // the School Library tab uploads a general school resource, same
+        // as the coordinator's own flow.
         function openUploadForm() {
+            const studentFieldsRow = document.getElementById('studentFieldsRow');
+            const studentIdInput = document.getElementById('uploadStudentId');
+            const documentTypeSelect = document.getElementById('documentType');
+            const titleEl = document.getElementById('uploadModalTitle');
+
+            if (activeSection === 'student') {
+                studentFieldsRow.style.display = 'grid';
+                studentIdInput.required = true;
+                documentTypeSelect.required = true;
+                titleEl.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload Document for Student';
+                const searched = document.getElementById('studentSearch').value.trim();
+                if (searched) studentIdInput.value = searched;
+            } else {
+                studentFieldsRow.style.display = 'none';
+                studentIdInput.required = false;
+                documentTypeSelect.required = false;
+                titleEl.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload Document';
+            }
+
             document.getElementById('uploadModal').classList.add('show');
         }
 
@@ -583,8 +810,10 @@
             label.style.color = '#3b82f6';
         }
 
-        // Handle file upload — general school resources, not tied to any
-        // one student, so this only needs the file itself (+ optional notes).
+        // Handle file upload — a general school resource (School Library
+        // tab) needs only the file itself (+ optional notes); a per-student
+        // document (Student Documents tab) additionally needs Student ID +
+        // Document Type.
         async function handleUpload(e) {
             e.preventDefault();
 
@@ -599,6 +828,17 @@
                 return;
             }
 
+            let studentId = '';
+            let documentType = '';
+            if (activeSection === 'student') {
+                studentId = document.getElementById('uploadStudentId').value.trim();
+                documentType = document.getElementById('documentType').value;
+                if (!studentId || !documentType) {
+                    showNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+            }
+
             const currentUser = getCurrentUser();
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
@@ -606,6 +846,10 @@
             formData.append('user_type', currentUser.user_type || currentUser.role || '');
             formData.append('school_attended', currentUser.school_attended || '');
             formData.append('user_id', currentUser.id || '');
+            if (activeSection === 'student') {
+                formData.append('student_id', studentId);
+                formData.append('document_type', documentType);
+            }
 
             uploadBtn.disabled = true;
             progressDiv.style.display = 'block';
@@ -621,11 +865,16 @@
                 if (data.success) {
                     showNotification('Document uploaded successfully!', 'success');
                     form.reset();
-                    document.getElementById('fileInput').value = '';
+                    fileInput.value = '';
                     resetFileInputLabel();
                     progressDiv.style.display = 'none';
-                    loadDocuments();
                     hideUploadForm();
+                    if (activeSection === 'student') {
+                        document.getElementById('studentSearch').value = studentId;
+                        searchDocuments();
+                    } else {
+                        loadDocuments();
+                    }
                 } else {
                     showNotification(data.message || 'Upload failed', 'error');
                 }
@@ -637,8 +886,10 @@
             }
         }
 
-        // Load every document uploaded for this school — the whole point of
-        // a shared "Document Library" rather than one student's folder.
+        // ── School Library (Coordinator feature) ──────────────────────
+        // Loads every document uploaded for this school — no student_id
+        // param means api/list-documents.php returns the whole school's
+        // library instead of scoping to one student.
         async function loadDocuments() {
             const currentUser = getCurrentUser();
             const userType = currentUser.user_type || currentUser.role || '';
@@ -659,7 +910,6 @@
             }
         }
 
-        // Display documents
         function displayDocuments(documents) {
             const grid = document.getElementById('documentGrid');
             grid.innerHTML = '';
@@ -703,20 +953,96 @@
             });
         }
 
-        // Filter documents
-        function filterDocuments(filter) {
-            const cards = document.querySelectorAll('.document-card');
-            
-            if (filter === 'all') {
-                cards.forEach(card => card.style.display = '');
-            } else {
-                cards.forEach(card => {
-                    card.style.display = card.dataset.type === filter ? '' : 'none';
-                });
+        function showEmptyState(message = 'No documents yet') {
+            document.getElementById('documentGrid').innerHTML = `
+                <div style="grid-column: 1/-1;">
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>${message}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ── Student Documents (Counselor feature) ──────────────────────
+        async function searchDocuments() {
+            const studentId = document.getElementById('studentSearch').value.trim();
+
+            if (!studentId) {
+                showNotification('Please enter a Student ID', 'error');
+                return;
+            }
+
+            const currentUser = getCurrentUser();
+            const userType = currentUser.user_type || currentUser.role || '';
+            const schoolAttended = currentUser.school_attended || '';
+
+            try {
+                const response = await fetch(`../../api/list-documents.php?student_id=${studentId}&user_type=${userType}&school_attended=${schoolAttended}`);
+                const data = await response.json();
+
+                if (data.success && data.documents.length > 0) {
+                    displayStudentDocuments(data.documents);
+                } else {
+                    showNotification('No documents found for this student', 'info');
+                    clearTable();
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
             }
         }
 
-        // View document
+        function displayStudentDocuments(documents) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            const docTypeLabels = {
+                'inventory': 'Individual Inventory',
+                'referral': 'Referral Form',
+                'follow-up': 'Follow-up Form',
+                'case': 'Case Document'
+            };
+
+            documents.forEach(doc => {
+                const uploadDate = new Date(doc.uploaded_at).toLocaleDateString();
+                const sizeKB = (doc.file_size / 1024).toFixed(2);
+                const docType = docTypeLabels[doc.document_type] || doc.document_type;
+                const badgeClass = `badge-${doc.document_type}`;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${doc.student_id}</strong></td>
+                    <td><span class="doc-type-badge ${badgeClass}">${docType}</span></td>
+                    <td>${doc.original_filename}</td>
+                    <td>${uploadDate}</td>
+                    <td>${sizeKB} KB</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="action-btn btn-view" onclick="viewDocument(${doc.document_id})">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="action-btn btn-delete" onclick="deleteDocument(${doc.document_id})">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function clearTable() {
+            document.getElementById('tableBody').innerHTML = `
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <i class="fas fa-inbox" style="font-size: 24px; margin-bottom: 8px;"></i>
+                        <p>No documents found</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // ── Shared: view / delete / preview ─────────────────────────────
         function viewDocument(documentId) {
             const currentUser = getCurrentUser();
             const userType = currentUser.user_type || currentUser.role || '';
@@ -728,12 +1054,10 @@
             document.getElementById('previewModal').classList.add('show');
         }
 
-        // Close preview
         function closePreview() {
             document.getElementById('previewModal').classList.remove('show');
         }
 
-        // Delete document
         async function deleteDocument(documentId) {
             if (!confirm('Are you sure you want to delete this document?')) {
                 return;
@@ -762,25 +1086,18 @@
 
                 if (data.success) {
                     showNotification('Document deleted successfully', 'success');
-                    loadDocuments();
+                    if (activeSection === 'student') {
+                        const studentId = document.getElementById('studentSearch').value;
+                        if (studentId) searchDocuments();
+                    } else {
+                        loadDocuments();
+                    }
                 } else {
                     showNotification(data.message || 'Delete failed', 'error');
                 }
             } catch (error) {
                 showNotification('Error: ' + error.message, 'error');
             }
-        }
-
-        // Show empty state
-        function showEmptyState(message = 'No documents yet') {
-            document.getElementById('documentGrid').innerHTML = `
-                <div style="grid-column: 1/-1;">
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <p>${message}</p>
-                    </div>
-                </div>
-            `;
         }
 
         // Logout

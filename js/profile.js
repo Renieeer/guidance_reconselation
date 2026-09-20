@@ -22,6 +22,10 @@ function getProfileId() {
 // formatProfileRole() lives in js/utils.js — also used by the sidebar's "My
 // Profile" popup (js/sidebar-active.js).
 
+// url is the account's own REAL uploaded photo (or null) — its truthiness
+// still decides whether "Remove Photo" shows. When there's no real photo,
+// this falls back to the role's default seal (displayAvatarUrl/
+// defaultAvatarUrl in js/utils.js) instead of jumping straight to initials.
 function renderAvatarPreview(url) {
     const el = document.getElementById('profileAvatar');
     const removeBtn = document.getElementById('removePhotoBtn');
@@ -30,9 +34,15 @@ function renderAvatarPreview(url) {
     if (url) {
         el.innerHTML = `<img src="${url}" alt="">`;
         if (removeBtn) removeBtn.style.display = '';
+        return;
+    }
+
+    if (removeBtn) removeBtn.style.display = 'none';
+    const fallbackUrl = defaultAvatarUrl(getCurrentUser());
+    if (fallbackUrl) {
+        el.innerHTML = `<img src="${fallbackUrl}" alt="">`;
     } else {
         el.textContent = userInitials(getCurrentUser());
-        if (removeBtn) removeBtn.style.display = 'none';
     }
 }
 

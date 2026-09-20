@@ -51,10 +51,18 @@ function loadReferralStats(school) {
             const followUps = referrals.filter(r => r.stage === 3 || r.stage === 4).length;
             const assignedReferrals = referrals.filter(r => r.stage >= 3);
             const totalStudents = assignedReferrals.length;
+            // Coordinator's own dashboard stats (pages/coordinator/coordinator.js
+            // renderCoordinatorDashboard()) — the combined account gets these too.
+            const total = referrals.length;
+            const pending = referrals.filter(r => r.stage === 1 || r.stage === 2).length;
+            const closed = referrals.filter(r => r.stage === 7).length;
 
             document.getElementById('activeCases').textContent = active;
             document.getElementById('totalStudents').textContent = totalStudents;
             document.getElementById('followUps').textContent = followUps;
+            document.getElementById('totalReferrals').textContent = total;
+            document.getElementById('pendingReferrals').textContent = pending;
+            document.getElementById('closedCases').textContent = closed;
 
             // Already sorted newest-first by the API (date_submitted DESC).
             loadRecentReferrals(referrals.slice(0, 5));
@@ -64,6 +72,9 @@ function loadReferralStats(school) {
             document.getElementById('activeCases').textContent = '—';
             document.getElementById('totalStudents').textContent = '—';
             document.getElementById('followUps').textContent = '—';
+            document.getElementById('totalReferrals').textContent = '—';
+            document.getElementById('pendingReferrals').textContent = '—';
+            document.getElementById('closedCases').textContent = '—';
             loadRecentReferrals([]);
         });
 }

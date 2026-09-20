@@ -19,6 +19,12 @@
                     <h2 class="page-hero-title">Report Cases</h2>
                     <p class="page-hero-text">Document and submit case reports on student referrals and counseling sessions.</p>
                 </div>
+                <div class="page-hero-actions">
+                    <button type="button" class="btn btn-primary" id="openAddCaseCategoryBtn"><i class="bi bi-plus-lg"></i> Add Case Category</button>
+                    <button type="button" class="report-settings-btn" id="reportSettingsBtn" aria-label="Report Settings" data-tooltip="Report Settings">
+                        <i class="bi bi-gear-fill"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Page Content -->
@@ -66,14 +72,6 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="filterGender">Gender</label>
-                            <select id="filterGender">
-                                <option value="">All genders</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
                             <label for="filterStatus">Status</label>
                             <select id="filterStatus">
                                 <option value="">All statuses</option>
@@ -97,24 +95,23 @@
                     </p>
                 </div>
 
-                <!-- Filtered Results — a real table (Student/Category/Grade/
-                     Gender/Status/Date/Counselor), one row per logged case
-                     matching the current filters, exportable to PDF/Excel
-                     the same way as the Category of Cases pivot below. -->
+                <!-- Filtered Results — a Case Distribution Summary grouped
+                     by Category + Grade (Male/Female/Total Cases counts),
+                     computed from every logged case matching the current
+                     filters, exportable to PDF/Excel the same way as the
+                     Category of Cases pivot below. -->
                 <div id="filterResultsView" style="display: none;">
-                    <p class="text-muted" id="filterResultsSummary" style="margin-bottom: 16px;"></p>
-                    <p class="text-muted" id="filterResultsEmpty" style="display: none; background: white; border: 1px dashed var(--border-color); border-radius: 8px; padding: 30px; text-align: center;">Try widening the period or clearing a filter.</p>
+                    <h3 id="filterResultsTitle" class="report-title" style="margin: 0 0 16px; font-size: 1.15rem; font-weight: 700; color: #0f172a;"></h3>
+                    <p class="text-muted" id="filterResultsEmpty" style="display: none; background: white; border: 1px dashed var(--border-color); border-radius: 8px; padding: 30px; text-align: center;">No records found</p>
                     <div class="table-container" id="filterResultsTableContainer">
                         <table id="filterResultsTable">
                             <thead>
                                 <tr>
-                                    <th>Student</th>
                                     <th>Category</th>
                                     <th>Grade</th>
-                                    <th>Gender</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                    <th>Counselor</th>
+                                    <th>Male</th>
+                                    <th>Female</th>
+                                    <th>Total Cases</th>
                                 </tr>
                             </thead>
                             <tbody id="filterResultsTableBody">
@@ -243,12 +240,123 @@
                         </form>
                     </div>
                 </div>
+
+                <!-- Add Case Category Modal -->
+                <div id="addCaseCategoryModal" class="modal">
+                    <div class="modal-content" style="max-width: 480px;">
+                        <div class="modal-header">
+                            <h2>Add Case Category</h2>
+                            <button class="modal-close" id="closeAddCaseCategoryModal">&times;</button>
+                        </div>
+                        <form id="addCaseCategoryForm">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="newCategorySection">Section</label>
+                                    <select id="newCategorySection" required>
+                                        <option value="">Select a section</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newCategoryName">Category Name</label>
+                                    <input type="text" id="newCategoryName" placeholder="e.g. Truancy" required autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-success">Save</button>
+                                <button type="button" class="btn btn-secondary" id="cancelAddCaseCategory">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Confirm Add Case Category Modal -->
+                <div id="confirmAddCaseCategoryModal" class="modal">
+                    <div class="modal-content" style="max-width: 420px;">
+                        <div class="modal-header">
+                            <h2>Confirm</h2>
+                            <button class="modal-close" id="closeConfirmAddCaseCategoryModal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to add this category?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" id="confirmAddCaseCategoryYesBtn">Yes</button>
+                            <button type="button" class="btn btn-secondary" id="cancelConfirmAddCaseCategory">No</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Settings Modal — per-school PDF header/footer,
+                     cropped client-side from one uploaded PDF (see
+                     report-letterhead.js). -->
+                <div id="reportSettingsModal" class="modal">
+                    <div class="modal-content" style="max-width: 640px;">
+                        <div class="modal-header">
+                            <h2><i class="bi bi-gear-fill"></i> Report Settings</h2>
+                            <button class="modal-close" id="closeReportSettingsModal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted" style="margin-top: 0;">Upload one PDF containing your school's report letterhead. It will be split into a header (top) and footer (bottom) band and stamped onto every PDF report exported from this page.</p>
+
+                            <div id="reportLetterheadCurrent" style="display: none; margin-bottom: 20px;">
+                                <div style="display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;">
+                                    <div>
+                                        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 4px;">Header</label>
+                                        <img id="reportLetterheadHeaderPreview" alt="Header preview" style="max-width: 260px; border: 1px solid var(--border-color); border-radius: 6px;">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 12px; color: #64748b; margin-bottom: 4px;">Footer</label>
+                                        <img id="reportLetterheadFooterPreview" alt="Footer preview" style="max-width: 260px; border: 1px solid var(--border-color); border-radius: 6px;">
+                                    </div>
+                                </div>
+                                <p class="text-muted" id="reportLetterheadMeta" style="font-size: 12.5px; margin: 10px 0 0;"></p>
+                                <p id="reportLetterheadNoEditNotice" style="display: none; font-size: 12.5px; color: #b45309; background: #fffbeb; border-left: 3px solid #f59e0b; border-radius: 4px; padding: 8px 12px; margin: 10px 0 0;">
+                                    <i class="bi bi-info-circle"></i> This one was uploaded before Edit Crop existed, so there's no saved page to re-slice. Re-upload it once below (Replace with a Different PDF) and Edit Crop will work for it from then on.
+                                </p>
+                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <button type="button" class="btn btn-primary" id="editReportLetterheadCropBtn">
+                                        <i class="bi bi-crop"></i> Edit Crop
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="deleteReportLetterheadBtn">
+                                        <i class="bi bi-trash"></i> Delete Header &amp; Footer
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="reportLetterheadFileInput">Replace with a Different PDF</label>
+                                <input type="file" id="reportLetterheadFileInput" accept="application/pdf">
+                            </div>
+
+                            <div id="reportLetterheadEditor" style="display: none;">
+                                <div style="position: relative; display: inline-block; max-width: 100%;">
+                                    <canvas id="reportLetterheadCanvas" style="max-width: 100%; border: 1px solid var(--border-color); border-radius: 6px; display: block;"></canvas>
+                                    <div id="reportLetterheadHeaderOverlay" style="position: absolute; top: 0; left: 0; right: 0; background: rgba(37, 99, 235, 0.25); border-bottom: 2px dashed #2563eb; pointer-events: none;"></div>
+                                    <div id="reportLetterheadFooterOverlay" style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(220, 38, 38, 0.25); border-top: 2px dashed #dc2626; pointer-events: none;"></div>
+                                </div>
+
+                                <div class="form-group" style="margin-top: 16px;">
+                                    <label for="reportLetterheadHeaderSlider">Header height: <span id="reportLetterheadHeaderPct">20</span>%</label>
+                                    <input type="range" id="reportLetterheadHeaderSlider" min="5" max="45" value="20" style="width: 100%;">
+                                </div>
+                                <div class="form-group">
+                                    <label for="reportLetterheadFooterSlider">Footer height: <span id="reportLetterheadFooterPct">15</span>%</label>
+                                    <input type="range" id="reportLetterheadFooterSlider" min="5" max="45" value="15" style="width: 100%;">
+                                </div>
+
+                                <button type="button" class="btn btn-success" id="saveReportLetterheadBtn">
+                                    <i class="bi bi-check-lg"></i> Save Header &amp; Footer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <!-- ExcelJS — the downloaded .xlsx needs real cell colors/borders/merges,

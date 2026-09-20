@@ -21,6 +21,7 @@
         <li><a href="student-history.php"><i class="bi bi-folder2-open"></i> Student History</a></li>
         <li><a href="schedule.php"><i class="bi bi-calendar3"></i> Schedule</a></li>
         <li><a href="analytics.php"><i class="bi bi-bar-chart"></i> Analytics</a></li>
+        <li><a href="documents.php"><i class="bi bi-bar-chart"></i> Documentation</a></li>
         <li><a href="student-feedback.php"><i class="bi bi-chat-square-text"></i> Student Feedback</a></li>
         <li><a href="account.php"><i class="bi bi-person-circle"></i> Account</a></li>
         <li><a href="#" id="logoutBtn"><i class="bi bi-box-arrow-left"></i> Logout</a></li>
@@ -29,4 +30,4 @@
 
 <?php include __DIR__ . '/profile-summary-modal.php'; ?>
 
-<script src="../../js/sidebar-active.js"></script>
+<script src="../../js/sidebar-active.js?v=<?php echo filemtime(__DIR__ . '/../js/sidebar-active.js'); ?>"></script>

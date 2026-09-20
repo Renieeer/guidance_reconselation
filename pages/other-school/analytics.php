@@ -33,8 +33,9 @@
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
-    <script src="analytics.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
+    <script src="report-letterhead.js?v=<?php echo filemtime(__DIR__ . '/report-letterhead.js'); ?>"></script>
+    <script src="analytics.js?v=<?php echo filemtime(__DIR__ . '/analytics.js'); ?>"></script>
 </body>
 </html>

@@ -1,7 +1,20 @@
-// Account Management Script for Coordinator
+// Account Management Script — shared with pages/coordinator/account.js so
+// the combined counselor-and-coordinator account gets the exact same
+// School Account Administration feature set (grade filter, pagination,
+// show-inactive toggle, Excel export, activate/deactivate) as a standalone
+// Coordinator account.
 
 let currentEditingAccountId = null;
 let allAccounts = [];
+// Grade filter + pagination — applied client-side on top of whatever
+// loadSchoolAccounts()/searchAccounts() last fetched. 'all' page size
+// disables paging entirely.
+let currentGradeFilter = '';
+let pageSize = 20;
+let currentPage = 1;
+// Deactivated students are excluded server-side by default (see
+// api/manage-accounts.php) — this only decides whether we ask for them.
+let showInactive = false;
 
 function initAccountPage() {
     initPage();
@@ -12,6 +25,31 @@ function initAccountPage() {
         if (e.key === 'Enter') {
             searchAccounts();
         }
+    });
+
+    document.getElementById('gradeFilter').addEventListener('change', (e) => {
+        currentGradeFilter = e.target.value;
+        currentPage = 1;
+        applyFiltersAndRender();
+    });
+
+    document.getElementById('showInactiveFilter').addEventListener('change', (e) => {
+        showInactive = e.target.checked;
+        currentPage = 1;
+        searchAccounts();
+    });
+
+    document.getElementById('pageSizeFilter').addEventListener('change', (e) => {
+        pageSize = e.target.value === 'all' ? Infinity : parseInt(e.target.value, 10);
+        currentPage = 1;
+        applyFiltersAndRender();
+    });
+
+    document.getElementById('accountsPagination').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-page]');
+        if (!btn || btn.disabled) return;
+        currentPage = btn.getAttribute('data-page') === 'next' ? currentPage + 1 : currentPage - 1;
+        applyFiltersAndRender();
     });
 
     // Setup edit form
@@ -138,7 +176,7 @@ function getCurrentSchool() {
     if (user.school || user.school_attended) {
         return user.school || user.school_attended;
     }
-    
+
     try {
         const fallback = JSON.parse(localStorage.getItem('currentUser') || '{}');
         return fallback.school || fallback.school_attended || '';
@@ -173,23 +211,26 @@ function getUserTypeBadgeClass(type) {
 function formatDate(dateStr) {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
     });
 }
 
 function loadSchoolAccounts() {
     const school = getCurrentSchool();
-    
+
     if (!school) {
         showAlert('School information not found', 'error');
         return;
     }
 
-    const apiUrl = `../../api/manage-accounts.php?school=${encodeURIComponent(school)}`;
-    
+    let apiUrl = `../../api/manage-accounts.php?school=${encodeURIComponent(school)}`;
+    if (showInactive) {
+        apiUrl += '&include_inactive=1';
+    }
+
     fetch(apiUrl)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -199,15 +240,16 @@ function loadSchoolAccounts() {
             if (!result.success || !result.data) {
                 throw new Error(result.message || 'Failed to load accounts');
             }
-            
+
             allAccounts = result.data;
-            renderAccountsTable(allAccounts);
+            currentPage = 1;
+            applyFiltersAndRender();
         })
         .catch(error => {
             console.error('Error loading accounts:', error);
             const tbody = document.getElementById('accountsTableBody');
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="5" class="no-accounts"><i class="bi bi-exclamation-triangle"></i> <p>Error: ${error.message}</p></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="no-accounts"><i class="bi bi-exclamation-triangle"></i> <p>Error: ${error.message}</p></td></tr>`;
             }
         });
 }
@@ -215,7 +257,7 @@ function loadSchoolAccounts() {
 function searchAccounts() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const school = getCurrentSchool();
-    
+
     if (!school) {
         showAlert('School information not found', 'error');
         return;
@@ -225,7 +267,10 @@ function searchAccounts() {
     if (searchTerm) {
         apiUrl += `&search=${encodeURIComponent(searchTerm)}`;
     }
-    
+    if (showInactive) {
+        apiUrl += '&include_inactive=1';
+    }
+
     fetch(apiUrl)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -235,9 +280,10 @@ function searchAccounts() {
             if (!result.success || !result.data) {
                 throw new Error(result.message || 'Failed to search accounts');
             }
-            
+
             allAccounts = result.data;
-            renderAccountsTable(allAccounts);
+            currentPage = 1;
+            applyFiltersAndRender();
         })
         .catch(error => {
             console.error('Error searching accounts:', error);
@@ -245,15 +291,71 @@ function searchAccounts() {
         });
 }
 
-function renderAccountsTable(accounts) {
-    const tbody = document.getElementById('accountsTableBody');
-    
-    if (!accounts || accounts.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="no-accounts"><i class="bi bi-inbox"></i> <p>No accounts found</p></td></tr>`;
+// Applies the grade filter (client-side, on top of whatever the last
+// fetch returned) and pagination, then renders the current page.
+// gradeScopeToList (utils.js) parses a Grade cell whether it's a single
+// student grade ("10") or a comma-scoped staff list ("7,8,9,10"), so one
+// check covers both — an account matches if the selected grade is
+// anywhere in its Grade value.
+function applyFiltersAndRender() {
+    const filtered = currentGradeFilter
+        ? allAccounts.filter(a => gradeScopeToList(a.Grade).includes(parseInt(currentGradeFilter, 10)))
+        : allAccounts;
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIdx = pageSize === Infinity ? 0 : (currentPage - 1) * pageSize;
+    const endIdx = pageSize === Infinity ? filtered.length : Math.min(startIdx + pageSize, filtered.length);
+
+    renderAccountsTable(filtered.slice(startIdx, endIdx));
+    renderPagination(filtered.length, startIdx, endIdx, totalPages);
+}
+
+function renderPagination(totalFiltered, startIdx, endIdx, totalPages) {
+    const el = document.getElementById('accountsPagination');
+    if (!el) return;
+
+    if (totalFiltered === 0 || pageSize === Infinity || totalPages <= 1) {
+        el.innerHTML = '';
         return;
     }
 
-    tbody.innerHTML = accounts.map(account => `
+    el.innerHTML = `
+        <button type="button" class="btn btn-secondary btn-sm" data-page="prev" ${currentPage <= 1 ? 'disabled' : ''}>
+            <i class="bi bi-chevron-left"></i> Prev
+        </button>
+        <span class="accounts-page-info">Showing ${startIdx + 1}&ndash;${endIdx} of ${totalFiltered} &middot; Page ${currentPage} of ${totalPages}</span>
+        <button type="button" class="btn btn-secondary btn-sm" data-page="next" ${currentPage >= totalPages ? 'disabled' : ''}>
+            Next <i class="bi bi-chevron-right"></i>
+        </button>`;
+}
+
+function renderAccountsTable(accounts) {
+    const tbody = document.getElementById('accountsTableBody');
+
+    if (!accounts || accounts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="no-accounts"><i class="bi bi-inbox"></i> <p>No accounts found</p></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = accounts.map(account => {
+        // is_active only applies to student accounts here — staff status is
+        // an SDO-only concern (see account-status.php), so anything else
+        // always reads as Active on this page.
+        const isStudent = String(account.Type || '').toLowerCase() === 'student';
+        const isActive = account.is_active !== 0 && account.is_active !== '0';
+        const statusBadge = isStudent
+            ? `<span class="user-type-badge ${isActive ? 'badge-completed' : 'badge-rejected'}">${isActive ? 'Active' : 'Inactive'}</span>`
+            : '&mdash;';
+        const toggleBtn = isStudent
+            ? `<button class="btn ${isActive ? 'btn-danger' : 'btn-success'} btn-sm" onclick="toggleStudentActive(${account.id}, ${isActive ? 'true' : 'false'})">
+                    <i class="bi ${isActive ? 'bi-person-dash' : 'bi-person-check'}"></i> ${isActive ? 'Deactivate' : 'Activate'}
+                </button>`
+            : '';
+
+        return `
         <tr>
             <td><strong>${account.First_name} ${account.Last_name}</strong></td>
             <td>${account.email}</td>
@@ -262,28 +364,70 @@ function renderAccountsTable(accounts) {
                     ${formatUserType(account.Type)}
                 </span>
             </td>
+            <td>${gradeScopeLabel(account.Grade) || '&mdash;'}</td>
+            <td>${statusBadge}</td>
             <td>${formatDate(account.created_at)}</td>
             <td>
                 <div class="action-buttons">
                     <button class="btn-edit" onclick="openEditModal(${account.id}, '${account.First_name}', '${account.Last_name}', '${account.email}', '${account.Type}')">
                         <i class="bi bi-pencil-square"></i> Edit
                     </button>
+                    ${toggleBtn}
                 </div>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+}
+
+// Coordinator can deactivate a student's account once they've left the
+// school (transferred, graduated, dropped out) so it stops showing up in
+// this list and can no longer log in (login.php gates on is_active) —
+// without deleting the student's history/records. Reactivating brings it
+// back into the default (non-"Show inactive") view.
+function toggleStudentActive(id, currentlyActive) {
+    const nextActive = !currentlyActive;
+    const confirmMessage = nextActive
+        ? 'Reactivate this student account? They will be able to log in again.'
+        : 'Deactivate this student account? They will no longer be able to log in, and the account will be hidden from this list unless "Show inactive students" is checked.';
+    if (!window.confirm(confirmMessage)) {
+        return;
+    }
+
+    const school = getCurrentSchool();
+
+    fetch('../../api/manage-accounts.php', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setActive', id, active: nextActive, school })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(result => {
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to update account status');
+            }
+            showAlert(nextActive ? 'Student account activated.' : 'Student account deactivated.', 'success');
+            loadSchoolAccounts();
+        })
+        .catch(error => {
+            console.error('Error toggling account status:', error);
+            showAlert('Error: ' + error.message, 'error');
+        });
 }
 
 function openEditModal(id, firstName, lastName, email, type) {
     currentEditingAccountId = id;
-    
+
     document.getElementById('editFirstName').value = firstName;
     document.getElementById('editLastName').value = lastName;
     document.getElementById('editEmail').value = email;
     document.getElementById('editUserType').value = formatUserType(type);
     document.getElementById('editPassword').value = '';
     document.getElementById('editPasswordConfirm').value = '';
-    
+
     document.getElementById('editAccountModal').classList.add('show');
 }
 
@@ -295,7 +439,7 @@ function closeEditModal() {
 
 function saveAccountChanges(e) {
     e.preventDefault();
-    
+
     if (!currentEditingAccountId) {
         showAlert('No account selected', 'error');
         return;
@@ -323,7 +467,7 @@ function saveAccountChanges(e) {
     }
 
     const school = getCurrentSchool();
-    
+
     const updateData = {
         id: currentEditingAccountId,
         first_name: firstName,
@@ -358,5 +502,110 @@ function saveAccountChanges(e) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', initAccountPage);
+function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+}
 
+function ensureExcelModal() {
+    if (document.getElementById('excelPreviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div id="excelPreviewModal" class="modal">
+        <div class="modal-content" style="max-width:900px; width:95%; height:82vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h2><i class="bi bi-file-earmark-excel"></i> <span id="excelPreviewTitle">Excel Preview</span></h2>
+                <button type="button" class="modal-close" id="excelPreviewCloseX">&times;</button>
+            </div>
+            <div class="modal-body" style="flex:1; overflow:auto;">
+                <div class="table-container"><table><tbody id="excelPreviewTbody"></tbody></table></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="excelPreviewCloseBtn">Close</button>
+                <button type="button" class="btn btn-success" id="excelDownloadBtn"><i class="bi bi-download"></i> Download</button>
+            </div>
+        </div>
+    </div>`);
+    document.getElementById('excelPreviewCloseX').addEventListener('click', () => closeModal('excelPreviewModal'));
+    document.getElementById('excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
+}
+
+// sheet.aoa (array-of-arrays) is the exact same shape written to the
+// worksheet, so what's previewed is what's downloaded. Row 0 is the sheet
+// title (shown as a heading, not a table row); a blank row (`[]`) marks the
+// row right after it as the column-header row (rendered as <th>).
+function showExcelPreview(filename, sheets, onDownload) {
+    ensureExcelModal();
+    document.getElementById('excelPreviewTitle').textContent = sheets.length === 1
+        ? String((sheets[0].aoa[0] && sheets[0].aoa[0][0]) || 'Excel Preview')
+        : 'Excel Preview';
+
+    document.getElementById('excelPreviewTbody').innerHTML = sheets.map((sheet, sheetIndex) => {
+        const title = String((sheet.aoa[0] && sheet.aoa[0][0]) || sheet.name);
+        const heading = `<tr><td colspan="20" style="border:none; padding:${sheetIndex === 0 ? '0' : '24px'} 0 8px; font-weight:700; font-size:15px;">${escapeHtml(title)}</td></tr>`;
+
+        let afterBlank = false;
+        const body = sheet.aoa.slice(1).map(row => {
+            if (row.length === 0) { afterBlank = true; return '<tr><td style="height:10px; border:none; padding:0;"></td></tr>'; }
+            const cellTag = afterBlank ? 'th' : 'td';
+            afterBlank = false;
+            return `<tr>${row.map(cell => `<${cellTag}>${escapeHtml(cell == null ? '' : cell)}</${cellTag}>`).join('')}</tr>`;
+        }).join('');
+
+        return heading + body;
+    }).join('');
+
+    document.getElementById('excelDownloadBtn').onclick = onDownload;
+    openModal('excelPreviewModal');
+}
+
+// Exports student accounts (Type === 'student') from whatever is currently
+// loaded/filtered — respects the grade filter but not pagination, so it
+// covers every matching student, not just the visible page. Age comes from
+// student_table (joined in api/manage-accounts.php) and is blank for
+// accounts that never filled out a student profile. Shows a preview modal
+// (title "Student Account" above the table) before the file is downloaded.
+function exportStudentAccountsToExcel() {
+    if (typeof XLSX === 'undefined') {
+        showAlert('Excel export library failed to load.', 'error');
+        return;
+    }
+
+    const scoped = currentGradeFilter
+        ? allAccounts.filter(a => gradeScopeToList(a.Grade).includes(parseInt(currentGradeFilter, 10)))
+        : allAccounts;
+    const students = scoped.filter(a => String(a.Type || '').toLowerCase() === 'student');
+
+    if (students.length === 0) {
+        showAlert('No student accounts to export', 'error');
+        return;
+    }
+
+    const aoa = [
+        ['Student Account'],
+        [],
+        ['First Name', 'Last Name', 'Grade', 'Age', 'Email'],
+        ...students.map(s => [s.First_name, s.Last_name, gradeScopeLabel(s.Grade) || '', s.Age || '', s.email])
+    ];
+
+    const school = getCurrentSchool();
+    const schoolSlug = school ? school.replace(/[^a-z0-9]+/gi, '_') : 'Export';
+    const filename = `Student_Accounts_${schoolSlug}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    const sheets = [
+        { name: 'Student Accounts', aoa, colWidths: [{ wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 8 }, { wch: 30 }] }
+    ];
+
+    showExcelPreview(filename, sheets, () => {
+        const workbook = XLSX.utils.book_new();
+        sheets.forEach(sheet => {
+            const worksheet = XLSX.utils.aoa_to_sheet(sheet.aoa);
+            worksheet['!cols'] = sheet.colWidths;
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+        });
+        XLSX.writeFile(workbook, filename);
+        showAlert('Excel report exported successfully!', 'success');
+        closeModal('excelPreviewModal');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initAccountPage);

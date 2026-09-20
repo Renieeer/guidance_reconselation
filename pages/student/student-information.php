@@ -547,8 +547,8 @@
     </div>
 </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
     <script src="student-information.js?v=<?php echo filemtime(__DIR__ . '/student-information.js'); ?>"></script>
 </body>
 </html>

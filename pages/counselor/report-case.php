@@ -66,14 +66,6 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="filterGender">Gender</label>
-                            <select id="filterGender">
-                                <option value="">All genders</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
                             <label for="filterStatus">Status</label>
                             <select id="filterStatus">
                                 <option value="">All statuses</option>
@@ -84,10 +76,6 @@
                             </select>
                         </div>
                     </div>
-                    <div class="form-group" style="margin-top: 12px;">
-                        <label for="filterSearch"><i class="bi bi-search"></i> Search</label>
-                        <input type="text" id="filterSearch" placeholder="Search by student name, case title, category, or notes...">
-                    </div>
                     <div style="display: flex; gap: 10px; margin-top: 8px;">
                         <button type="button" class="btn btn-primary" id="applyFiltersBtn"><i class="bi bi-search"></i> Search</button>
                         <button type="button" class="btn btn-secondary" id="clearFiltersBtn">Clear Filters</button>
@@ -97,24 +85,23 @@
                     </p>
                 </div>
 
-                <!-- Filtered Results — a real table (Student/Category/Grade/
-                     Gender/Status/Date/Counselor), one row per logged case
-                     matching the current filters, exportable to PDF/Excel
-                     the same way as the Category of Cases pivot below. -->
+                <!-- Filtered Results — a Case Distribution Summary grouped
+                     by Category + Grade (Male/Female/Total Cases counts),
+                     computed from every logged case matching the current
+                     filters, exportable to PDF/Excel the same way as the
+                     Category of Cases pivot below. -->
                 <div id="filterResultsView" style="display: none;">
-                    <p class="text-muted" id="filterResultsSummary" style="margin-bottom: 16px;"></p>
-                    <p class="text-muted" id="filterResultsEmpty" style="display: none; background: white; border: 1px dashed var(--border-color); border-radius: 8px; padding: 30px; text-align: center;">Try widening the period or clearing a filter.</p>
+                    <h3 id="filterResultsTitle" class="report-title" style="display: none;"></h3>
+                    <p class="text-muted" id="filterResultsEmpty" style="display: none; background: white; border: 1px dashed var(--border-color); border-radius: 8px; padding: 30px; text-align: center;">No records found</p>
                     <div class="table-container" id="filterResultsTableContainer">
                         <table id="filterResultsTable">
                             <thead>
                                 <tr>
-                                    <th>Student</th>
                                     <th>Category</th>
                                     <th>Grade</th>
-                                    <th>Gender</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                    <th>Counselor</th>
+                                    <th>Male</th>
+                                    <th>Female</th>
+                                    <th>Total Cases</th>
                                 </tr>
                             </thead>
                             <tbody id="filterResultsTableBody">
@@ -247,8 +234,8 @@
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <!-- ExcelJS — the downloaded .xlsx needs real cell colors/borders/merges,

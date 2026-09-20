@@ -26,4 +26,4 @@
 
 <?php include __DIR__ . '/profile-summary-modal.php'; ?>
 
-<script src="../../js/sidebar-active.js"></script>
+<script src="../../js/sidebar-active.js?v=<?php echo filemtime(__DIR__ . '/../js/sidebar-active.js'); ?>"></script>

@@ -197,6 +197,20 @@ function upsertSchoolRecord(mysqli $conn, string $schoolName, string $assignment
     ];
 }
 
+/** Grade 1-6 for an elementary school_level (East/West/South), Grade 7-12
+ *  for everything else (Secondary, or an unrecognized/blank school) — same
+ *  East/West/South-is-elementary convention as api/case-report.php's
+ *  schools_are_elementary(). */
+function gradesForSchoolLevel(?string $schoolLevel): array {
+    $isElementary = in_array($schoolLevel, ['East', 'West', 'South'], true);
+    $numbers = $isElementary ? range(1, 6) : range(7, 12);
+
+    return [
+        'isElementary' => $isElementary,
+        'grades' => array_map(static fn($n) => ['id' => $n, 'grade_name' => "Grade $n"], $numbers)
+    ];
+}
+
 function getSchoolConfig(string $school): ?array {
     global $conn;
 
@@ -246,6 +260,17 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
         }
 
         echo json_encode(['success' => true, 'school' => $config]);
+        exit;
+    }
+
+    if ($action === 'getGrades') {
+        $school = trim((string)($_GET['school'] ?? ''));
+        $config = $school !== '' ? getSchoolConfig($school) : null;
+
+        echo json_encode(array_merge(
+            ['success' => true],
+            gradesForSchoolLevel($config['schoolLevel'] ?? null)
+        ));
         exit;
     }
 

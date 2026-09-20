@@ -1540,7 +1540,88 @@ function loadCaseActions() {
 
     html += `<button class="btn btn-secondary" style="margin-left: 10px;" onclick="closeCase()">Close Case</button>`;
 
+    // Coordinator features: a manual stage override (independent of the
+    // guided per-stage forms above, e.g. to correct a mistake) and a
+    // distinct "rejected" outcome separate from a normal "completed" close.
+    if (currentReferral.stage < 7) {
+        html += `<button class="btn btn-primary" style="margin-left: 10px;" onclick="openUpdateStageModal()">Update Stage</button>`;
+    }
+    if (currentReferral.stage !== 7 || currentReferral.status !== 'rejected') {
+        html += `<button class="btn btn-danger" style="margin-left: 10px;" onclick="rejectCase()">Reject Referral</button>`;
+    }
+
     container.innerHTML = html;
+}
+
+function openUpdateStageModal() {
+    document.getElementById('newStage').value = currentReferral.stage;
+    openModal('updateStageModal');
+}
+
+function saveStageUpdate() {
+    const newStage = parseInt(document.getElementById('newStage').value, 10);
+    const notes = document.getElementById('stageNotes').value.trim();
+    const user = getCurrentUser();
+
+    fetch('../../api/update-referral.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            stage: newStage,
+            status: newStage === 7 ? 'completed' : (newStage === 1 || newStage === 2 ? 'pending' : 'in-progress'),
+            stage_note: notes,
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || ''
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            currentReferral = result.referral;
+            closeModal('updateStageModal');
+            showAlert('Referral stage updated successfully!', 'success');
+            loadDetailView(currentReferral);
+        } else {
+            showAlert(result.message || 'Error updating stage', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating stage:', error);
+        showAlert('Error updating stage. Please try again.', 'error');
+    });
+}
+
+function rejectCase() {
+    if (!confirm('Are you sure you want to reject this referral? This action cannot be undone.')) return;
+
+    const user = getCurrentUser();
+
+    fetch('../../api/update-referral.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            referral_id: currentReferral.id,
+            stage: 7,
+            status: 'rejected',
+            stage_note: 'Rejected',
+            counselor_id: user?.id || '',
+            counselor_name: user?.name || ''
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showAlert('Referral rejected successfully!', 'success');
+            setTimeout(() => backToList(), 1500);
+        } else {
+            showAlert(result.message || 'Error rejecting referral', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error rejecting referral:', error);
+        showAlert('Error rejecting referral. Please try again.', 'error');
+    });
 }
 
 // stageNote is a short human-readable record of *why* the referral is at
@@ -1700,10 +1781,19 @@ function selectReferral(referralId) {
 function applyStageFilter() {
     const stage = document.getElementById('stageFilter').value;
     const search = (document.getElementById('searchBox').value || '').trim().toLowerCase();
+    // Status/Urgency filters (Coordinator feature).
+    const status = document.getElementById('statusFilter').value;
+    const urgency = document.getElementById('urgencyFilter').value;
 
     let filtered = allReferrals;
     if (stage) {
         filtered = filtered.filter(r => r.stage === parseInt(stage));
+    }
+    if (status) {
+        filtered = filtered.filter(r => (r.status || getStatusLabel(r.stage)) === status);
+    }
+    if (urgency) {
+        filtered = filtered.filter(r => (r.urgency || 'normal') === urgency);
     }
     if (search) {
         filtered = filtered.filter(r =>
@@ -1717,6 +1807,8 @@ function applyStageFilter() {
 
 function clearStageFilter() {
     document.getElementById('stageFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('urgencyFilter').value = '';
     document.getElementById('searchBox').value = '';
     loadListView();
 }

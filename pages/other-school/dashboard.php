@@ -27,6 +27,40 @@
             <div class="page-content">
                 <!-- Quick Stats Grid -->
                 <div class="dashboard-grid">
+                    <!-- Total Referrals (Coordinator feature) -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Total Referrals</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-box-arrow-up"></i></div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="totalReferrals">0</div>
+                            <p>All referrals in system</p>
+                        </div>
+                        <div class="card-footer">
+                            <a href="referrals.php" class="btn btn-primary btn-sm">View All</a>
+                        </div>
+                    </div>
+
+                    <!-- Pending Review (Coordinator feature) -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Pending Review</h3>
+                            </div>
+                            <div class="card-icon"><i class="bi bi-hourglass-split"></i></div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="pendingReferrals">0</div>
+                            <p>Awaiting review</p>
+                        </div>
+                        <div class="card-footer">
+                            <a href="referrals.php" class="btn btn-warning btn-sm">Review</a>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header">
                             <div>
@@ -87,6 +121,20 @@
                             <p>Pending follow-ups</p>
                         </div>
                     </div>
+
+                    <!-- Closed Cases (Coordinator feature) -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3 class="card-title">Closed Cases</h3>
+                            </div>
+                            <div class="card-icon">✅</div>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-stats" id="closedCases">0</div>
+                            <p>Completed cases</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Recent Referrals -->
@@ -114,8 +162,8 @@
         </div>
     </div>
 
-    <script src="../../js/utils.js"></script>
-    <script src="../../js/auth.js"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
     <script src="other-school.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', loadCombinedDashboard);

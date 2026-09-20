@@ -139,6 +139,22 @@
             return nameMatch[1];
         }
 
+        // The legacy 1-4-means-7-10 code only ever made sense for a
+        // secondary school's old numbering — an elementary account's raw
+        // "1"-"6" is already a literal grade number and must never be run
+        // through it, or it gets rewritten to a grade (7-10) that doesn't
+        // exist as an option in the elementary 1-6 dropdown, and the Grade
+        // field silently comes back blank when reloading a saved profile.
+        if (isElementarySchool) {
+            if (/^\d+$/.test(rawValue)) {
+                const numericValue = Number(rawValue);
+                if (numericValue >= 1 && numericValue <= 6) {
+                    return rawValue;
+                }
+            }
+            return rawValue;
+        }
+
         const legacyMap = {
             '1': '7',
             '2': '8',
@@ -572,6 +588,12 @@ async function fetchAddressOptions(level, params = {}) {
     let isUpdateMode   = false;   // true once existing data is loaded
     let autoSaveTimer  = null;    // Timer for debounced database save
 
+    // Set by loadGrades() from api/school-config.php?action=getGrades's own
+    // isElementary flag — normalizeGradeValue() needs this so a raw "1"-"6"
+    // from an elementary account's saved Grade isn't run through the
+    // legacy 1-4-means-7-10 secondary code map below.
+    let isElementarySchool = false;
+
     // ─── counters for dynamic sections ───────────────────────────
     let eduCount     = 0;
     let orgCount     = 0;
@@ -601,14 +623,22 @@ async function fetchAddressOptions(level, params = {}) {
 });
  
     // ─── LOAD GRADES ───────────────────────────────────────────────
+    // Grade 1-6 for an elementary school (school_level East/West/South),
+    // Grade 7-12 for everything else — decided server-side from the
+    // logged-in student's own school (api/school-config.php?action=getGrades),
+    // same East/West/South convention used for coordinator grade scoping.
     function loadGrades() {
         const gradeSelect = document.getElementById('gradeSelect');
         if (!gradeSelect) return;
         const selectedValue = normalizeGradeValue(gradeSelect.value, gradeSelect.selectedOptions[0]?.textContent || '');
-        
-        fetch(`${getApiUrl()}/school-config.php?action=getGrades`)
+
+        const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+        const school = currentUser.school_attended || '';
+
+        fetch(`${getApiUrl()}/school-config.php?action=getGrades&school=${encodeURIComponent(school)}`)
             .then(r => r.json())
             .then(data => {
+                isElementarySchool = !!data.isElementary;
                 if (data.success && Array.isArray(data.grades) && data.grades.length > 0) {
                     while (gradeSelect.options.length > 1) {
                         gradeSelect.remove(1);
@@ -632,14 +662,14 @@ async function fetchAddressOptions(level, params = {}) {
     }
 
     // ─── FALLBACK GRADES ───────────────────────────────────────────
+    // Only reached if the getGrades request itself fails (network/server
+    // error) — with no reliable client-side school_level at that point,
+    // this falls back to the full Secondary Grade 7-12 range rather than
+    // guessing elementary.
     function addFallbackGrades(gradeSelect, selectedValue = '') {
-        const fallbackGrades = [
-            { id: 7, grade_name: 'Grade 7' },
-            { id: 8, grade_name: 'Grade 8' },
-            { id: 9, grade_name: 'Grade 9' },
-            { id: 10, grade_name: 'Grade 10' }
-        ];
-        
+        const fallbackGrades = [7, 8, 9, 10, 11, 12].map(n => ({ id: n, grade_name: `Grade ${n}` }));
+
+
         while (gradeSelect.options.length > 1) {
             gradeSelect.remove(1);
         }

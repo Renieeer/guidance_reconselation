@@ -281,7 +281,7 @@ function setUserInfo() {
             roleEl.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('-', ' ');
         }
         if (avatarEl && typeof user.name === 'string') {
-            const photoUrl = userAvatarUrl(user);
+            const photoUrl = displayAvatarUrl(user);
             if (photoUrl) {
                 avatarEl.innerHTML = `<img src="${photoUrl}" alt="">`;
             } else {
@@ -305,22 +305,46 @@ function userInitials(user) {
 // "api/avatar.php?id=5&v=x.jpg" — the photo itself lives in the database
 // (see api/avatar.php), this is just its URL. Every page that renders this
 // lives two levels down at pages/<role>/*.php, so "../../" always resolves
-// correctly.
+// correctly. Strictly reflects whether this account has a REAL uploaded
+// photo — callers that decide "show the Remove Photo button" key off this
+// (not displayAvatarUrl()), so it deliberately does NOT fall back to the
+// role default below.
 function userAvatarUrl(user) {
     if (!user || !user.profile_image) return null;
     return `../../${user.profile_image}`;
 }
 
+// Default avatar for the 4 staff-ish roles that don't otherwise pick a
+// profile photo at account creation — the DepEd seal saved at
+// uploads/profile-images/default-profile.jpg. Uploading a real photo (or
+// still having none, for student/sdo) is unaffected: this is only ever a
+// *display* fallback, layered on in displayAvatarUrl() below, never written
+// to users_tables.profile_image itself.
+const DEFAULT_AVATAR_ROLES = ['coordinator', 'counselor', 'teacher', 'counselor-and-coordinator'];
+
+function defaultAvatarUrl(user) {
+    if (!user || !DEFAULT_AVATAR_ROLES.includes(user.role)) return null;
+    return '../../uploads/profile-images/default-profile.jpg';
+}
+
+// What to actually show for this user's avatar: their own uploaded photo if
+// they have one, else their role's default seal if it has one, else null
+// (the caller's own initials fallback applies — student/sdo, unchanged).
+function displayAvatarUrl(user) {
+    return userAvatarUrl(user) || defaultAvatarUrl(user);
+}
+
 // Fills the sidebar header's avatar circle (#sidebarAvatar) with the user's
-// photo if they've uploaded one, otherwise their initials. Runs on every
-// page via initPage() -> setUserInfo() so the "whose account is this"
-// indicator stays in sync everywhere, not just on the profile page itself.
+// photo if they've uploaded one, their role's default seal if not, or their
+// initials as a last resort. Runs on every page via initPage() ->
+// setUserInfo() so the "whose account is this" indicator stays in sync
+// everywhere, not just on the profile page itself.
 function renderSidebarAvatar() {
     const el = document.getElementById('sidebarAvatar');
     if (!el) return;
 
     const user = getCurrentUser();
-    const photoUrl = userAvatarUrl(user);
+    const photoUrl = displayAvatarUrl(user);
 
     if (photoUrl) {
         el.innerHTML = `<img src="${photoUrl}" alt="">`;

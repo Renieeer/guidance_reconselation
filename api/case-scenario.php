@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once 'conn.php';
 require_once 'grade-scope.php';
+require_once 'school-config.php';
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
@@ -283,9 +284,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // Keep a case if any embedded student's grade falls within scope.
     if (!empty($gradeScope)) {
-        $records = array_values(array_filter($records, static function ($rec) use ($gradeScope) {
+        ensureSchoolsTable($conn);
+        // $school is the grade-scoped caller's own school (a grade-scoped
+        // account is always school-scoped too), used so an elementary "1"
+        // isn't misread via the legacy 1-6-means-7-12 secondary code — see
+        // school_is_elementary()'s own doc comment.
+        $isElementary = school_is_elementary($conn, $school);
+        $records = array_values(array_filter($records, static function ($rec) use ($gradeScope, $isElementary) {
             foreach ($rec['students'] as $student) {
-                if (grade_matches_scope($student['grade'] ?? null, $gradeScope)) {
+                if (grade_matches_scope($student['grade'] ?? null, $gradeScope, $isElementary)) {
                     return true;
                 }
             }

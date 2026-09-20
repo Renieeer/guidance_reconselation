@@ -20,7 +20,7 @@
                     <p class="page-hero-text">Review all case reports from schools throughout the district and track outcomes.</p>
                 </div>
                 <div class="page-hero-actions">
-                    <button type="button" class="report-settings-btn" id="reportSettingsBtn" title="Report Settings">
+                    <button type="button" class="report-settings-btn" id="reportSettingsBtn" aria-label="Report Settings" data-tooltip="Report Settings">
                         <i class="bi bi-gear-fill"></i>
                     </button>
                 </div>
@@ -345,8 +345,8 @@
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <!-- ExcelJS — every Excel export's real cell colors/borders/merges need

@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'conn.php';
 require_once 'grade-scope.php';
 require_once 'notify-appointment.php';
+require_once 'school-config.php';
 
 function send_json(int $statusCode, array $payload): void {
     http_response_code($statusCode);
@@ -174,6 +175,8 @@ try {
         // reworking this query.
         $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
         if (!empty($gradeScope) && !empty($rows)) {
+            ensureSchoolsTable($conn);
+            $isElementary = school_is_elementary($conn, $school);
             $studentIds = array_values(array_unique(array_map(
                 static fn($r) => (string)$r['student_id'],
                 $rows
@@ -192,9 +195,19 @@ try {
                 $gradeStmt->close();
             }
 
-            $rows = array_values(array_filter($rows, static function ($r) use ($gradeByStudent, $gradeScope) {
+            $rows = array_values(array_filter($rows, static function ($r) use ($gradeByStudent, $gradeScope, $isElementary) {
                 $studentGrade = $gradeByStudent[(string)$r['student_id']] ?? null;
-                return grade_matches_scope($studentGrade, $gradeScope);
+                // A student whose Grade hasn't been recorded yet (e.g. an
+                // incomplete "My Information" profile) would otherwise
+                // silently vanish from every grade-scoped counselor's view —
+                // the student sees "submitted", the counselor never sees it,
+                // with no error anywhere. Fail open on an unknown grade: a
+                // request the student is actively waiting on shouldn't
+                // disappear over a data-completeness gap.
+                if ($studentGrade === null || trim((string)$studentGrade) === '') {
+                    return true;
+                }
+                return grade_matches_scope($studentGrade, $gradeScope, $isElementary);
             }));
         }
 

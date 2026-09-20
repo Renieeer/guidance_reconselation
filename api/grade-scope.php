@@ -113,13 +113,66 @@ function grade_text_variants(array $gradeNumbers): array {
     return array_values(array_unique($variants));
 }
 
-/** True if $scopeGrades is empty (no restriction) or $rawGrade normalizes into it. */
-function grade_matches_scope(?string $rawGrade, array $scopeGrades): bool {
+/** True if $schoolName's own school_level (schools.school_level) is
+ *  East/West/South — the elementary levels, same convention as
+ *  api/case-report.php's schools_are_elementary(). Used to pass the correct
+ *  $isElementary flag into normalize_grade_number()/grade_matches_scope()
+ *  wherever a single student's own school is known. Requires the `schools`
+ *  table to already exist — callers ensure that via school-config.php's
+ *  ensureSchoolsTable() first. Fails closed to false (secondary) if the
+ *  school isn't found, matching every other level lookup's default.
+ */
+function school_is_elementary(mysqli $conn, string $schoolName): bool {
+    $schoolName = trim($schoolName);
+    if ($schoolName === '') {
+        return false;
+    }
+
+    $stmt = $conn->prepare('SELECT school_level FROM schools WHERE school_name = ? LIMIT 1');
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('s', $schoolName);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $row ? in_array($row['school_level'], ['East', 'West', 'South'], true) : false;
+}
+
+/** school_is_elementary() for a student identified only by their
+ *  student_table.AccountID (student_table itself has no school column —
+ *  school_attended lives on users_tables, joined by AccountID). Returns
+ *  false (secondary) if $accountId is empty or has no matching account. */
+function student_account_school_is_elementary(mysqli $conn, $accountId): bool {
+    $accountId = (int)$accountId;
+    if ($accountId <= 0) {
+        return false;
+    }
+
+    $stmt = $conn->prepare('SELECT school_attended FROM users_tables WHERE AccountID = ? LIMIT 1');
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('i', $accountId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $row ? school_is_elementary($conn, (string)$row['school_attended']) : false;
+}
+
+/** True if $scopeGrades is empty (no restriction) or $rawGrade normalizes into it.
+ *  $isElementary must match the student's own school's level — omitting it for
+ *  an elementary student lets normalize_grade_number()'s legacy 1-6-means-7-12
+ *  code fall back in and misread e.g. a literal "Grade 1" as the old code for
+ *  "Grade 7", failing the match against every elementary scope. */
+function grade_matches_scope(?string $rawGrade, array $scopeGrades, bool $isElementary = false): bool {
     if (empty($scopeGrades)) {
         return true;
     }
 
-    $normalized = normalize_grade_number($rawGrade);
+    $normalized = normalize_grade_number($rawGrade, $isElementary);
     if ($normalized === null) {
         return false;
     }

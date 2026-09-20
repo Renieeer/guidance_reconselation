@@ -284,17 +284,18 @@ async function applyFilters() {
         end: document.getElementById('filterEnd').value,
         category: document.getElementById('filterCategory').value,
         grade: document.getElementById('filterGrade').value,
-        gender: document.getElementById('filterGender').value,
         status: document.getElementById('filterStatus').value,
-        search: document.getElementById('filterSearch').value.trim()
+        // No filterSearch box on this page's markup — optional-chained so
+        // this stays plain URLSearchParams input either way.
+        search: (document.getElementById('filterSearch')?.value || '').trim()
     });
 
     const resultsView = document.getElementById('filterResultsView');
-    const summary = document.getElementById('filterResultsSummary');
+    const titleEl = document.getElementById('filterResultsTitle');
 
     document.getElementById('reportTableView').style.display = 'none';
     resultsView.style.display = 'block';
-    summary.textContent = 'Searching...';
+    titleEl.textContent = 'Searching...';
     document.getElementById('filterResultsEmpty').style.display = 'none';
     document.getElementById('filterResultsTableContainer').style.display = 'none';
     document.getElementById('filterResultsTableBody').innerHTML = '';
@@ -308,27 +309,72 @@ async function applyFilters() {
         renderFilterResults();
     } catch (error) {
         console.error('Error loading filtered cases:', error);
-        summary.textContent = 'Could not load cases.';
+        titleEl.textContent = filterResultsReportTitle();
+        const emptyMsg = document.getElementById('filterResultsEmpty');
+        emptyMsg.textContent = 'Could not load cases.';
+        emptyMsg.style.display = '';
     }
 }
 
-function filterResultDateLabel(row) {
-    return row.caseDate
-        ? new Date(`${row.caseDate}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-        : 'No date on file';
+// Groups the server-filtered case rows (filteredCases — already matches
+// every selected Period/Category/Grade/Gender/Status filter server-side,
+// one row per real logged case) by Category + Grade into one summary row
+// each, counting Male/Female straight from that same one-row-per-case
+// source so a case is never counted twice.
+function buildGroupedSummary() {
+    const groups = new Map();
+
+    filteredCases.forEach(row => {
+        const category = row.categoryName || 'Uncategorized';
+        const gradeLabel = row.grade ? `Grade ${row.grade}` : 'N/A';
+        const key = `${category}|||${gradeLabel}`;
+
+        if (!groups.has(key)) {
+            groups.set(key, { category, grade: gradeLabel, male: 0, female: 0 });
+        }
+        const g = groups.get(key);
+        if (row.gender === 'Male') g.male++;
+        else if (row.gender === 'Female') g.female++;
+    });
+
+    const rows = Array.from(groups.values())
+        .map(g => ({ ...g, total: g.male + g.female }))
+        .sort((a, b) => a.category.localeCompare(b.category) || a.grade.localeCompare(b.grade));
+
+    const grandTotal = rows.reduce((acc, r) => {
+        acc.male += r.male;
+        acc.female += r.female;
+        acc.total += r.total;
+        return acc;
+    }, { male: 0, female: 0, total: 0 });
+
+    return { rows, grandTotal };
+}
+
+// "Learners Personal-Social Concern – <Category> – <School>" — the currently
+// selected filter category's display name (or "All Categories" when none is
+// picked) plus the account's own school, so the title always matches what's
+// actually shown/exported below.
+function filterResultsReportTitle() {
+    const categorySelect = document.getElementById('filterCategory');
+    const categoryLabel = categorySelect.value === ''
+        ? 'All Categories'
+        : (categorySelect.selectedOptions[0]?.textContent || 'All Categories');
+    return `Learners Personal-Social Concern – ${categoryLabel} – ${currentSchool || 'School'}`;
 }
 
 function renderFilterResults() {
-    const summary = document.getElementById('filterResultsSummary');
+    const titleEl = document.getElementById('filterResultsTitle');
     const emptyMsg = document.getElementById('filterResultsEmpty');
     const tableContainer = document.getElementById('filterResultsTableContainer');
     const tbody = document.getElementById('filterResultsTableBody');
 
-    summary.textContent = filteredCases.length === 0
-        ? 'No cases match these filters.'
-        : `${filteredCases.length} case${filteredCases.length === 1 ? '' : 's'} found`;
+    titleEl.textContent = filterResultsReportTitle();
 
-    if (filteredCases.length === 0) {
+    const { rows, grandTotal } = buildGroupedSummary();
+
+    if (rows.length === 0) {
+        emptyMsg.textContent = 'No records found';
         emptyMsg.style.display = '';
         tableContainer.style.display = 'none';
         tbody.innerHTML = '';
@@ -338,47 +384,43 @@ function renderFilterResults() {
     emptyMsg.style.display = 'none';
     tableContainer.style.display = '';
 
-    tbody.innerHTML = filteredCases.map((row, index) => `
-        <tr class="row-clickable" data-index="${index}">
-            <td><strong>${esc(row.studentName)}</strong></td>
-            <td>${esc(row.categoryName)}</td>
-            <td class="text-center">${esc(row.grade ? `Grade ${row.grade}` : 'N/A')}</td>
-            <td class="text-center">${esc(row.gender || 'N/A')}</td>
-            <td class="text-center">${badgeForCaseStatus(row.status)}</td>
-            <td>${esc(filterResultDateLabel(row))}</td>
-            <td>${esc(row.counselorName || 'Unknown counselor')}</td>
+    tbody.innerHTML = rows.map(r => `
+        <tr>
+            <td>${esc(r.category)}</td>
+            <td class="text-center">${esc(r.grade)}</td>
+            <td class="text-center">${r.male}</td>
+            <td class="text-center">${r.female}</td>
+            <td class="text-center">${r.total}</td>
         </tr>
-    `).join('');
-
-    tbody.querySelectorAll('tr').forEach(tr => {
-        tr.addEventListener('click', () => showFilteredCaseDetails(parseInt(tr.getAttribute('data-index'), 10)));
-    });
+    `).join('') + `
+        <tr style="font-weight: 700; background: #f1f5f9;">
+            <td colspan="2">TOTAL</td>
+            <td class="text-center">${grandTotal.male}</td>
+            <td class="text-center">${grandTotal.female}</td>
+            <td class="text-center">${grandTotal.total}</td>
+        </tr>
+    `;
 }
 
 function isFilterResultsActive() {
     return document.getElementById('filterResultsView').style.display !== 'none';
 }
 
-// Flat Student/Category/Grade/Gender/Status/Date/Counselor table built from
-// whatever the current filters returned — unlike buildExportTable() above,
-// this has no grade pivot or section subtotals, just one row per real
-// logged case (same list already on screen in filterResultsTableBody).
+// Category/Grade/Male/Female/Total Cases summary rows built from the same
+// grouped data rendered on screen (buildGroupedSummary()) — one row per
+// Category+Grade combination actually present in the current filter
+// results, plus a trailing TOTAL row, so the export always matches what's
+// on the page exactly.
 function buildFilteredCasesExportRows() {
-    const header = ['Student', 'Category', 'Grade', 'Gender', 'Status', 'Date', 'Counselor'];
-    const body = filteredCases.map(row => [
-        row.studentName || 'Unknown student',
-        row.categoryName || 'Uncategorized',
-        row.grade ? `Grade ${row.grade}` : 'N/A',
-        row.gender || 'N/A',
-        row.status || 'pending',
-        filterResultDateLabel(row),
-        row.counselorName || 'Unknown counselor'
-    ]);
+    const header = ['Category', 'Grade', 'Male', 'Female', 'Total Cases'];
+    const { rows, grandTotal } = buildGroupedSummary();
+    const body = rows.map(r => [r.category, r.grade, r.male, r.female, r.total]);
+    body.push(['TOTAL', '', grandTotal.male, grandTotal.female, grandTotal.total]);
     return { header, body };
 }
 
 function filteredCasesExportTitle() {
-    return `Filtered Case Report - ${currentSchool || 'School'}`;
+    return filterResultsReportTitle();
 }
 
 // Real cell colors/borders on the downloaded .xlsx need actual
@@ -397,7 +439,7 @@ function buildFilteredCasesWorkbook(header, body, title) {
 
     sheet.mergeCells(2, 1, 2, totalCols);
     const periodCell = sheet.getCell(2, 1);
-    periodCell.value = `Generated: ${new Date().toLocaleDateString()}  |  ${body.length} case${body.length === 1 ? '' : 's'} found`;
+    periodCell.value = `Generated: ${new Date().toLocaleDateString()}`;
     periodCell.font = { size: 10, color: { argb: 'FF666666' } };
     periodCell.alignment = { horizontal: 'center' };
 
@@ -411,23 +453,27 @@ function buildFilteredCasesWorkbook(header, body, title) {
         cell.border = THIN_BORDER;
     });
 
+    const lastRowIndex = body.length - 1;
     body.forEach((row, i) => {
         const rowIndex = headRow + 1 + i;
+        const isTotalRow = i === lastRowIndex;
         row.forEach((value, c) => {
             const cell = sheet.getCell(rowIndex, c + 1);
             cell.value = value;
             cell.border = THIN_BORDER;
-            cell.alignment = { vertical: 'middle', horizontal: c === 0 || c === 1 || c === 6 ? 'left' : 'center', wrapText: true };
+            cell.alignment = { vertical: 'middle', horizontal: header[c] === 'Category' ? 'left' : 'center', wrapText: true };
+            if (isTotalRow) {
+                cell.font = { bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+            }
         });
+        if (isTotalRow) sheet.mergeCells(rowIndex, 1, rowIndex, 2);
     });
 
-    sheet.getColumn(1).width = 26;
-    sheet.getColumn(2).width = 28;
-    sheet.getColumn(3).width = 10;
-    sheet.getColumn(4).width = 10;
-    sheet.getColumn(5).width = 14;
-    sheet.getColumn(6).width = 14;
-    sheet.getColumn(7).width = 22;
+    const COLUMN_WIDTHS = { Category: 40, Grade: 14, Male: 10, Female: 10, 'Total Cases': 14 };
+    header.forEach((label, i) => {
+        sheet.getColumn(i + 1).width = COLUMN_WIDTHS[label] || 14;
+    });
 
     return workbook;
 }
@@ -467,6 +513,7 @@ function exportFilteredCasesToPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
     const { header, body } = buildFilteredCasesExportRows();
+    const totalRowIndex = body.length - 1;
 
     const contentTop = reportLetterheadContentTop(doc);
     doc.setFontSize(14);
@@ -474,7 +521,7 @@ function exportFilteredCasesToPDF() {
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(
-        `Generated: ${new Date().toLocaleDateString()}  |  ${body.length} case${body.length === 1 ? '' : 's'} found`,
+        `Generated: ${new Date().toLocaleDateString()}`,
         doc.internal.pageSize.getWidth() / 2, contentTop + 6, { align: 'center' }
     );
 
@@ -487,42 +534,18 @@ function exportFilteredCasesToPDF() {
         theme: 'grid',
         headStyles: { fillColor: [29, 90, 168], textColor: 255, fontStyle: 'bold', halign: 'center' },
         styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
-        columnStyles: { 0: { cellWidth: 45 }, 1: { cellWidth: 55 }, 6: { cellWidth: 40 } }
+        // Category is always column 0 (Grade/Male/Female/Total Cases don't need extra room).
+        columnStyles: { 0: { cellWidth: 120, halign: 'left' } },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.row.index === totalRowIndex) {
+                data.cell.styles.fillColor = [241, 245, 249];
+                data.cell.styles.fontStyle = 'bold';
+            }
+        }
     });
 
     stampReportLetterhead(doc);
     showPdfPreview(doc, `filtered-${exportFileBaseName()}.pdf`);
-}
-
-function badgeForCaseStatus(status) {
-    const normalized = String(status || '').toLowerCase();
-    const mapped = ['completed', 'resolved', 'done', 'closed'].includes(normalized) ? 'completed'
-        : ['rejected', 'cancelled', 'canceled'].includes(normalized) ? 'rejected'
-        : ['in-progress', 'in progress', 'ongoing'].includes(normalized) ? 'in-progress'
-        : 'pending';
-    return createBadge(mapped);
-}
-
-function showFilteredCaseDetails(index) {
-    const row = filteredCases[index];
-    if (!row) return;
-
-    document.getElementById('caseId').value = row.caseUid || `CASE-${row.id}`;
-    document.getElementById('caseCategory').value = row.categoryName || 'Uncategorized';
-    document.getElementById('caseGrade').value = `${row.grade ? `Grade ${row.grade}` : 'N/A'} • ${row.gender || 'N/A'}`;
-    document.getElementById('caseStatus').value = row.status || 'pending';
-    document.getElementById('caseDate').value = row.caseDate
-        ? new Date(`${row.caseDate}T00:00:00`).toLocaleDateString()
-        : 'N/A';
-    document.getElementById('caseNotes').value = [
-        `Student: ${row.studentName || 'Unknown'}`,
-        `Counselor: ${row.counselorName || 'Unknown'}`,
-        row.caseTitle ? `Title: ${row.caseTitle}` : '',
-        '',
-        row.summary || 'No additional notes on file.'
-    ].filter(Boolean).join('\n');
-
-    openModal('caseModal');
 }
 
 function clearFilters() {
@@ -531,9 +554,9 @@ function clearFilters() {
     document.getElementById('filterEnd').value = '';
     document.getElementById('filterCategory').value = '';
     document.getElementById('filterGrade').value = '';
-    document.getElementById('filterGender').value = '';
     document.getElementById('filterStatus').value = '';
-    document.getElementById('filterSearch').value = '';
+    const filterSearchEl = document.getElementById('filterSearch');
+    if (filterSearchEl) filterSearchEl.value = '';
     updateCustomRangeVisibility();
 
     document.getElementById('filterResultsView').style.display = 'none';
@@ -576,7 +599,9 @@ function setupEventListeners() {
     document.getElementById('filterPeriod').addEventListener('change', updateCustomRangeVisibility);
     document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
     document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
-    document.getElementById('filterSearch').addEventListener('keydown', (e) => {
+    // No filterSearch box on this page's markup — the coordinator report
+    // has no free-text search, unlike the counselor/other-school pages.
+    document.getElementById('filterSearch')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             applyFilters();

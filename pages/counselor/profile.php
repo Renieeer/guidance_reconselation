@@ -80,8 +80,8 @@
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
-    <script src="../../js/profile.js"></script>
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
+    <script src="../../js/profile.js?v=<?php echo filemtime(__DIR__ . '/../../js/profile.js'); ?>"></script>
 </body>
 </html>

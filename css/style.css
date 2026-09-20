@@ -7347,6 +7347,7 @@ footer {
 }
 
 .report-settings-btn {
+    position: relative; /* anchors the ::before/::after tooltip above */
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -7363,7 +7364,70 @@ footer {
 
 .report-settings-btn:hover {
     background: rgba(37, 99, 235, 0.2);
+}
+
+/* The spin-on-hover lives on the icon glyph, not the button box itself —
+   the button is what the tooltip below is anchored/positioned to, and a
+   rotating anchor rotates its ::before/::after right along with it (the
+   tooltip text rendered on a diagonal, following the icon's spin). */
+.report-settings-btn i {
+    display: inline-flex;
+    transition: transform 0.2s ease;
+}
+
+.report-settings-btn:hover i {
     transform: rotate(20deg);
+}
+
+/* A CSS-driven tooltip instead of the native title="" one — that native
+   tooltip's OS dwell timer showed inconsistently across pages/hovers. This
+   appears on its own fixed transition instead, so it's reliable everywhere
+   this class is used (Coordinator, SDO, and anywhere else with this same
+   button). Sits above the button, centered, with a small pointer arrow. */
+.report-settings-btn::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 11px);
+    left: 50%;
+    background: #0f172a;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    line-height: 1.3;
+    white-space: nowrap;
+    padding: 7px 12px;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.24);
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 20;
+}
+
+.report-settings-btn::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    width: 0;
+    height: 0;
+    border: 5px solid transparent;
+    border-top-color: #0f172a;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 20;
+}
+
+.report-settings-btn:hover::after,
+.report-settings-btn:focus-visible::after,
+.report-settings-btn:hover::before,
+.report-settings-btn:focus-visible::before {
+    opacity: 1;
+    transform: translate(-50%, 0);
 }
 
 @keyframes caseFormSlideIn {

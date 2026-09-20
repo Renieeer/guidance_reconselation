@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once 'conn.php';
 require_once 'grade-scope.php';
 require_once 'account-status.php';
+require_once 'school-config.php';
 
 ensure_users_table_active_column($conn);
 
@@ -75,8 +76,12 @@ if (!$student) {
 // Defense-in-depth: keep a grade-scoped counselor/coordinator from pulling
 // a student outside their assigned grade(s) even via a guessed/typed URL.
 $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
-if (!empty($gradeScope) && !grade_matches_scope($student['Grade'] ?? null, $gradeScope)) {
-    send_json(403, ['success' => false, 'message' => 'This student is outside your assigned grade scope']);
+if (!empty($gradeScope)) {
+    ensureSchoolsTable($conn);
+    $isElementary = student_account_school_is_elementary($conn, $student['AccountID'] ?? null);
+    if (!grade_matches_scope($student['Grade'] ?? null, $gradeScope, $isElementary)) {
+        send_json(403, ['success' => false, 'message' => 'This student is outside your assigned grade scope']);
+    }
 }
 
 // ---------------------------------------------------------------------

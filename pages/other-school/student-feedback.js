@@ -1,7 +1,14 @@
-// Counselor Student Feedback — Messenger-style view of student feedback:
-// a conversation list on the left, the active thread on the right.
-// Backed by api/feedback.php (?action=staff_list) and
-// api/feedback-replies.php (thread fetch + reply post).
+// Combined Student Feedback — two tabs:
+//  - Messages (Counselor feature): messenger-style reply UI, a conversation
+//    list on the left, the active thread on the right. Backed by
+//    api/feedback.php (?action=staff_list) and api/feedback-replies.php
+//    (thread fetch + reply post).
+//  - Ratings & Reviews (Coordinator feature): read-only view of every
+//    counselor's star ratings and student comments at this school, backed
+//    by api/student-ratings.php?school=... (see the "Ratings & Reviews"
+//    section below), plus the counselor-inbox's own unread/read tracking
+//    (a rating's is_read flag isn't per-viewer, so this account marking one
+//    read here also clears it for whichever counselor it was actually for).
 
 const FEEDBACK_TYPE_LABELS = {
     counseling_case: 'Counseling Session',
@@ -16,7 +23,22 @@ document.addEventListener('DOMContentLoaded', function() {
     initPage();
     loadFeedbackList();
     setupEventListeners();
+    initRatingsTab();
+    setupFeedbackSectionTabs();
 });
+
+// Messages / Ratings & Reviews tab switcher.
+function setupFeedbackSectionTabs() {
+    document.querySelectorAll('#feedbackSectionTabs .tab-button').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('#feedbackSectionTabs .tab-button').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const section = tab.dataset.section;
+            document.getElementById('messagesSection').style.display = section === 'messages' ? '' : 'none';
+            document.getElementById('ratingsSection').style.display = section === 'ratings' ? '' : 'none';
+        });
+    });
+}
 
 function setupEventListeners() {
     document.getElementById('statusFilter').addEventListener('change', renderConversationList);
@@ -208,4 +230,150 @@ function escapeHtml(value) {
     const div = document.createElement('div');
     div.textContent = value ?? '';
     return div.innerHTML;
+}
+
+/* ── Ratings & Reviews (Coordinator feature, + Counselor's unread tracking) ── */
+
+const STUDENT_RATINGS_API = '../../api/student-ratings.php';
+let allRatings = [];
+
+function initRatingsTab() {
+    document.getElementById('ratingCounselorFilter').addEventListener('change', () => renderRatingsList(applyRatingFilters(allRatings)));
+    document.getElementById('ratingStarFilter').addEventListener('change', () => renderRatingsList(applyRatingFilters(allRatings)));
+    document.getElementById('ratingSearchInput').addEventListener('input', () => renderRatingsList(applyRatingFilters(allRatings)));
+    renderRatings();
+}
+
+// school=... (not counselor_id=...) — the combined account sees every
+// counselor's ratings at this school, same as a standalone Coordinator.
+async function renderRatings() {
+    const user = getCurrentUser();
+    const school = user?.school_attended || user?.school || '';
+
+    try {
+        const response = await fetch(`${STUDENT_RATINGS_API}?school=${encodeURIComponent(school)}`);
+        const data = await response.json();
+        allRatings = data.success ? data.data : [];
+    } catch (error) {
+        showAlert('Could not load student ratings: ' + error.message, 'error');
+        allRatings = [];
+    }
+
+    renderRatingStats(allRatings);
+    populateCounselorFilter(allRatings);
+    renderRatingsList(applyRatingFilters(allRatings));
+}
+
+// Built from whatever counselors actually appear in the data, so a
+// coordinator overseeing several counselors can narrow the list to just
+// one — hidden entirely when there's only one (or none), since there'd be
+// nothing to narrow down. Only run once per full data load (not on every
+// filter change), so picking a counselor doesn't get wiped out by its own
+// change event re-populating the list out from under the selection.
+function populateCounselorFilter(ratings) {
+    const select = document.getElementById('ratingCounselorFilter');
+    const previousValue = select.value;
+
+    const counselors = [...new Set(ratings.map(r => r.counselorName).filter(Boolean))].sort();
+
+    select.innerHTML = '<option value="">All Counselors</option>' +
+        counselors.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+
+    select.style.display = counselors.length > 1 ? '' : 'none';
+    select.value = counselors.includes(previousValue) ? previousValue : '';
+}
+
+function applyRatingFilters(ratings) {
+    const counselorFilter = document.getElementById('ratingCounselorFilter').value;
+    const starFilter = document.getElementById('ratingStarFilter').value;
+    const search = document.getElementById('ratingSearchInput').value.trim().toLowerCase();
+
+    return ratings.filter(r => {
+        if (counselorFilter && (r.counselorName || '') !== counselorFilter) return false;
+        if (starFilter && String(r.rating) !== starFilter) return false;
+        if (search && !String(r.comment || '').toLowerCase().includes(search)) return false;
+        return true;
+    });
+}
+
+function renderRatingStats(ratings) {
+    const avgStat = document.getElementById('ratingAvgStat');
+    const avgMeta = document.getElementById('ratingAvgMeta');
+    const countStat = document.getElementById('ratingCountStat');
+
+    countStat.textContent = ratings.length;
+
+    if (ratings.length === 0) {
+        avgStat.innerHTML = '0.0 <i class="bi bi-star-fill"></i>';
+        avgMeta.textContent = 'No ratings yet';
+        return;
+    }
+
+    const average = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+    avgStat.innerHTML = `${average.toFixed(1)} <i class="bi bi-star-fill"></i>`;
+    avgMeta.textContent = `Based on ${ratings.length} rating${ratings.length === 1 ? '' : 's'}`;
+}
+
+// Cards for an unread rating (Counselor's own inbox behavior) are
+// highlighted and clickable-to-mark-read, same as pages/counselor/
+// student-feedback.js — is_read isn't per-viewer, so marking one read here
+// also clears it for whichever counselor the rating was actually for.
+function renderRatingsList(ratings) {
+    const container = document.getElementById('ratingsList');
+
+    if (ratings.length === 0) {
+        container.innerHTML = '<div class="review-list-empty">No ratings match your filters.</div>';
+        return;
+    }
+
+    const sorted = [...ratings].sort((a, b) => new Date(b.dateSent) - new Date(a.dateSent));
+    container.innerHTML = sorted.map(r => `
+        <div class="review-card ${r.read ? '' : 'is-unread'}" onclick="markRatingRead('${r.id}')">
+            <div class="review-card-top">
+                <div class="star-display">${starsHtml(r.rating)}</div>
+                <span class="review-date">${formatDate(r.dateSent)}</span>
+            </div>
+            ${r.counselorName ? `<div class="review-counselor">${escapeHtml(r.counselorName)}</div>` : ''}
+            ${r.subjectLabel ? `<div class="review-subject">${escapeHtml(r.subjectLabel)}</div>` : ''}
+            <p class="review-comment">${escapeHtml(r.comment)}</p>
+            <div class="review-card-footer">
+                ${r.anonymous
+                    ? '<span class="badge badge-empty">Anonymous</span>'
+                    : `<span class="review-student-name">${escapeHtml(r.studentName || 'Unknown Student')}</span>`}
+                ${r.read ? '' : '<span class="badge badge-in-progress">New</span>'}
+            </div>
+        </div>
+    `).join('');
+}
+
+async function markRatingRead(id) {
+    const target = allRatings.find(r => r.id === id);
+    if (!target || target.read) return;
+
+    target.read = true;
+    renderRatingsList(applyRatingFilters(allRatings));
+
+    try {
+        const response = await fetch(STUDENT_RATINGS_API, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to mark rating as read');
+        }
+    } catch (error) {
+        target.read = false;
+        renderRatingsList(applyRatingFilters(allRatings));
+        showAlert('Could not mark rating as read: ' + error.message, 'error');
+    }
+}
+
+function starsHtml(rating) {
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        html += `<i class="bi ${i <= rating ? 'bi-star-fill' : 'bi-star'}"></i>`;
+    }
+    return html;
 }

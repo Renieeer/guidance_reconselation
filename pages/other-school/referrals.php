@@ -586,10 +586,30 @@
 
                     <!-- Filter -->
                     <div class="card" style="margin-bottom: 20px;">
-                        <div style="display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 15px; align-items: end;">
+                        <div style="display: grid; grid-template-columns: 1fr auto auto auto auto auto; gap: 15px; align-items: end;">
                             <div>
                                 <label style="display: block; margin-bottom: 5px; font-weight: 500;">Search</label>
                                 <input type="text" id="searchBox" placeholder="Search student name or referral ID..." style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                            </div>
+                            <!-- Status/Urgency filters (Coordinator feature) -->
+                            <div>
+                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Status</label>
+                                <select id="statusFilter" style="padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                                    <option value="">All</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="in-progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Urgency</label>
+                                <select id="urgencyFilter" style="padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                                    <option value="">All</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="high">High</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
                             </div>
                             <div>
                                 <label style="display: block; margin-bottom: 5px; font-weight: 500;">Stage</label>
@@ -633,8 +653,42 @@
         </div>
     </div>
 
-    <script src="../../js/auth.js"></script>
-    <script src="../../js/utils.js"></script>
+    <!-- Update Stage Modal (Coordinator feature) — a manual override that
+         jumps straight to any of the 7 stages, independent of the guided
+         per-stage forms above (e.g. to correct a mistake). -->
+    <div id="updateStageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update Referral Stage</h2>
+                <button class="modal-close" onclick="closeModal('updateStageModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newStage">Select New Stage</label>
+                    <select id="newStage">
+                        <option value="1">Stage 1: Interview/Background</option>
+                        <option value="2">Stage 2: Initial Risk Assessment</option>
+                        <option value="3">Stage 3: Parent Call-up/Consent</option>
+                        <option value="4">Stage 4: Intervention</option>
+                        <option value="5">Stage 5: Counseling</option>
+                        <option value="6">Stage 6: Student Follow-up</option>
+                        <option value="7">Stage 7: Case Closing</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stageNotes">Notes</label>
+                    <textarea id="stageNotes" placeholder="Add notes about this stage update..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveStageUpdate()">Update Stage</button>
+                <button class="btn btn-secondary" onclick="closeModal('updateStageModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
+    <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
     <script src="referrals.js?v=<?php echo filemtime(__DIR__ . '/referrals.js'); ?>"></script>
 </body>
 </html>
