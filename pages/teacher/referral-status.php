@@ -98,6 +98,6 @@
 
     <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
     <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
-    <script src="referral-status.js"></script>
+    <script src="referral-status.js?v=<?php echo filemtime(__DIR__ . '/referral-status.js'); ?>"></script>
 </body>
 </html>

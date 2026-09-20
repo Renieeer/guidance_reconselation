@@ -1108,7 +1108,7 @@ function submitAcknowledgement(e) {
     });
 }
 
-// Same read-only "referral-sheet" layout the teacher sees on their own
+// Same read-only "ack-sheet" layout the teacher sees on their own
 // referral-status page for this exact saved acknowledgement (see
 // renderAcknowledgementReadOnly() in teacher/referral-status.js) — rendered
 // here too so the counselor who filled it out can get a printed/PDF copy
@@ -1136,54 +1136,60 @@ function renderAcknowledgementPrintSheet(referral, ack) {
     const sheet = document.getElementById('acknowledgementPrintSheet');
     const studentName = escapeHtml(referral.student_name);
     const checklist = ack.checklist || {};
-    const savedDate = formatDate(ack.updated_at || ack.created_at);
 
     sheet.innerHTML = `
-        <div class="referral-sheet">
-            <div class="referral-sheet-title">Counseling Referral Acknowledgement Form</div>
-            <div class="referral-sheet-intro">Completed by the counselor</div>
+        <div class="ack-sheet">
+            <div class="ack-sheet-header">Counseling Referral Acknowledgement Form</div>
 
-            <div class="referral-table-row">
-                <div class="referral-label">To</div>
-                <div class="referral-field">${studentName}</div>
+            <div class="ack-row">
+                <span class="ack-row-label">To:</span>
+                <span class="ack-row-value">${studentName}</span>
+                <span class="ack-row-caption">(Referring Person / Unit)</span>
             </div>
-            <div class="referral-table-row">
-                <div class="referral-label">Referring Person / Unit</div>
-                <div class="referral-field">${escapeHtml(referral.teacher_name || 'Teacher')}</div>
-            </div>
-            <div class="referral-table-row">
-                <div class="referral-label">Designation / Department</div>
-                <div class="referral-field">Teaching Staff</div>
+            <div class="ack-row">
+                <span class="ack-row-label">Designation/Department:</span>
+                <span class="ack-row-value">&nbsp;</span>
             </div>
 
-            <div class="referral-sheet-section">
-                This is to confirm that <strong>${studentName}</strong>, whom you referred to us on
-                <strong>${escapeHtml(formatDate(referral.date_submitted))}</strong>, has started his/her session
-                and is being attended by <strong>${escapeHtml(ack.attended_by) || '—'}</strong>
+            <div class="ack-paragraph">
+                This is to confirm that <span class="ack-blank">${studentName}</span> whom
+                you referred to us on <span class="ack-blank">${escapeHtml(formatDate(referral.date_submitted))}</span>
+                had started his/her session on <span class="ack-blank">&nbsp;</span>
+                and is being attended by <span class="ack-blank">${escapeHtml(ack.attended_by) || '&nbsp;'}</span>.
             </div>
 
-            <div class="referral-sheet-section">
-                <div class="referral-checklist-heading">Status of the case at hand</div>
-                <div class="referral-checklist">
-                    ${ACKNOWLEDGEMENT_CHECKLIST_ITEMS.map(item => `
-                        <label class="referral-checklist-item">
-                            <input type="checkbox" disabled ${checklist[item.key] ? 'checked' : ''}>
-                            <span>${escapeHtml(item.label)}</span>
-                        </label>
-                    `).join('')}
-                </div>
+            <div class="ack-checklist-heading">Kindly refer to the checklist below on the status of the case at hand.</div>
+            <div class="ack-checklist">
+                ${ACKNOWLEDGEMENT_CHECKLIST_ITEMS.map(item => `
+                    <label class="ack-checklist-item">
+                        <input type="checkbox" disabled ${checklist[item.key] ? 'checked' : ''}>
+                        <span>${escapeHtml(item.label)}</span>
+                    </label>
+                `).join('')}
+                <label class="ack-checklist-item">
+                    <input type="checkbox" disabled>
+                    <span>Number of follow-ups made by the Counselor: <span class="ack-checklist-blank"></span></span>
+                </label>
+                <label class="ack-checklist-item">
+                    <input type="checkbox" disabled>
+                    <span>Referred to <span class="ack-checklist-blank"></span></span>
+                </label>
             </div>
 
-            <div class="referral-sheet-thanks">
+            <div class="ack-thanks">
                 <p>Thank you.</p>
                 <p>Always for the welfare of students,</p>
             </div>
 
-            <div class="referral-sheet-signature">
-                <p class="referral-signature-title">Attending Guidance Counselor</p>
-                <div class="referral-signature-line"></div>
-                <p class="referral-signature-date">${escapeHtml(ack.counselor_name) || ''}</p>
-                <p class="referral-signature-date">Date: <strong>${savedDate}</strong></p>
+            <div class="ack-signature">
+                <div class="ack-signature-line"></div>
+                <p class="ack-signature-name">${escapeHtml(ack.counselor_name) || ''}</p>
+                <p class="ack-signature-title">Attending Guidance Counselor</p>
+            </div>
+
+            <div class="ack-date-row">
+                <span>Date:</span>
+                <span class="ack-blank">&nbsp;</span>
             </div>
         </div>
     `;

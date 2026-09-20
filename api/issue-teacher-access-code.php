@@ -9,10 +9,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once 'conn.php';
 require_once 'teacher-access-config.php';
 
@@ -26,30 +22,34 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     send_json(405, ['success' => false, 'message' => 'Method not allowed']);
 }
 
+$input = file_get_contents('php://input');
+$data = json_decode($input, true);
+
 // Only a school's own coordinator (or the combined counselor-and-coordinator
-// role) may issue teacher access codes for that school — derived from the
-// server-side session, never from client input, so this can't be spoofed by
-// passing a different "school" in the request body.
-$user = $_SESSION['user'] ?? null;
+// role) may issue teacher access codes for that school. This app doesn't
+// keep a server-side PHP session for the logged-in user (see js/auth.js —
+// the account lives in sessionStorage/localStorage instead, same as every
+// other role/school-scoped endpoint such as api/manage-accounts.php), so
+// the caller's role/school/id are trusted from the request body rather than
+// $_SESSION, which would just always be empty here.
 $allowedRoles = ['coordinator', 'counselor-and-coordinator'];
-if (!$user || !in_array($user['role'] ?? '', $allowedRoles, true)) {
+$role = trim((string)($data['role'] ?? ''));
+if (!in_array($role, $allowedRoles, true)) {
     send_json(403, ['success' => false, 'message' => 'Only a coordinator can issue teacher access codes.']);
 }
 
-$school = trim((string)($user['school'] ?? ''));
+$school = trim((string)($data['school'] ?? ''));
 if ($school === '') {
     send_json(400, ['success' => false, 'message' => 'Your account has no school on file.']);
 }
 
-$input = file_get_contents('php://input');
-$data = json_decode($input, true);
 $email = isset($data['email']) ? trim((string)$data['email']) : '';
 
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     send_json(400, ['success' => false, 'message' => 'Enter a valid email address.']);
 }
 
-$issuedBy = isset($user['id']) ? (int)$user['id'] : null;
+$issuedBy = isset($data['issuerId']) ? (int)$data['issuerId'] : null;
 $result = issue_teacher_access_code($conn, $email, $school, $issuedBy);
 
 send_json($result['success'] ? 200 : 429, $result);

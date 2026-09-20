@@ -10,7 +10,7 @@
         <a href="profile.php" class="sidebar-avatar-link" title="My Profile" data-profile-popup-trigger>
             <span class="sidebar-avatar" id="sidebarAvatar">O</span>
         </a>
-        <h2>Other School</h2>
+        <h2>Guidance Office</h2>
         <p>Guidance System</p>
     </div>
     <ul class="sidebar-menu">

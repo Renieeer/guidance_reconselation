@@ -132,10 +132,16 @@ async function issueTeacherAccessCode(e) {
     submitBtn.textContent = 'Generating...';
 
     try {
+        const currentUser = getCurrentUser() || {};
         const response = await fetch('../../api/issue-teacher-access-code.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
+            body: JSON.stringify({
+                email,
+                role: currentUser.role || currentUser.user_type || '',
+                school: getCurrentSchool(),
+                issuerId: currentUser.id || null
+            })
         });
         const data = await response.json();
 

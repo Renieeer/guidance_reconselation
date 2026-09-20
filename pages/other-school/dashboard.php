@@ -93,6 +93,10 @@
                         </div>
                     </div>
 
+                </div>
+
+                <!-- Secondary Stats Grid -->
+                <div class="dashboard-grid dashboard-grid-3">
                     <div class="card">
                         <div class="card-header">
                             <div>

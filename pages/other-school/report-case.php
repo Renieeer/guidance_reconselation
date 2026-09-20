@@ -101,7 +101,7 @@
                      filters, exportable to PDF/Excel the same way as the
                      Category of Cases pivot below. -->
                 <div id="filterResultsView" style="display: none;">
-                    <h3 id="filterResultsTitle" class="report-title" style="margin: 0 0 16px; font-size: 1.15rem; font-weight: 700; color: #0f172a;"></h3>
+                    <h3 id="filterResultsTitle" class="report-title" style="display: none; margin: 0 0 16px; font-size: 1.15rem; font-weight: 700; color: #0f172a;"></h3>
                     <p class="text-muted" id="filterResultsEmpty" style="display: none; background: white; border: 1px dashed var(--border-color); border-radius: 8px; padding: 30px; text-align: center;">No records found</p>
                     <div class="table-container" id="filterResultsTableContainer">
                         <table id="filterResultsTable">
