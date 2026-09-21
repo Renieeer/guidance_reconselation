@@ -20,6 +20,12 @@ function send_json(int $statusCode, array $payload): void {
     exit;
 }
 
+function table_exists(mysqli $conn, string $tableName): bool {
+    $escaped = $conn->real_escape_string($tableName);
+    $result = $conn->query("SHOW TABLES LIKE '{$escaped}'");
+    return $result && $result->num_rows > 0;
+}
+
 function is_counselor_or_coordinator(string $role): bool {
     $normalized = strtolower(trim($role));
     if ($normalized === '') {
@@ -121,33 +127,46 @@ try {
         $school = trim((string)($_GET['school'] ?? ''));
         $role = trim((string)($_GET['role'] ?? ''));
         
+        // Appointments made from a counseling case's "Appoint Students" action
+        // carry that case's case_uid — case_section pulls the Case Section
+        // chosen when that case was created (counselor_case_scenarios.section_name)
+        // so reports can group these by the actual counseling classification
+        // instead of the auto-filled "Follow-up for case CS-..." reason text.
+        // NULL for walk-ins/appointments never linked to a case.
+        $hasCaseScenarios = table_exists($conn, 'counselor_case_scenarios');
+        $caseSectionSelect = $hasCaseScenarios ? 'ccs.section_name AS case_section' : 'NULL AS case_section';
+        $caseScenariosJoin = $hasCaseScenarios ? 'LEFT JOIN counselor_case_scenarios ccs ON ccs.case_uid = ar.case_uid' : '';
+
         $sql = "SELECT
-                    request_id AS id,
-                    student_id,
-                    student_name,
-                    preferred_date,
-                    preferred_time,
-                    reason,
-                    notes,
-                    school_attended,
-                    status,
-                    counselor_id,
-                    counselor_notes,
-                    booking_type,
-                    case_uid,
-                    created_at,
-                    updated_at
-                FROM appointment_requests WHERE 1=1";
+                    ar.request_id AS id,
+                    ar.student_id,
+                    ar.student_name,
+                    ar.preferred_date,
+                    ar.preferred_time,
+                    ar.reason,
+                    ar.notes,
+                    ar.school_attended,
+                    ar.status,
+                    ar.counselor_id,
+                    ar.counselor_notes,
+                    ar.booking_type,
+                    ar.case_uid,
+                    {$caseSectionSelect},
+                    ar.created_at,
+                    ar.updated_at
+                FROM appointment_requests ar
+                {$caseScenariosJoin}
+                WHERE 1=1";
         $types = '';
         $params = [];
 
         if ($school !== '') {
-            $sql .= " AND school_attended = ?";
+            $sql .= " AND ar.school_attended = ?";
             $types .= 's';
             $params[] = $school;
         }
 
-        $sql .= " ORDER BY preferred_date ASC, preferred_time ASC";
+        $sql .= " ORDER BY ar.preferred_date ASC, ar.preferred_time ASC";
 
         $stmt = $conn->prepare($sql);
         if (!$stmt) {

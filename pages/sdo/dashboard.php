@@ -88,7 +88,15 @@
 
                 <!-- District Performance Table -->
                 <div class="table-container mt-5">
-                    <h2 class="mb-4">District Performance Summary</h2>
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom: 16px;">
+                        <h2 class="mb-0">District Performance Summary</h2>
+                        <select id="districtPageSizeFilter" class="form-control" style="max-width: 140px;" title="Rows per page">
+                            <option value="10">Show 10</option>
+                            <option value="20" selected>Show 20</option>
+                            <option value="30">Show 30</option>
+                            <option value="all">Show All</option>
+                        </select>
+                    </div>
                     <table>
                         <thead>
                             <tr>
@@ -107,6 +115,7 @@
                             </tr>
                         </tbody>
                     </table>
+                    <div id="districtPagination" class="accounts-pagination"></div>
                 </div>
             </div>
         </div>

@@ -74,85 +74,11 @@ function getReferralApiRole() {
     return REFERRAL_API_ROLE[user && user.role] || 'counselor';
 }
 
-// Excel export for the "Export Excel" button on every report — shows a
-// preview modal first (same "look before you download" flow as the
-// existing PDF export's showPdfPreview()) instead of writing the file
-// straight away.
-function writeExcelFile(filename, aoa, colWidths) {
-    if (typeof XLSX === 'undefined') { showAlert('Excel export library failed to load.', 'error'); return; }
-    const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-    if (colWidths) worksheet['!cols'] = colWidths;
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
-    XLSX.writeFile(workbook, filename);
-}
-
-function ensureExcelModal() {
-    if (document.getElementById('excelPreviewModal')) return;
-    document.body.insertAdjacentHTML('beforeend', `<div id="excelPreviewModal" class="modal">
-        <div class="modal-content" style="max-width:900px; width:95%; height:82vh; display:flex; flex-direction:column;">
-            <div class="modal-header">
-                <h2><i class="bi bi-file-earmark-excel"></i> <span id="excelPreviewTitle">Excel Preview</span></h2>
-                <button type="button" class="modal-close" id="excelPreviewCloseX">&times;</button>
-            </div>
-            <div class="modal-body" style="flex:1; overflow:auto;">
-                <div class="table-container"><table><tbody id="excelPreviewTbody"></tbody></table></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="excelPreviewCloseBtn">Close</button>
-                <button type="button" class="btn btn-success" id="excelDownloadBtn"><i class="bi bi-download"></i> Download</button>
-            </div>
-        </div>
-    </div>`);
-    $('#excelPreviewCloseX').addEventListener('click', () => closeModal('excelPreviewModal'));
-    $('#excelPreviewCloseBtn').addEventListener('click', () => closeModal('excelPreviewModal'));
-}
-
-// aoa (array-of-arrays) is the exact same shape that gets written to the
-// worksheet, so what's previewed is what's downloaded. Row 0 is the report
-// title (shown in the modal header, not as a table row); a blank row (`[]`)
-// anywhere after that marks the row right after it as a column-header row
-// (rendered as <th>), matching how every export here builds its aoa
-// (title / generated-date / blank / head / ...body).
-function showExcelPreview(filename, aoa, colWidths) {
-    ensureExcelModal();
-    $('#excelPreviewTitle').textContent = String((aoa[0] && aoa[0][0]) || 'Excel Preview');
-
-    let afterBlank = false;
-    $('#excelPreviewTbody').innerHTML = aoa.slice(1).map(row => {
-        if (row.length === 0) { afterBlank = true; return '<tr><td style="height:10px; border:none; padding:0;"></td></tr>'; }
-        const cellTag = afterBlank ? 'th' : 'td';
-        afterBlank = false;
-        return `<tr>${row.map(cell => `<${cellTag}>${esc(cell == null ? '' : cell)}</${cellTag}>`).join('')}</tr>`;
-    }).join('');
-
-    $('#excelDownloadBtn').onclick = () => writeExcelFile(filename, aoa, colWidths);
-    openModal('excelPreviewModal');
-}
-
-function buildExcelAoa(title, head, body) {
-    return [
-        [title],
-        [`Generated: ${new Date().toLocaleDateString()}`],
-        [],
-        head,
-        ...body
-    ];
-}
-
-// Convenience wrapper for the simple title+head+body shape shared by the
-// 7.1/7.2/7.3 reports. 7.5's exportChildSummaryExcel() builds its own aoa
-// (it mixes a text summary block with a table) and calls showExcelPreview()
-// directly.
-function previewExcel(filename, title, head, body) {
-    showExcelPreview(filename, buildExcelAoa(title, head, body), head.map(h => ({ wch: Math.max(12, String(h).length + 2) })));
-}
-
 function mkChart(canvas, config) { const c = new Chart(canvas.getContext('2d'), config); charts.push(c); return c; }
 const legendRight = { plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 12, font: { size: 12 } } } } };
 const noLegend = { plugins: { legend: { display: false } } };
 
-function panelHeader(key, subtitle, onExportPdf, onExportExcel) {
+function panelHeader(key, subtitle, onExportPdf) {
     const m = meta(key);
     const h = el(`<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:22px;">
         <div>
@@ -161,11 +87,9 @@ function panelHeader(key, subtitle, onExportPdf, onExportExcel) {
         </div>
         <div style="display:flex; gap:10px;">
             <button type="button" class="btn btn-primary" id="btnExportPdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
-            <button type="button" class="btn btn-success" id="btnExportExcel"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
         </div>
     </div>`);
     $('#btnExportPdf', h).addEventListener('click', onExportPdf);
-    $('#btnExportExcel', h).addEventListener('click', onExportExcel);
     return h;
 }
 // c.color picks a stat-icon-* variant (info/amber/green/red/purple/teal,
@@ -343,19 +267,17 @@ function renderAppointments(key) {
     const isOnline = key === 'online';
     const rows = appointments.filter(a => a.booking_type === key);
     const frag = document.createDocumentFragment();
-    const exportTitle = meta(key).name;
-    const exportHeader = ['Date', 'Time', 'Student', 'Reason', 'Status'];
-    const exportBody = () => rows.map(r => [r.preferred_date, r.preferred_time, r.student_name, r.reason, r.status]);
     frag.append(panelHeader(key,
         isOnline ? 'Appointments students booked themselves through the online scheduling system.' : 'Appointments scheduled directly by staff for a student (e.g. a walk-in, or "Appoint Students" on a case).',
         () => {
             const doc = newPdf();
             const st2 = countBy(rows, r => r.status);
+            const externalCount2 = new Set(referrals.filter(r => r.has_external_referral).map(r => r.student_id)).size;
             let y = pdfHeader(doc, meta(key).name,
                 isOnline ? 'Student self-booked appointments' : 'Staff-scheduled appointments');
 
             doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
-            doc.text(`Total: ${rows.length}   Pending: ${st2['pending'] || 0}   Approved: ${st2['approved'] || 0}   Rejected: ${st2['rejected'] || 0}`, 40, y);
+            doc.text(`Total: ${rows.length}   Pending: ${st2['pending'] || 0}   Approved: ${st2['approved'] || 0}   External: ${externalCount2}`, 40, y);
             y += 20;
 
             if (rows.length > 0) {
@@ -369,10 +291,43 @@ function renderAppointments(key) {
                 const imgTrend = chartImage('chTrend');
                 if (imgTrend) { doc.addImage(imgTrend, 'PNG', 40, y, pageW - 80, 140); y += 156; }
 
+                // Summary tables — the actual numbers behind the two charts
+                // above, so the report stands on its own when printed instead
+                // of only being readable on screen.
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
+                doc.text('Status Breakdown', 40, y);
+                y += 6;
+                const statusRows = Object.entries(st2)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([status, count]) => [
+                        status.charAt(0).toUpperCase() + status.slice(1),
+                        count,
+                        ((count / rows.length) * 100).toFixed(1) + '%'
+                    ]);
                 doc.autoTable({
                     startY: y,
-                    head: [['Date', 'Time', 'Student', 'Reason', 'Status']],
-                    body: rows.map(r => [r.preferred_date, r.preferred_time, r.student_name, r.reason, r.status]),
+                    head: [['Status', 'Count', '% of Total']],
+                    body: statusRows,
+                    styles: { fontSize: 9 },
+                    headStyles: { fillColor: [18, 58, 107] },
+                    margin: analyticsAutoTableMargin(doc),
+                });
+                y = doc.lastAutoTable.finalY + 20;
+
+                // Grouped by the linked counseling case's Case Section when
+                // one exists, same as the on-screen "By Reason" chart —
+                // falls back to the appointment's own reason text otherwise.
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
+                doc.text('By Reason', 40, y);
+                y += 6;
+                const reasonAgg = countBy(rows, r => r.case_section || r.reason);
+                const reasonRows = Object.entries(reasonAgg)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([reason, count]) => [reason, count, ((count / rows.length) * 100).toFixed(1) + '%']);
+                doc.autoTable({
+                    startY: y,
+                    head: [['Reason', 'Count', '% of Total']],
+                    body: reasonRows,
                     styles: { fontSize: 9 },
                     headStyles: { fillColor: [18, 58, 107] },
                     margin: analyticsAutoTableMargin(doc),
@@ -383,15 +338,20 @@ function renderAppointments(key) {
             }
 
             showPdfPreview(doc, `gms_${key}_appointments.pdf`);
-        },
-        () => previewExcel(`gms_${key}_appointments.xlsx`, exportTitle, exportHeader, exportBody())));
+        }));
 
     const st = countBy(rows, r => r.status);
+    // Schoolwide count, independent of this tab's appointment rows — how many
+    // distinct students have a completed External Referral (DepEd Appendix C)
+    // form on file (api/referral.php's has_external_referral, sourced from
+    // referral_external_referral). Replaces the old "Rejected" appointment-
+    // status card, which wasn't a very useful headline number here.
+    const externalStudentIds = new Set(referrals.filter(r => r.has_external_referral).map(r => r.student_id));
     frag.append(el(statCards([
         { num: rows.length, lbl: 'Total', icon: 'bi-calendar3', color: 'info' },
         { num: st['pending'] || 0, lbl: 'Pending', icon: 'bi-hourglass-split', color: 'amber' },
         { num: st['approved'] || 0, lbl: 'Approved', icon: 'bi-check-circle', color: 'green' },
-        { num: st['rejected'] || 0, lbl: 'Rejected', icon: 'bi-x-circle', color: 'red' },
+        { num: externalStudentIds.size, lbl: 'External', icon: 'bi-send-check', color: 'red' },
     ])));
 
     frag.append(el(`<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">
@@ -400,16 +360,20 @@ function renderAppointments(key) {
 
     if (rows.length === 0) {
         frag.append(el(emptyNote(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`, 'bi-calendar2-x')));
-    } else {
-        const tr = rows.map(r => `<tr><td>${esc(r.preferred_date)}</td><td>${esc(r.preferred_time)}</td><td>${esc(r.student_name)}</td><td>${esc(r.reason)}</td><td>${badge(r.status)}</td></tr>`).join('');
-        frag.append(el(`<div class="mb-4"><h3 class="text-primary">Appointment Log</h3><div class="table-container"><table><thead><tr><th>Date</th><th>Time</th><th>Student</th><th>Reason</th><th>Status</th></tr></thead><tbody>${tr}</tbody></table></div></div>`));
     }
 
     queueMicrotask(() => {
         const sl = Object.keys(st);
         mkChart($('#chStatus'), { type: 'doughnut', data: { labels: sl, datasets: [{ data: sl.map(k => st[k]), backgroundColor: sl.map(k => STATUS_CHART_COLOR[k] || CHART_COLORS.navy), borderColor: '#fff', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '58%', ...legendRight } });
 
-        const rb = countBy(rows, r => r.reason); const rl = Object.keys(rb);
+        // Grouped by the linked counseling case's Case Section
+        // (api/appointment-request.php's case_section, from
+        // counselor_case_scenarios.section_name) rather than the appointment's
+        // own free-text reason, which for staff-scheduled follow-ups is just
+        // an auto-filled "Follow-up for case CS-..." string — not a real
+        // reason category. Falls back to the raw reason for appointments
+        // never linked to a case (e.g. a student's own online booking).
+        const rb = countBy(rows, r => r.case_section || r.reason); const rl = Object.keys(rb);
         mkChart($('#chReason'), { type: 'bar', data: { labels: rl, datasets: [{ data: rl.map(k => rb[k]), backgroundColor: CHART_COLORS.navy, borderRadius: 5, maxBarThickness: 46 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, ...noLegend, scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#eaeef3' } }, y: { grid: { display: false } } } } });
 
         const db = countBy(rows, r => r.preferred_date); const dl = Object.keys(db).sort();
@@ -426,13 +390,6 @@ function renderReferrals() {
     const reasons = Object.entries(agg).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
     const total = referrals.length;
 
-    const referralsExportTitle = 'Referral Distribution';
-    const referralsExportHeader = ['Reason', 'Count', '% of total'];
-    const referralsExportBody = () => {
-        const body = reasons.map(r => [r.reason, r.count, total ? ((r.count / total) * 100).toFixed(1) + '%' : '0%']);
-        body.push(['TOTAL', total, '100%']);
-        return body;
-    };
     frag.append(panelHeader('referrals',
         'Every referral reason on record for your school — the full breakdown, not just the top few.',
         () => {
@@ -450,10 +407,36 @@ function renderReferrals() {
                 const imgUrgency = chartImage('chUrgency');
                 if (imgUrgency) { doc.addImage(imgUrgency, 'PNG', 40, y, (pageW - 80) / 2, 140); y += 156; }
 
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
+                doc.text('Reason Breakdown', 40, y);
+                y += 6;
                 doc.autoTable({
                     startY: y,
                     head: [['Reason', 'Count', '% of total']],
                     body: reasons.map(r => [r.reason, r.count, ((r.count / total) * 100).toFixed(1) + '%']),
+                    styles: { fontSize: 9 },
+                    headStyles: { fillColor: [18, 58, 107] },
+                    margin: analyticsAutoTableMargin(doc),
+                });
+                y = doc.lastAutoTable.finalY + 20;
+
+                // Same urgency buckets as the on-screen "By Urgency" chart —
+                // that chart had no accompanying table until now.
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
+                doc.text('Urgency Breakdown', 40, y);
+                y += 6;
+                const urgencyAgg = countBy(referrals, r => r.urgency || 'normal');
+                const urgencyRows = Object.entries(urgencyAgg)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([urgency, count]) => [
+                        urgency.charAt(0).toUpperCase() + urgency.slice(1),
+                        count,
+                        ((count / total) * 100).toFixed(1) + '%'
+                    ]);
+                doc.autoTable({
+                    startY: y,
+                    head: [['Urgency', 'Count', '% of total']],
+                    body: urgencyRows,
                     styles: { fontSize: 9 },
                     headStyles: { fillColor: [18, 58, 107] },
                     margin: analyticsAutoTableMargin(doc),
@@ -464,8 +447,7 @@ function renderReferrals() {
             }
 
             showPdfPreview(doc, 'gms_referral_distribution.pdf');
-        },
-        () => previewExcel('gms_referral_distribution.xlsx', referralsExportTitle, referralsExportHeader, referralsExportBody())));
+        }));
 
     frag.append(el(statCards([
         { num: total, lbl: 'Total referrals', icon: 'bi-clipboard-data', color: 'info' },
@@ -496,7 +478,7 @@ function renderReferrals() {
 /* ---- 7.5 child summary case ---- */
 function renderChild() {
     const frag = document.createDocumentFragment();
-    frag.append(panelHeader('child', 'The complete guidance record for one student — profile, case history, and follow-ups.', exportChildPdf, exportChildSummaryExcel));
+    frag.append(panelHeader('child', 'The complete guidance record for one student — profile, case history, and follow-ups.', exportChildPdf));
 
     if (studentsList.length === 0) {
         frag.append(el(emptyNote('No students on file for your school yet.', 'bi-people')));
@@ -667,6 +649,7 @@ function exportChildPdf() {
     const s = cached.student;
     const cases = cached.data.counseling || [];
     const studentReferrals = cached.data.referrals || [];
+    const followUps = cached.data.follow_ups || [];
 
     const doc = newPdf();
     let y = pdfHeader(doc, 'Child Summary Case', s.name);
@@ -674,7 +657,7 @@ function exportChildPdf() {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
     doc.text(`LRN: ${s.lrn || 'N/A'}`, 40, y); y += 16;
     doc.text(`Grade & Section: ${gradeLabel(s.grade)} · ${s.section || 'N/A'}`, 40, y); y += 16;
-    doc.text(`Sessions: ${cases.length}   Referrals: ${studentReferrals.length}`, 40, y); y += 20;
+    doc.text(`Sessions: ${cases.length}   Referrals: ${studentReferrals.length}   Follow-ups: ${followUps.length}`, 40, y); y += 20;
 
     if (cases.length > 0) {
         const pageW = doc.internal.pageSize.getWidth();
@@ -686,6 +669,9 @@ function exportChildPdf() {
         y += 166;
     }
 
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
+    doc.text('Case History', 40, y);
+    y += 6;
     doc.autoTable({
         startY: y,
         head: [['Case ID', 'Date', 'Category', 'Counselor', 'Status']],
@@ -696,42 +682,41 @@ function exportChildPdf() {
         headStyles: { fillColor: [18, 58, 107] },
         margin: analyticsAutoTableMargin(doc),
     });
+    y = doc.lastAutoTable.finalY + 20;
 
-    if (studentReferrals.length > 0) {
+    // Shown on screen nested under each case (shInit()'s followUpsByCase) —
+    // here as its own table instead, since autoTable has no built-in
+    // grouped/nested-row support.
+    if (followUps.length > 0) {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
+        doc.text('Follow-Up Log', 40, y);
+        y += 6;
         doc.autoTable({
-            startY: doc.lastAutoTable.finalY + 20,
-            head: [['Referral ID', 'Submitted', 'Reason', 'Status']],
-            body: studentReferrals.map(r => [r.referral_code || r.id, r.date_submitted, r.referral_reason, r.status]),
+            startY: y,
+            head: [['Case ID', 'Follow-up ID', 'Date', 'Note']],
+            body: followUps.map(f => [f.case_uid, f.follow_up_id, f.follow_up_date || 'N/A', f.note || '']),
             styles: { fontSize: 9 },
             headStyles: { fillColor: [18, 58, 107] },
             margin: analyticsAutoTableMargin(doc),
         });
+        y = doc.lastAutoTable.finalY + 20;
     }
 
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
+    doc.text('Referral History', 40, y);
+    y += 6;
+    doc.autoTable({
+        startY: y,
+        head: [['Referral ID', 'Submitted', 'Reason', 'Status']],
+        body: studentReferrals.length
+            ? studentReferrals.map(r => [r.referral_code || r.id, r.date_submitted, r.referral_reason, r.status])
+            : [['No referrals on record.', '', '', '']],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [18, 58, 107] },
+        margin: analyticsAutoTableMargin(doc),
+    });
+
     showPdfPreview(doc, `gms_child_summary_${s.student_id}.pdf`);
-}
-
-function exportChildSummaryExcel() {
-    const cached = state.student ? studentDetailCache[state.student] : null;
-    if (!cached) { showAlert('Select a student first.', 'error'); return; }
-
-    const s = cached.student;
-    const cases = cached.data.counseling || [];
-    const referralCount = (cached.data.referrals || []).length;
-
-    const aoa = [
-        [`Child Summary Case — ${s.name}`],
-        ['LRN', s.lrn || 'N/A'],
-        ['Grade & Section', `${gradeLabel(s.grade)} · ${s.section || 'N/A'}`],
-        ['Sessions', cases.length],
-        ['Referrals', referralCount],
-        [],
-        ['Case ID', 'Date', 'Category', 'Counselor', 'Status'],
-        ...cases.map(c => [c.case_uid, c.case_date, c.category_name || c.case_title || '', c.counselor_name || '', c.status])
-    ];
-    const colWidths = [{ wch: 16 }, { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 12 }];
-
-    showExcelPreview(`gms_child_summary_${s.student_id}.xlsx`, aoa, colWidths);
 }
 
 /* ---- dispatcher + render ---- */

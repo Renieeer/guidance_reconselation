@@ -11,9 +11,39 @@ let currentPage = 1;
 // Deactivated students are excluded server-side by default (see
 // api/manage-accounts.php) — this only decides whether we ask for them.
 let showInactive = false;
+// Whether this school is elementary (school_level East/West/South, grades
+// 1-6) or secondary (7-12) — decides which range gradeScopeToList()/
+// gradeScopeLabel() accept when reading a student's Grade, and which
+// options the grade filter dropdown offers. Detected once on load; defaults
+// to secondary (matching the dropdown's original hardcoded 7-12 markup)
+// until that lookup resolves.
+let isElementarySchool = false;
 
-function initAccountPage() {
+async function detectSchoolLevel() {
+    try {
+        const res = await fetch(`../../api/school-config.php?action=getGrades&school=${encodeURIComponent(getCurrentSchool())}`).then(r => r.json());
+        if (!res.success) return;
+        isElementarySchool = !!res.isElementary;
+
+        const gradeFilter = document.getElementById('gradeFilter');
+        if (gradeFilter && Array.isArray(res.grades)) {
+            const previousValue = gradeFilter.value;
+            gradeFilter.innerHTML = '<option value="">All Grades</option>' +
+                res.grades.map(g => `<option value="${g.id}">${escapeHtml(g.grade_name)}</option>`).join('');
+            // Keep whatever was selected if it's still a valid option for this
+            // school's level; otherwise fall back to "All Grades" rather than
+            // silently filtering on a grade number that no longer applies.
+            gradeFilter.value = res.grades.some(g => String(g.id) === previousValue) ? previousValue : '';
+            currentGradeFilter = gradeFilter.value;
+        }
+    } catch (err) {
+        // Network hiccup — keep the secondary-range default rather than blocking the page.
+    }
+}
+
+async function initAccountPage() {
     initPage();
+    await detectSchoolLevel();
     loadSchoolAccounts();
 
     // Setup search
@@ -52,6 +82,7 @@ function initAccountPage() {
     document.getElementById('editAccountForm').addEventListener('submit', saveAccountChanges);
 
     initIssueCodeModal();
+    initImportAccountsModal();
 }
 
 // Coordinator-issued teacher access codes — see api/issue-teacher-access-code.php.
@@ -299,7 +330,7 @@ function searchAccounts() {
 // anywhere in its Grade value.
 function applyFiltersAndRender() {
     const filtered = currentGradeFilter
-        ? allAccounts.filter(a => gradeScopeToList(a.Grade).includes(parseInt(currentGradeFilter, 10)))
+        ? allAccounts.filter(a => gradeScopeToList(a.Grade, isElementarySchool).includes(parseInt(currentGradeFilter, 10)))
         : allAccounts;
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -364,7 +395,7 @@ function renderAccountsTable(accounts) {
                     ${formatUserType(account.Type)}
                 </span>
             </td>
-            <td>${gradeScopeLabel(account.Grade) || '&mdash;'}</td>
+            <td>${gradeScopeLabel(account.Grade, isElementarySchool) || '&mdash;'}</td>
             <td>${statusBadge}</td>
             <td>${formatDate(account.created_at)}</td>
             <td>
@@ -571,7 +602,7 @@ function exportStudentAccountsToExcel() {
     }
 
     const scoped = currentGradeFilter
-        ? allAccounts.filter(a => gradeScopeToList(a.Grade).includes(parseInt(currentGradeFilter, 10)))
+        ? allAccounts.filter(a => gradeScopeToList(a.Grade, isElementarySchool).includes(parseInt(currentGradeFilter, 10)))
         : allAccounts;
     const students = scoped.filter(a => String(a.Type || '').toLowerCase() === 'student');
 
@@ -584,7 +615,7 @@ function exportStudentAccountsToExcel() {
         ['Student Account'],
         [],
         ['First Name', 'Last Name', 'Grade', 'Age', 'Email'],
-        ...students.map(s => [s.First_name, s.Last_name, gradeScopeLabel(s.Grade) || '', s.Age || '', s.email])
+        ...students.map(s => [s.First_name, s.Last_name, gradeScopeLabel(s.Grade, isElementarySchool) || '', s.Age || '', s.email])
     ];
 
     const school = getCurrentSchool();
@@ -606,6 +637,267 @@ function exportStudentAccountsToExcel() {
         showAlert('Excel report exported successfully!', 'success');
         closeModal('excelPreviewModal');
     });
+}
+
+/* ── Import Accounts (bulk student Excel import) ──
+   Download Template -> Fill Out Excel -> Upload -> Validate -> Preview ->
+   Confirm Import. api/import-students.php owns all the actual validation
+   rules (required fields, LRN/email format, grade range for this school's
+   level, in-file + against-the-database duplicate checks) — this file only
+   parses the spreadsheet into plain row objects and renders whatever that
+   endpoint reports back, so the rules can never drift between what the
+   preview shows and what actually gets imported. */
+const IMPORT_TEMPLATE_COLUMNS = ['LRN', 'First Name', 'Last Name', 'Middle Name', 'Sex', 'Date of Birth', 'Age', 'Grade', 'Section', 'Email', 'Password'];
+let importParsedRows = [];
+let importValidationResults = [];
+
+function initImportAccountsModal() {
+    const openBtn = document.getElementById('openImportAccountsModalBtn');
+    const modal = document.getElementById('importAccountsModal');
+    if (!openBtn || !modal) return;
+
+    openBtn.addEventListener('click', () => {
+        resetImportAccountsModal();
+        openModal('importAccountsModal');
+    });
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeImportAccountsModal(); });
+    document.getElementById('importCancelBtn').addEventListener('click', closeImportAccountsModal);
+    document.getElementById('downloadImportTemplateBtn').addEventListener('click', downloadImportTemplate);
+    document.getElementById('importChooseAnotherFileBtn').addEventListener('click', resetImportAccountsModal);
+    document.getElementById('importConfirmBtn').addEventListener('click', confirmImportAccounts);
+
+    const dropZone = document.getElementById('importDropZone');
+    const fileInput = document.getElementById('importFileInput');
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleImportFile(fileInput.files[0]); });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary-color)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border-color)'; });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--border-color)';
+        const file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) handleImportFile(file);
+    });
+}
+
+function closeImportAccountsModal() {
+    closeModal('importAccountsModal');
+}
+
+function resetImportAccountsModal() {
+    importParsedRows = [];
+    importValidationResults = [];
+    document.getElementById('importStepUpload').style.display = 'block';
+    document.getElementById('importStepPreview').style.display = 'none';
+    document.getElementById('importStepResult').style.display = 'none';
+    document.getElementById('importConfirmBtn').style.display = 'none';
+    const errorDiv = document.getElementById('importFileError');
+    errorDiv.textContent = '';
+    errorDiv.classList.remove('show');
+    document.getElementById('importFileLoading').style.display = 'none';
+    document.getElementById('importFileInput').value = '';
+    document.getElementById('importCancelBtn').textContent = 'Close';
+}
+
+// The example row's Grade matches this school's own level (1-6 elementary,
+// 7-12 secondary) so the template isn't misleading before anyone has even
+// seen the real per-school validation rule.
+async function downloadImportTemplate() {
+    if (typeof XLSX === 'undefined') {
+        showAlert('Excel library failed to load.', 'error');
+        return;
+    }
+
+    const school = getCurrentSchool();
+    let exampleGrade = '7';
+    try {
+        const res = await fetch(`../../api/school-config.php?action=getGrades&school=${encodeURIComponent(school)}`).then(r => r.json());
+        if (res.success) exampleGrade = String(res.isElementary ? 1 : 7);
+    } catch (err) { /* keep the secondary-range default */ }
+
+    const aoa = [
+        IMPORT_TEMPLATE_COLUMNS,
+        ['123456789012', 'Juan', 'Dela Cruz', 'Santos', 'Male', '2012-06-15', '13', exampleGrade, 'Sampaguita', 'juan.delacruz@example.com', '']
+    ];
+    const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+    // Kept as text so Excel never strips a leading zero from the example LRN.
+    if (worksheet['A2']) worksheet['A2'].z = '@';
+    worksheet['!cols'] = [
+        { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 10 },
+        { wch: 14 }, { wch: 6 }, { wch: 8 }, { wch: 14 }, { wch: 28 }, { wch: 14 }
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+    XLSX.writeFile(workbook, 'Student_Import_Template.xlsx');
+}
+
+function handleImportFile(file) {
+    const errorDiv = document.getElementById('importFileError');
+    errorDiv.textContent = '';
+    errorDiv.classList.remove('show');
+
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+        errorDiv.textContent = 'Please upload an .xlsx or .xls file.';
+        errorDiv.classList.add('show');
+        return;
+    }
+
+    document.getElementById('importFileLoading').style.display = 'block';
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            // raw:false + dateNF renders date-typed cells as plain
+            // "yyyy-mm-dd" strings (matching what api/import-students.php
+            // expects) instead of a locale-formatted date or an Excel serial
+            // number, regardless of how the cell happens to be formatted.
+            const rawRows = XLSX.utils.sheet_to_json(worksheet, { raw: false, dateNF: 'yyyy-mm-dd', defval: '' });
+
+            if (rawRows.length === 0) {
+                throw new Error('No student rows found in that file — make sure you filled in the template below the header row.');
+            }
+            if (rawRows.length > 1000) {
+                throw new Error('Please import 1000 students or fewer at a time.');
+            }
+
+            importParsedRows = rawRows.map(row => {
+                const clean = {};
+                IMPORT_TEMPLATE_COLUMNS.forEach(col => { clean[col] = row[col] != null ? String(row[col]).trim() : ''; });
+                return clean;
+            });
+
+            await validateImportRows();
+        } catch (err) {
+            document.getElementById('importFileLoading').style.display = 'none';
+            errorDiv.textContent = err.message || 'Could not read that file.';
+            errorDiv.classList.add('show');
+        }
+    };
+    reader.onerror = () => {
+        document.getElementById('importFileLoading').style.display = 'none';
+        errorDiv.textContent = 'Could not read that file.';
+        errorDiv.classList.add('show');
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+async function validateImportRows() {
+    const errorDiv = document.getElementById('importFileError');
+    const school = getCurrentSchool();
+
+    try {
+        const response = await fetch('../../api/import-students.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'validate', school, rows: importParsedRows })
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || 'Validation failed.');
+
+        importValidationResults = result.results;
+        renderImportPreview(result.summary);
+    } catch (err) {
+        errorDiv.textContent = err.message || 'Could not validate that file.';
+        errorDiv.classList.add('show');
+    } finally {
+        document.getElementById('importFileLoading').style.display = 'none';
+    }
+}
+
+const IMPORT_STATUS_LABEL = {
+    valid: 'Ready to import',
+    invalid: 'Invalid',
+    duplicate_in_file: 'Duplicate in file',
+    already_exists: 'Already exists',
+    created: 'Created',
+    failed: 'Failed',
+};
+const IMPORT_STATUS_BADGE = {
+    valid: 'badge-completed',
+    invalid: 'badge-rejected',
+    duplicate_in_file: 'badge-pending',
+    already_exists: 'badge-pending',
+    created: 'badge-completed',
+    failed: 'badge-rejected',
+};
+
+function renderImportPreview(summary) {
+    document.getElementById('importStepUpload').style.display = 'none';
+    document.getElementById('importStepPreview').style.display = 'block';
+
+    document.getElementById('importSummaryCards').innerHTML = [
+        { num: importValidationResults.length, lbl: 'Total Rows', icon: 'bi-list-ul', color: 'info' },
+        { num: summary.valid, lbl: 'Ready to Import', icon: 'bi-check-circle', color: 'green' },
+        { num: summary.invalid, lbl: 'Invalid', icon: 'bi-x-circle', color: 'red' },
+        { num: summary.duplicate_in_file + summary.already_exists, lbl: 'Duplicate / Existing', icon: 'bi-exclamation-triangle', color: 'amber' },
+    ].map(c => `<div class="stat-card"><div class="stat-icon stat-icon-${c.color}"><i class="bi ${c.icon}"></i></div><div><h3>${c.num}</h3><p>${escapeHtml(c.lbl)}</p></div></div>`).join('');
+
+    document.getElementById('importPreviewTbody').innerHTML = importValidationResults.map(r => `
+        <tr>
+            <td>${r.row}</td>
+            <td>${escapeHtml(r.data.firstName)} ${escapeHtml(r.data.lastName)}</td>
+            <td>${escapeHtml(r.data.lrn)}</td>
+            <td>${escapeHtml(r.data.email)}</td>
+            <td>${r.data.grade != null ? escapeHtml(String(r.data.grade)) : '&mdash;'}</td>
+            <td><span class="user-type-badge ${IMPORT_STATUS_BADGE[r.status] || 'badge-pending'}">${IMPORT_STATUS_LABEL[r.status] || r.status}</span></td>
+            <td style="font-size:12.5px; color:#777;">${r.errors && r.errors.length ? escapeHtml(r.errors.join('; ')) : '&mdash;'}</td>
+        </tr>
+    `).join('');
+
+    const confirmBtn = document.getElementById('importConfirmBtn');
+    if (summary.valid > 0) {
+        confirmBtn.style.display = 'inline-flex';
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = `<i class="bi bi-cloud-upload"></i> Import ${summary.valid} Account${summary.valid === 1 ? '' : 's'}`;
+    } else {
+        confirmBtn.style.display = 'none';
+    }
+}
+
+async function confirmImportAccounts() {
+    const confirmBtn = document.getElementById('importConfirmBtn');
+    const school = getCurrentSchool();
+    confirmBtn.disabled = true;
+    const originalText = confirmBtn.innerHTML;
+    confirmBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Importing&hellip;';
+
+    try {
+        const response = await fetch('../../api/import-students.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'commit', school, rows: importParsedRows })
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || 'Import failed.');
+
+        const summary = result.summary;
+        document.getElementById('importStepPreview').style.display = 'none';
+        document.getElementById('importStepResult').style.display = 'block';
+        confirmBtn.style.display = 'none';
+        document.getElementById('importCancelBtn').textContent = 'Done';
+
+        const resultIcon = document.getElementById('importResultIcon');
+        resultIcon.className = summary.created > 0 ? 'bi bi-check-circle' : 'bi bi-exclamation-triangle';
+        resultIcon.style.color = summary.created > 0 ? '#1b8f59' : '#a15c00';
+
+        document.getElementById('importResultTitle').textContent = summary.created > 0
+            ? `${summary.created} student account${summary.created === 1 ? '' : 's'} created!`
+            : 'No accounts were created';
+
+        const skipped = summary.invalid + summary.duplicate_in_file + summary.already_exists + summary.failed;
+        document.getElementById('importResultDetail').textContent = skipped > 0
+            ? `${skipped} row${skipped === 1 ? ' was' : 's were'} skipped (invalid, duplicate, already existing, or failed) and were not imported.`
+            : 'Every row in the file was imported successfully.';
+
+        loadSchoolAccounts();
+    } catch (err) {
+        showAlert('Error: ' + (err.message || 'Import failed.'), 'error');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalText;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initAccountPage);

@@ -22,6 +22,12 @@ function initSidebarActive() {
 }
 
 let sdoReferrals = [];
+// District Performance table pagination — applied client-side on top of
+// whatever loadDistrictSummary() last fetched (already filtered by the
+// districtFilter dropdown above). 'all' page size disables paging entirely.
+let allDistrictRows = [];
+let districtPageSize = 20;
+let districtCurrentPage = 1;
 
 function loadSDODashboard() {
     initPage();
@@ -51,6 +57,19 @@ function loadSDODashboard() {
 
     // Setup district filter
     document.getElementById('districtFilter').addEventListener('change', loadDistrictSummary);
+
+    document.getElementById('districtPageSizeFilter').addEventListener('change', (e) => {
+        districtPageSize = e.target.value === 'all' ? Infinity : parseInt(e.target.value, 10);
+        districtCurrentPage = 1;
+        applyDistrictPaginationAndRender();
+    });
+
+    document.getElementById('districtPagination').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-page]');
+        if (!btn || btn.disabled) return;
+        districtCurrentPage = btn.getAttribute('data-page') === 'next' ? districtCurrentPage + 1 : districtCurrentPage - 1;
+        applyDistrictPaginationAndRender();
+    });
 }
 
 // Real district list (schools.district), same source as the district report
@@ -104,12 +123,45 @@ function loadDistrictSummary() {
             if (selectedDistrict) {
                 rows = rows.filter(d => d.district === selectedDistrict);
             }
-            renderDistrictSummary(rows);
+            allDistrictRows = rows;
+            districtCurrentPage = 1;
+            applyDistrictPaginationAndRender();
         })
         .catch(error => {
             console.error('Error loading district summary:', error);
             tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Unable to load district data.</td></tr>';
         });
+}
+
+function applyDistrictPaginationAndRender() {
+    const totalPages = Math.max(1, Math.ceil(allDistrictRows.length / districtPageSize));
+    if (districtCurrentPage > totalPages) districtCurrentPage = totalPages;
+    if (districtCurrentPage < 1) districtCurrentPage = 1;
+
+    const startIdx = districtPageSize === Infinity ? 0 : (districtCurrentPage - 1) * districtPageSize;
+    const endIdx = districtPageSize === Infinity ? allDistrictRows.length : Math.min(startIdx + districtPageSize, allDistrictRows.length);
+
+    renderDistrictSummary(allDistrictRows.slice(startIdx, endIdx));
+    renderDistrictPagination(allDistrictRows.length, startIdx, endIdx, totalPages);
+}
+
+function renderDistrictPagination(totalFiltered, startIdx, endIdx, totalPages) {
+    const el = document.getElementById('districtPagination');
+    if (!el) return;
+
+    if (totalFiltered === 0 || districtPageSize === Infinity || totalPages <= 1) {
+        el.innerHTML = '';
+        return;
+    }
+
+    el.innerHTML = `
+        <button type="button" class="btn btn-secondary btn-sm" data-page="prev" ${districtCurrentPage <= 1 ? 'disabled' : ''}>
+            <i class="bi bi-chevron-left"></i> Prev
+        </button>
+        <span class="accounts-page-info">Showing ${startIdx + 1}&ndash;${endIdx} of ${totalFiltered} &middot; Page ${districtCurrentPage} of ${totalPages}</span>
+        <button type="button" class="btn btn-secondary btn-sm" data-page="next" ${districtCurrentPage >= totalPages ? 'disabled' : ''}>
+            Next <i class="bi bi-chevron-right"></i>
+        </button>`;
 }
 
 function renderDistrictSummary(rows) {

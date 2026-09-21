@@ -408,6 +408,17 @@ try {
         $referralId = trim((string)($_GET['id'] ?? $_GET['referral_id'] ?? ''));
         $limit = (int)($_GET['limit'] ?? 0);
 
+        // Whether this referral has a completed External Referral (DepEd
+        // Appendix C) form on file — see api/referral-external-referral.php.
+        // That table is only ever created lazily (on its first save), so a
+        // fresh install without one yet would break this EXISTS clause;
+        // reporting "not externally referred" (0) is the correct answer then
+        // anyway, since no referral could have one.
+        $hasExternalReferralTable = tableExists($conn, 'referral_external_referral');
+        $externalReferralSelect = $hasExternalReferralTable
+            ? 'EXISTS (SELECT 1 FROM referral_external_referral er WHERE er.referral_id = referral.ReferralID) AS has_external_referral'
+            : '0 AS has_external_referral';
+
         $sql = "
             SELECT
                 ReferralID AS id,
@@ -440,7 +451,8 @@ try {
                 consent_student,
                 consent_parent,
                 date_submitted,
-                updated_at
+                updated_at,
+                {$externalReferralSelect}
             FROM referral
             WHERE 1=1
         ";

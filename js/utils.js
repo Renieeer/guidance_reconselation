@@ -439,8 +439,8 @@ function gradeMatchesScope(rawGrade, scope) {
 }
 
 // Human label for a grade scope, e.g. "Grade 8" / "Grades 11-12" / "Grades 7-10".
-function gradeScopeLabel(scope) {
-    const grades = gradeScopeToList(scope).sort((a, b) => a - b);
+function gradeScopeLabel(scope, isElementary = false) {
+    const grades = gradeScopeToList(scope, isElementary).sort((a, b) => a - b);
     if (grades.length === 0) return '';
     if (grades.length === 1) return `Grade ${grades[0]}`;
 

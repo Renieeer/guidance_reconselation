@@ -63,6 +63,9 @@
                             <button class="btn btn-success" id="exportAccountsExcelBtn" onclick="exportStudentAccountsToExcel()">
                                 <i class="bi bi-file-earmark-excel"></i> Export Excel
                             </button>
+                            <button class="btn btn-primary" id="openImportAccountsModalBtn">
+                                <i class="bi bi-cloud-upload"></i> Import Accounts
+                            </button>
                         </div>
                     </div>
 
@@ -180,6 +183,96 @@
                     </div>
                     <span class="text-muted" id="issueCodeExpiry" style="font-size:12px;"></span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Accounts Modal -->
+    <div id="importAccountsModal" class="modal">
+        <div class="modal-content" style="max-width: 920px; width: 95%;">
+            <div class="modal-header">
+                <h2><i class="bi bi-cloud-upload"></i> Import Accounts</h2>
+                <span class="modal-close" onclick="closeImportAccountsModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 72vh; overflow-y: auto;">
+
+                <!-- Step 1: Instructions + download template + upload -->
+                <div id="importStepUpload">
+                    <h4 style="margin-top:0;">How this works</h4>
+                    <ol style="padding-left: 20px; color: #444; line-height: 1.7;">
+                        <li>Download the Excel template below.</li>
+                        <li>Fill in one row per student — the template already has an example row showing the expected format.</li>
+                        <li>Save the file, then upload it here.</li>
+                        <li>Review the preview: it shows which rows are ready to import and which need fixing.</li>
+                        <li>Click <strong>Import Accounts</strong> to create the valid accounts. Rows with problems are skipped and never overwrite existing records.</li>
+                    </ol>
+
+                    <div class="error-alert show" style="background:#fff8e6; border-color:#f0d58c; color:#7a5b00; margin-bottom:16px;">
+                        <strong>Important:</strong> Do not rename the column headers, change their order, or add/remove columns — the importer reads the template by column name.
+                        <ul style="margin:8px 0 0; padding-left:18px;">
+                            <li><strong>LRN, First Name, Last Name, Sex, Date of Birth, Age, Grade, Email</strong> are required for every row.</li>
+                            <li><strong>Middle Name, Section, Password</strong> are optional — leave <strong>Password</strong> blank to have the student's LRN used as their default password.</li>
+                            <li><strong>Sex</strong>: Male or Female. <strong>Date of Birth</strong>: YYYY-MM-DD (e.g. 2012-03-20) or MM/DD/YYYY (e.g. 03/20/2012) — Excel may reformat a typed date to MM/DD/YYYY on its own, and either is accepted. <strong>Grade</strong>: a plain number appropriate for your school (1–6 for an elementary school, 7–12 for a secondary school).</li>
+                            <li><strong>Email must be a real, active email address the student can access</strong> — it becomes their login for the system, and each email can only be used for one account.</li>
+                            <li>Rows with missing/invalid fields, a duplicate LRN or email (within the file or already in the system), are flagged in the preview and are <strong>not</strong> imported — existing student accounts are never overwritten.</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-actions" style="margin-bottom: 20px;">
+                        <button type="button" class="btn btn-secondary" id="downloadImportTemplateBtn">
+                            <i class="bi bi-download"></i> Download Excel Template
+                        </button>
+                    </div>
+
+                    <h4>Upload completed file</h4>
+                    <div id="importDropZone" style="border: 2px dashed var(--border-color); border-radius: 10px; padding: 30px; text-align: center; color: #666; cursor: pointer;">
+                        <i class="bi bi-file-earmark-excel" style="font-size: 28px; color: #1b8f59;"></i>
+                        <p style="margin: 10px 0 4px;">Drag and drop your completed Excel file here, or <strong style="color: var(--primary-color);">click to browse</strong></p>
+                        <p style="margin:0; font-size: 12px; color: #999;">.xlsx or .xls only</p>
+                        <input type="file" id="importFileInput" accept=".xlsx,.xls" hidden>
+                    </div>
+                    <div id="importFileError" class="error-alert" style="margin-top: 12px;"></div>
+                    <div id="importFileLoading" style="display:none; margin-top: 12px; color: #666;"><i class="bi bi-hourglass-split"></i> Reading file&hellip;</div>
+                </div>
+
+                <!-- Step 2: Preview -->
+                <div id="importStepPreview" style="display:none;">
+                    <div id="importSummaryCards" class="dashboard-grid" style="margin-bottom: 20px;"></div>
+                    <div class="table-container" style="max-height: 340px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Row</th>
+                                    <th>Name</th>
+                                    <th>LRN</th>
+                                    <th>Email</th>
+                                    <th>Grade</th>
+                                    <th>Status</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importPreviewTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="form-actions" style="margin-top: 16px;">
+                        <button type="button" class="btn btn-secondary" id="importChooseAnotherFileBtn">
+                            <i class="bi bi-arrow-left"></i> Choose a different file
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Result -->
+                <div id="importStepResult" style="display:none; text-align:center; padding: 20px 0;">
+                    <i id="importResultIcon" class="bi bi-check-circle" style="font-size: 48px; color: #1b8f59;"></i>
+                    <h3 id="importResultTitle" style="margin: 14px 0 6px;"></h3>
+                    <p id="importResultDetail" class="text-muted"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="importCancelBtn">Close</button>
+                <button type="button" class="btn btn-primary" id="importConfirmBtn" style="display:none;">
+                    <i class="bi bi-cloud-upload"></i> Import Accounts
+                </button>
             </div>
         </div>
     </div>
