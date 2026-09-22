@@ -146,6 +146,22 @@ try {
             send_json(400, ['success' => false, 'message' => 'Missing required fields']);
         }
 
+        // Checked up front, separately from the UPDATE's own affected_rows
+        // — mysqli reports 0 affected rows both when no row matches the
+        // WHERE clause AND when a row matches but every SET value is
+        // already identical (a plain "Save Changes" with no actual edits).
+        // Relying on affected_rows alone to mean "not found" turned a
+        // harmless no-op save into a false "Account not found" error.
+        $existsStmt = $conn->prepare('SELECT 1 FROM users_tables WHERE AccountID = ? AND school_attended = ?');
+        $existsStmt->bind_param('is', $id, $school);
+        $existsStmt->execute();
+        $accountExists = $existsStmt->get_result()->num_rows > 0;
+        $existsStmt->close();
+
+        if (!$accountExists) {
+            send_json(404, ['success' => false, 'message' => 'Account not found or access denied']);
+        }
+
         if ($new_password !== '') {
             // Update with password
             if (strlen($new_password) < 6) {
@@ -158,7 +174,13 @@ try {
             if (!$stmt) {
                 send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
             }
-            $stmt->bind_param('ssssi', $first_name, $last_name, $hashedPassword, $id, $school);
+            // 'i' before the final 's' — $id is the integer AccountID, $school
+            // is the string school name; these two were swapped (both here
+            // and in the no-password branch below), which made mysqli bind
+            // the school name as an integer and MySQL reject it with
+            // "Truncated incorrect DOUBLE value" the moment the school name
+            // wasn't purely numeric.
+            $stmt->bind_param('sssis', $first_name, $last_name, $hashedPassword, $id, $school);
         } else {
             // Update without password
             $sql = "UPDATE users_tables SET First_name = ?, Last_name = ? WHERE AccountID = ? AND school_attended = ?";
@@ -166,15 +188,11 @@ try {
             if (!$stmt) {
                 send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
             }
-            $stmt->bind_param('sssi', $first_name, $last_name, $id, $school);
+            $stmt->bind_param('ssis', $first_name, $last_name, $id, $school);
         }
 
         if (!$stmt->execute()) {
             send_json(500, ['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
-        }
-
-        if ($stmt->affected_rows === 0) {
-            send_json(404, ['success' => false, 'message' => 'Account not found or access denied']);
         }
 
         $stmt->close();
