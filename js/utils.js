@@ -408,14 +408,21 @@ function gradeScopeToList(scope, isElementary = false) {
         .filter(num => Number.isInteger(num) && num >= min && num <= max);
 }
 
-function normalizeGradeNumber(rawGrade) {
+// isElementary switches the accepted range to 1-6 (East/West/South schools)
+// and turns off the legacy 1-6-code-means-grade-7-12 mapping, which only
+// makes sense for secondary schools — same convention as gradeScopeToList().
+// Every existing caller omits it and keeps the original 7-12 behavior.
+function normalizeGradeNumber(rawGrade, isElementary = false) {
     const raw = String(rawGrade == null ? '' : rawGrade).trim();
     if (!raw) return null;
 
+    const min = isElementary ? 1 : 7;
+    const max = isElementary ? 6 : 12;
+
     if (/^\d+$/.test(raw)) {
         const num = parseInt(raw, 10);
-        if (num >= 7 && num <= 12) return num;
-        if (GRADE_LEGACY_CODE_MAP[raw] !== undefined) return GRADE_LEGACY_CODE_MAP[raw];
+        if (num >= min && num <= max) return num;
+        if (!isElementary && GRADE_LEGACY_CODE_MAP[raw] !== undefined) return GRADE_LEGACY_CODE_MAP[raw];
     }
 
     // Free-text fields (e.g. "Grade 10 - Section Alpha") — pull the first
@@ -423,7 +430,7 @@ function normalizeGradeNumber(rawGrade) {
     const textMatch = raw.match(/grade\s*(\d{1,2})/i);
     if (textMatch) {
         const num = parseInt(textMatch[1], 10);
-        return (num >= 7 && num <= 12) ? num : null;
+        return (num >= min && num <= max) ? num : null;
     }
 
     return null;
