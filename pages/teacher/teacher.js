@@ -95,7 +95,7 @@ function loadRecentReferrals(teacherReferrals) {
             <td>${referral.grade || 'N/A'}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${createBadge(referral.status)}</td>
-            <td>${referral.stage} / 6</td>
+            <td>${referral.stage} / 7</td>
             <td>
                 <a href="referral-status.php?id=${referral.referral_code || referral.id}" class="btn btn-sm btn-primary">View</a>
             </td>

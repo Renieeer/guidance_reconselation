@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../../includes/session-guard.php'; require_page_session(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,6 +104,6 @@
 
     <script src="../../js/auth.js?v=<?php echo filemtime(__DIR__ . '/../../js/auth.js'); ?>"></script>
     <script src="../../js/utils.js?v=<?php echo filemtime(__DIR__ . '/../../js/utils.js'); ?>"></script>
-    <script src="teacher.js"></script>
+    <script src="teacher.js?v=<?php echo filemtime(__DIR__ . '/teacher.js'); ?>"></script>
 </body>
 </html>

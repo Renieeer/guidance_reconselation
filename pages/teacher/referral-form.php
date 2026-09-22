@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../../includes/session-guard.php'; require_page_session(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

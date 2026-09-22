@@ -9,6 +9,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+require_once __DIR__ . '/../includes/session-guard.php';
+require_api_session();
+
 require_once 'conn.php';
 require_once 'grade-scope.php';
 require_once 'notify-appointment.php';
@@ -69,6 +72,7 @@ function ensure_appointment_request_table(mysqli $conn): void {
 
     ensure_booking_type_column($conn);
     ensure_appointment_case_uid_column($conn);
+    ensure_created_by_column($conn);
 }
 
 // booking_type records whether this was a staff-initiated ("counseling",
@@ -118,6 +122,29 @@ function ensure_appointment_case_uid_column(mysqli $conn): void {
     $conn->query("ALTER TABLE appointment_requests ADD INDEX idx_case_uid (case_uid)");
 }
 
+// Records who originally created a staff-scheduled appointment — set once at
+// INSERT and never touched again, unlike counselor_id, which gets
+// overwritten on every later approve/reject/reschedule (see the PUT
+// handler below) and therefore only reflects who most recently acted on the
+// request, not who booked it. Reports need "Scheduled By" to stay accurate
+// even after a different counselor later processes the same appointment.
+// NULL for a student's own online self-booking (nobody on staff scheduled
+// it) and for any row that predates this column.
+function ensure_created_by_column(mysqli $conn): void {
+    static $checked = false;
+    if ($checked) {
+        return;
+    }
+    $checked = true;
+
+    $result = $conn->query("SHOW COLUMNS FROM appointment_requests LIKE 'created_by_id'");
+    if ($result && $result->num_rows > 0) {
+        return;
+    }
+
+    $conn->query("ALTER TABLE appointment_requests ADD COLUMN created_by_id INT DEFAULT NULL");
+}
+
 try {
     ensure_appointment_request_table($conn);
 
@@ -137,6 +164,14 @@ try {
         $caseSectionSelect = $hasCaseScenarios ? 'ccs.section_name AS case_section' : 'NULL AS case_section';
         $caseScenariosJoin = $hasCaseScenarios ? 'LEFT JOIN counselor_case_scenarios ccs ON ccs.case_uid = ar.case_uid' : '';
 
+        // Resolves created_by_id (see ensure_created_by_column above) to a
+        // display name for the "Scheduled By" report column — joined here
+        // rather than looked up client-side since appointment_requests only
+        // stores the AccountID, not a name.
+        $hasUsersTable = table_exists($conn, 'users_tables');
+        $scheduledBySelect = $hasUsersTable ? "TRIM(CONCAT(cb.First_name, ' ', cb.Last_name)) AS scheduled_by_name" : 'NULL AS scheduled_by_name';
+        $createdByJoin = $hasUsersTable ? 'LEFT JOIN users_tables cb ON cb.AccountID = ar.created_by_id' : '';
+
         $sql = "SELECT
                     ar.request_id AS id,
                     ar.student_id,
@@ -152,10 +187,12 @@ try {
                     ar.booking_type,
                     ar.case_uid,
                     {$caseSectionSelect},
+                    {$scheduledBySelect},
                     ar.created_at,
                     ar.updated_at
                 FROM appointment_requests ar
                 {$caseScenariosJoin}
+                {$createdByJoin}
                 WHERE 1=1";
         $types = '';
         $params = [];
@@ -188,34 +225,45 @@ try {
         }
         $stmt->close();
 
-        // Grade-scope filter — appointments reference a student_id rather
-        // than storing a grade directly, so scoped requests are resolved
-        // with a small batch lookup against student_table instead of
-        // reworking this query.
-        $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
-        if (!empty($gradeScope) && !empty($rows)) {
-            ensureSchoolsTable($conn);
-            $isElementary = school_is_elementary($conn, $school);
+        // Appointments reference a student_id rather than storing a grade
+        // directly, so it's resolved with a small batch lookup against
+        // student_table instead of reworking this query. Attached to every
+        // row (as `grade`) unconditionally now — reports (analytics.js's
+        // appointment PDF export) need it even when no grade-scope filter
+        // is active, not just for the filtering below.
+        $studentGradeById = [];
+        if (!empty($rows)) {
             $studentIds = array_values(array_unique(array_map(
                 static fn($r) => (string)$r['student_id'],
                 $rows
             )));
             $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
             $gradeStmt = $conn->prepare("SELECT StudentId, Grade FROM student_table WHERE StudentId IN ({$placeholders})");
-            $gradeByStudent = [];
             if ($gradeStmt) {
                 $gradeStmt->bind_param(str_repeat('s', count($studentIds)), ...$studentIds);
                 if ($gradeStmt->execute()) {
                     $gradeResult = $gradeStmt->get_result();
                     while ($gradeRow = $gradeResult->fetch_assoc()) {
-                        $gradeByStudent[(string)$gradeRow['StudentId']] = $gradeRow['Grade'];
+                        $studentGradeById[(string)$gradeRow['StudentId']] = $gradeRow['Grade'];
                     }
                 }
                 $gradeStmt->close();
             }
 
-            $rows = array_values(array_filter($rows, static function ($r) use ($gradeByStudent, $gradeScope, $isElementary) {
-                $studentGrade = $gradeByStudent[(string)$r['student_id']] ?? null;
+            foreach ($rows as &$row) {
+                $row['grade'] = $studentGradeById[(string)$row['student_id']] ?? null;
+            }
+            unset($row);
+        }
+
+        // Grade-scope filter — reuses $studentGradeById above rather than a
+        // second lookup.
+        $gradeScope = grade_scope_to_list($_GET['grade_scope'] ?? '');
+        if (!empty($gradeScope) && !empty($rows)) {
+            ensureSchoolsTable($conn);
+            $isElementary = school_is_elementary($conn, $school);
+            $rows = array_values(array_filter($rows, static function ($r) use ($gradeScope, $isElementary) {
+                $studentGrade = $r['grade'];
                 // A student whose Grade hasn't been recorded yet (e.g. an
                 // incomplete "My Information" profile) would otherwise
                 // silently vanish from every grade-scoped counselor's view —
@@ -289,11 +337,16 @@ try {
         $initialCounselorId = $isStaffInitiated ? $counselor_id : 0;
         $initialCounselorNotes = $isStaffInitiated ? 'Scheduled directly by counselor' : '';
         $initialBookingType = $isStaffInitiated ? 'counseling' : 'online';
+        // Captured once here, separate from counselor_id, which the PUT
+        // handler below overwrites on every later status change — see
+        // ensure_created_by_column(). NULL for a student's own online
+        // self-booking.
+        $createdById = $isStaffInitiated ? $counselor_id : null;
 
         $sql = "
             INSERT INTO appointment_requests (
-                request_id, student_id, student_name, preferred_date, preferred_time, reason, notes, school_attended, status, counselor_id, counselor_notes, booking_type, case_uid
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                request_id, student_id, student_name, preferred_date, preferred_time, reason, notes, school_attended, status, counselor_id, counselor_notes, booking_type, case_uid, created_by_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ";
 
         $stmt = $conn->prepare($sql);
@@ -302,7 +355,7 @@ try {
         }
 
         $stmt->bind_param(
-            'sisssssssisss',
+            'sisssssssisssi',
             $request_id,
             $student_id,
             $student_name,
@@ -315,7 +368,8 @@ try {
             $initialCounselorId,
             $initialCounselorNotes,
             $initialBookingType,
-            $case_uid
+            $case_uid,
+            $createdById
         );
 
         if (!$stmt->execute()) {

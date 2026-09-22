@@ -43,6 +43,11 @@ let appointments = [];
 let referrals = [];
 let studentsList = [];
 let studentDetailCache = {};
+// Whether this account's school is elementary (school_level East/West/South,
+// grades 1-6) or secondary (7-12) — decides the range gradeLabel() accepts
+// when formatting a raw Grade value. Detected once in init(); defaults to
+// secondary until that lookup resolves.
+let isElementarySchool = false;
 
 function esc(v) { const d = document.createElement('div'); d.textContent = v == null ? '' : String(v); return d.innerHTML; }
 function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
@@ -60,8 +65,26 @@ function countByReason(rows, fn) {
         return m;
     }, {});
 }
+// Same "; "-separated multi-reason splitting as countByReason, but also
+// tallies Male/Female per reason — referral.gender is captured directly on
+// the teacher's referral form (see pages/other-school/referrals.php's Male/
+// Female <select>), so no join is needed to get an accurate per-referral sex.
+function reasonGenderBreakdown(rows) {
+    return rows.reduce((m, r) => {
+        const raw = r.referral_reason || '';
+        const parts = String(raw).split(';').map(s => s.trim()).filter(Boolean);
+        const reasonsHit = parts.length ? parts : ['Unspecified'];
+        const g = String(r.gender || '').trim().toLowerCase();
+        reasonsHit.forEach(reason => {
+            if (!m[reason]) m[reason] = { male: 0, female: 0 };
+            if (g === 'male') m[reason].male++;
+            else if (g === 'female') m[reason].female++;
+        });
+        return m;
+    }, {});
+}
 function meta(key) { return REPORTS.find(r => r.key === key); }
-function gradeLabel(rawGrade) { const n = normalizeGradeNumber(rawGrade); return n ? `Grade ${n}` : (rawGrade || 'N/A'); }
+function gradeLabel(rawGrade, isElementary = isElementarySchool) { const n = normalizeGradeNumber(rawGrade, isElementary); return n ? `Grade ${n}` : (rawGrade || 'N/A'); }
 function badge(status) { return createBadge(BADGE_STATUS[String(status || '').toLowerCase()] || 'pending'); }
 
 function getUserSchool() {
@@ -147,12 +170,44 @@ function analyticsLetterheadFooterHeight(doc) {
     return lh ? analyticsLetterheadImageWidth(doc) / lh.footerRatio : 0;
 }
 
-// autoTable's `margin.bottom` — undefined (no key at all) when no letterhead
-// is set, so a school that never touches Report Settings keeps today's exact
-// default pagination margins.
+// Where page content may start/end, below the letterhead header band and
+// above the footer band — 40pt from the page edge when no letterhead is
+// set, matching this file's original fixed margins exactly.
+function analyticsContentTop(doc) {
+    if (!getCurrentReportLetterhead()) return 40;
+    return ANALYTICS_LETTERHEAD_IMAGE_TOP + analyticsLetterheadHeaderHeight(doc) + ANALYTICS_LETTERHEAD_GAP;
+}
+function analyticsContentBottom(doc) {
+    if (!getCurrentReportLetterhead()) return doc.internal.pageSize.getHeight() - 40;
+    return doc.internal.pageSize.getHeight() - (ANALYTICS_LETTERHEAD_IMAGE_TOP + analyticsLetterheadFooterHeight(doc) + ANALYTICS_LETTERHEAD_GAP);
+}
+
+// autoTable paginates its own rows automatically, but it needs to know how
+// much room a continuation page actually has — `top` keeps a repeated
+// header row clear of the letterhead header image, `bottom` (only set when
+// a letterhead is configured) keeps the last row clear of the footer image.
 function analyticsAutoTableMargin(doc) {
-    if (!getCurrentReportLetterhead()) return { left: 40, right: 40 };
-    return { left: 40, right: 40, bottom: ANALYTICS_LETTERHEAD_IMAGE_TOP + analyticsLetterheadFooterHeight(doc) + ANALYTICS_LETTERHEAD_GAP };
+    const margin = { left: 40, right: 40, top: analyticsContentTop(doc) };
+    if (getCurrentReportLetterhead()) {
+        margin.bottom = ANALYTICS_LETTERHEAD_IMAGE_TOP + analyticsLetterheadFooterHeight(doc) + ANALYTICS_LETTERHEAD_GAP;
+    }
+    return margin;
+}
+
+// Content this file draws directly (doc.text section headings, doc.addImage
+// charts) has no built-in pagination the way autoTable rows do — without
+// this check, a heading or chart placed too close to the bottom of a page
+// gets cut off by the footer/letterhead band, or drawn off-page entirely,
+// once earlier content on that page (a previous table, a taller-than-usual
+// letterhead image) pushes y further down than a single-page layout
+// assumed. Call before drawing anything that isn't an autoTable, with the
+// vertical space it's about to need; starts a fresh page when it won't fit.
+function analyticsEnsureSpace(doc, y, neededHeight) {
+    if (y + neededHeight > analyticsContentBottom(doc)) {
+        doc.addPage();
+        return analyticsContentTop(doc);
+    }
+    return y;
 }
 
 // Stamps the header/footer image onto every page of a finished jsPDF
@@ -285,53 +340,64 @@ function renderAppointments(key) {
                 const half = (pageW - 80 - 16) / 2;
                 const imgStatus = chartImage('chStatus');
                 const imgReason = chartImage('chReason');
-                if (imgStatus) doc.addImage(imgStatus, 'PNG', 40, y, half, 150);
-                if (imgReason) doc.addImage(imgReason, 'PNG', 40 + half + 16, y, half, 150);
-                y += 166;
+                if (imgStatus || imgReason) {
+                    y = analyticsEnsureSpace(doc, y, 150);
+                    if (imgStatus) doc.addImage(imgStatus, 'PNG', 40, y, half, 150);
+                    if (imgReason) doc.addImage(imgReason, 'PNG', 40 + half + 16, y, half, 150);
+                    y += 166;
+                }
                 const imgTrend = chartImage('chTrend');
-                if (imgTrend) { doc.addImage(imgTrend, 'PNG', 40, y, pageW - 80, 140); y += 156; }
+                if (imgTrend) {
+                    y = analyticsEnsureSpace(doc, y, 140);
+                    doc.addImage(imgTrend, 'PNG', 40, y, pageW - 80, 140);
+                    y += 156;
+                }
 
-                // Summary tables — the actual numbers behind the two charts
-                // above, so the report stands on its own when printed instead
-                // of only being readable on screen.
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
-                doc.text('Status Breakdown', 40, y);
-                y += 6;
-                const statusRows = Object.entries(st2)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([status, count]) => [
-                        status.charAt(0).toUpperCase() + status.slice(1),
-                        count,
-                        ((count / rows.length) * 100).toFixed(1) + '%'
-                    ]);
-                doc.autoTable({
-                    startY: y,
-                    head: [['Status', 'Count', '% of Total']],
-                    body: statusRows,
-                    styles: { fontSize: 9 },
-                    headStyles: { fillColor: [18, 58, 107] },
-                    margin: analyticsAutoTableMargin(doc),
-                });
-                y = doc.lastAutoTable.finalY + 20;
+                const sortedRows = rows.slice()
+                    .sort((a, b) => `${a.preferred_date} ${a.preferred_time}`.localeCompare(`${b.preferred_date} ${b.preferred_time}`));
 
-                // Grouped by the linked counseling case's Case Section when
-                // one exists, same as the on-screen "By Reason" chart —
-                // falls back to the appointment's own reason text otherwise.
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
-                doc.text('By Reason', 40, y);
-                y += 6;
-                const reasonAgg = countBy(rows, r => r.case_section || r.reason);
-                const reasonRows = Object.entries(reasonAgg)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([reason, count]) => [reason, count, ((count / rows.length) * 100).toFixed(1) + '%']);
-                doc.autoTable({
-                    startY: y,
-                    head: [['Reason', 'Count', '% of Total']],
-                    body: reasonRows,
-                    styles: { fontSize: 9 },
-                    headStyles: { fillColor: [18, 58, 107] },
-                    margin: analyticsAutoTableMargin(doc),
-                });
+                if (isOnline) {
+                    // Mirrors the on-screen Appointment List table (Student
+                    // Name included) — unlike the counseling-appointment
+                    // export below, which uses its own column set.
+                    doc.autoTable({
+                        startY: y,
+                        head: [['#', 'Student Name', 'Grade', 'Appointment Date', 'Time', 'Reason']],
+                        body: sortedRows.map((r, i) => [
+                            i + 1,
+                            r.student_name || 'N/A',
+                            gradeLabel(r.grade),
+                            r.preferred_date || 'N/A',
+                            r.preferred_time || 'N/A',
+                            r.case_section || r.reason || 'N/A'
+                        ]),
+                        styles: { fontSize: 9 },
+                        headStyles: { fillColor: [18, 58, 107] },
+                        margin: analyticsAutoTableMargin(doc),
+                    });
+                } else {
+                    // Scheduled By = scheduled_by_name (api/appointment-request.php's
+                    // created_by_id, resolved to a name) — captured once when the
+                    // appointment was first created by staff, unlike counselor_id,
+                    // which gets overwritten on every later status change and so
+                    // can't reliably answer "who scheduled this".
+                    doc.autoTable({
+                        startY: y,
+                        head: [['#', 'Student Name', 'Grade', 'Appointment Date', 'Time', 'Reason', 'Scheduled By']],
+                        body: sortedRows.map((r, i) => [
+                            i + 1,
+                            r.student_name || 'N/A',
+                            gradeLabel(r.grade),
+                            r.preferred_date || 'N/A',
+                            r.preferred_time || 'N/A',
+                            r.case_section || r.reason || 'N/A',
+                            r.scheduled_by_name || 'N/A'
+                        ]),
+                        styles: { fontSize: 9 },
+                        headStyles: { fillColor: [18, 58, 107] },
+                        margin: analyticsAutoTableMargin(doc),
+                    });
+                }
             } else {
                 doc.setTextColor(120, 130, 150);
                 doc.text(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`, 40, y + 16);
@@ -358,8 +424,40 @@ function renderAppointments(key) {
         ${chartTile('chStatus', 'Status Breakdown')}${chartTile('chReason', 'By Reason')}</div>`));
     frag.append(el(`<div style="margin-bottom:28px;">${chartTile('chTrend', 'Daily Trend')}</div>`));
 
-    if (rows.length === 0) {
-        frag.append(el(emptyNote(`No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.`, 'bi-calendar2-x')));
+    // Per-appointment list — named columns for both tabs. Grade formatting
+    // already adapts to the logged-in account's school level (elementary
+    // East/West/South vs. secondary) via gradeLabel()/isElementarySchool,
+    // and `rows` is already scoped to this account's own school, so this
+    // works unmodified across the coordinator, counselor, and combined
+    // (counselor-and-coordinator/other-school) portals.
+    {
+        const sortedRows = rows.slice()
+            .sort((a, b) => `${a.preferred_date} ${a.preferred_time}`.localeCompare(`${b.preferred_date} ${b.preferred_time}`));
+        // Counseling Appointments adds a Scheduled By column — the account
+        // that created the appointment (api/appointment-request.php's
+        // created_by_id, resolved server-side to scheduled_by_name), captured
+        // once at creation. Deliberately NOT the same as counselor_id, which
+        // gets overwritten on every later approve/reject/reschedule and so
+        // can't reliably answer "who scheduled this". N/A for rows that
+        // predate this column.
+        const listRows = sortedRows
+            .map((r, i) => `<tr>
+                <td>${i + 1}</td>
+                <td>${esc(r.student_name || 'N/A')}</td>
+                <td>${esc(gradeLabel(r.grade))}</td>
+                <td>${esc(r.preferred_date || 'N/A')}</td>
+                <td>${esc(r.preferred_time || 'N/A')}</td>
+                <td>${esc(r.case_section || r.reason || 'N/A')}</td>
+                ${isOnline ? '' : `<td>${esc(r.scheduled_by_name || 'N/A')}</td>`}
+            </tr>`).join('');
+        const colCount = isOnline ? 6 : 7;
+        frag.append(el(`<div style="margin-bottom:28px;">
+            <h3 class="text-primary">Appointment List</h3>
+            <div class="table-container"><table>
+                <thead><tr><th>#</th><th>Student Name</th><th>Grade</th><th>Appointment Date</th><th>Time</th><th>Reason</th>${isOnline ? '' : '<th>Scheduled By</th>'}</tr></thead>
+                <tbody>${listRows || `<tr><td colspan="${colCount}" class="text-center text-muted" style="padding:30px;">No ${isOnline ? 'online' : 'counseling'} appointments recorded for your school yet.</td></tr>`}</tbody>
+            </table></div>
+        </div>`));
     }
 
     queueMicrotask(() => {
@@ -389,6 +487,15 @@ function renderReferrals() {
     const agg = countByReason(referrals, r => r.referral_reason);
     const reasons = Object.entries(agg).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
     const total = referrals.length;
+    const genderMap = reasonGenderBreakdown(referrals);
+    // These are column sums over the per-reason rows below, not distinct
+    // referral counts — a referral with several ";"-separated reasons (see
+    // countByReason) is tallied once per reason it lists, same as every
+    // other number in this table, so the total row foots exactly what's
+    // displayed above it.
+    const totalMale = reasons.reduce((sum, r) => sum + (genderMap[r.reason]?.male || 0), 0);
+    const totalFemale = reasons.reduce((sum, r) => sum + (genderMap[r.reason]?.female || 0), 0);
+    const totalReasonCount = reasons.reduce((sum, r) => sum + r.count, 0);
 
     frag.append(panelHeader('referrals',
         'Every referral reason on record for your school — the full breakdown, not just the top few.',
@@ -403,42 +510,35 @@ function renderReferrals() {
             if (total > 0) {
                 const pageW = doc.internal.pageSize.getWidth();
                 const imgReasons = chartImage('chReasons');
-                if (imgReasons) { doc.addImage(imgReasons, 'PNG', 40, y, pageW - 80, 170); y += 186; }
+                if (imgReasons) {
+                    y = analyticsEnsureSpace(doc, y, 170);
+                    doc.addImage(imgReasons, 'PNG', 40, y, pageW - 80, 170);
+                    y += 186;
+                }
                 const imgUrgency = chartImage('chUrgency');
-                if (imgUrgency) { doc.addImage(imgUrgency, 'PNG', 40, y, (pageW - 80) / 2, 140); y += 156; }
+                if (imgUrgency) {
+                    y = analyticsEnsureSpace(doc, y, 140);
+                    doc.addImage(imgUrgency, 'PNG', 40, y, (pageW - 80) / 2, 140);
+                    y += 156;
+                }
 
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
-                doc.text('Reason Breakdown', 40, y);
-                y += 6;
                 doc.autoTable({
                     startY: y,
-                    head: [['Reason', 'Count', '% of total']],
-                    body: reasons.map(r => [r.reason, r.count, ((r.count / total) * 100).toFixed(1) + '%']),
+                    head: [['Referral Reason', 'Number of Referrals', 'Male', 'Female']],
+                    body: [
+                        ...reasons.map(r => {
+                            const g = genderMap[r.reason] || { male: 0, female: 0 };
+                            return [r.reason, r.count, g.male, g.female];
+                        }),
+                        ['Overall Total', totalReasonCount, totalMale, totalFemale]
+                    ],
                     styles: { fontSize: 9 },
                     headStyles: { fillColor: [18, 58, 107] },
-                    margin: analyticsAutoTableMargin(doc),
-                });
-                y = doc.lastAutoTable.finalY + 20;
-
-                // Same urgency buckets as the on-screen "By Urgency" chart —
-                // that chart had no accompanying table until now.
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
-                doc.text('Urgency Breakdown', 40, y);
-                y += 6;
-                const urgencyAgg = countBy(referrals, r => r.urgency || 'normal');
-                const urgencyRows = Object.entries(urgencyAgg)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([urgency, count]) => [
-                        urgency.charAt(0).toUpperCase() + urgency.slice(1),
-                        count,
-                        ((count / total) * 100).toFixed(1) + '%'
-                    ]);
-                doc.autoTable({
-                    startY: y,
-                    head: [['Urgency', 'Count', '% of total']],
-                    body: urgencyRows,
-                    styles: { fontSize: 9 },
-                    headStyles: { fillColor: [18, 58, 107] },
+                    didParseCell: (data) => {
+                        if (data.row.index === reasons.length) {
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                    },
                     margin: analyticsAutoTableMargin(doc),
                 });
             } else {
@@ -462,8 +562,14 @@ function renderReferrals() {
     if (total === 0) {
         frag.append(el(emptyNote('No referrals recorded for your school yet.', 'bi-clipboard-x')));
     } else {
-        const tr = reasons.map(r => `<tr><td>${esc(r.reason)}</td><td style="text-align:right;">${r.count}</td><td style="text-align:right;">${((r.count / total) * 100).toFixed(1)}%</td></tr>`).join('');
-        frag.append(el(`<div><h3 class="text-primary">Reason Breakdown</h3><div class="table-container"><table><thead><tr><th>Reason</th><th style="text-align:right;">Count</th><th style="text-align:right;">% of total</th></tr></thead><tbody>${tr}</tbody></table></div></div>`));
+        const tr = reasons.map(r => {
+            const g = genderMap[r.reason] || { male: 0, female: 0 };
+            return `<tr><td>${esc(r.reason)}</td><td style="text-align:right;">${r.count}</td><td style="text-align:right;">${g.male}</td><td style="text-align:right;">${g.female}</td></tr>`;
+        }).join('');
+        frag.append(el(`<div><h3 class="text-primary">Reason Breakdown</h3><div class="table-container"><table>
+            <thead><tr><th>Referral Reason</th><th style="text-align:right;">Number of Referrals</th><th style="text-align:right;">Male</th><th style="text-align:right;">Female</th></tr></thead>
+            <tbody>${tr}<tr style="font-weight:700;"><td>Overall Total</td><td style="text-align:right;">${totalReasonCount}</td><td style="text-align:right;">${totalMale}</td><td style="text-align:right;">${totalFemale}</td></tr></tbody>
+        </table></div></div>`));
     }
 
     queueMicrotask(() => {
@@ -652,9 +758,10 @@ function exportChildPdf() {
     const followUps = cached.data.follow_ups || [];
 
     const doc = newPdf();
-    let y = pdfHeader(doc, 'Child Summary Case', s.name);
+    let y = pdfHeader(doc, 'Child Summary Case');
 
     doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(30, 40, 60);
+    doc.text(`Name: ${s.name || 'N/A'}`, 40, y); y += 16;
     doc.text(`LRN: ${s.lrn || 'N/A'}`, 40, y); y += 16;
     doc.text(`Grade & Section: ${gradeLabel(s.grade)} · ${s.section || 'N/A'}`, 40, y); y += 16;
     doc.text(`Sessions: ${cases.length}   Referrals: ${studentReferrals.length}   Follow-ups: ${followUps.length}`, 40, y); y += 20;
@@ -664,11 +771,18 @@ function exportChildPdf() {
         const half = (pageW - 80 - 16) / 2;
         const imgStatus = chartImage('chCaseStatus');
         const imgCategory = chartImage('chCaseCategory');
-        if (imgStatus) doc.addImage(imgStatus, 'PNG', 40, y, half, 150);
-        if (imgCategory) doc.addImage(imgCategory, 'PNG', 40 + half + 16, y, half, 150);
-        y += 166;
+        if (imgStatus || imgCategory) {
+            y = analyticsEnsureSpace(doc, y, 150);
+            if (imgStatus) doc.addImage(imgStatus, 'PNG', 40, y, half, 150);
+            if (imgCategory) doc.addImage(imgCategory, 'PNG', 40 + half + 16, y, half, 150);
+            y += 166;
+        }
     }
 
+    // Each section heading below needs enough room for itself plus at least
+    // one table row (a heading with no rows under it on the same page reads
+    // as a mistake) — autoTable then paginates the rows on its own from there.
+    y = analyticsEnsureSpace(doc, y, 46);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
     doc.text('Case History', 40, y);
     y += 6;
@@ -688,6 +802,7 @@ function exportChildPdf() {
     // here as its own table instead, since autoTable has no built-in
     // grouped/nested-row support.
     if (followUps.length > 0) {
+        y = analyticsEnsureSpace(doc, y, 46);
         doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
         doc.text('Follow-Up Log', 40, y);
         y += 6;
@@ -702,6 +817,7 @@ function exportChildPdf() {
         y = doc.lastAutoTable.finalY + 20;
     }
 
+    y = analyticsEnsureSpace(doc, y, 46);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(18, 58, 107);
     doc.text('Referral History', 40, y);
     y += 6;
@@ -765,15 +881,17 @@ async function init() {
     try {
         // loadReportLetterhead is awaited alongside the rest so Export PDF
         // never races it — see report-letterhead.js.
-        const [apptRes, refRes, studentsRes] = await Promise.all([
+        const [apptRes, refRes, studentsRes, levelRes] = await Promise.all([
             fetch(`../../api/appointment-request.php?school=${encodeURIComponent(school)}`).then(r => r.json()),
             fetch(`../../api/referral.php?role=${encodeURIComponent(getReferralApiRole())}&school=${encodeURIComponent(school)}`).then(r => r.json()),
             fetch(`../../api/get-students.php?school=${encodeURIComponent(school)}`).then(r => r.json()),
+            fetch(`../../api/school-config.php?action=getGrades&school=${encodeURIComponent(school)}`).then(r => r.json()).catch(() => null),
             loadReportLetterhead(school),
         ]);
         appointments = apptRes.success ? (apptRes.data || []) : [];
         referrals = refRes.success ? (refRes.data || []) : [];
         studentsList = studentsRes.success ? (studentsRes.data || []) : [];
+        if (levelRes && levelRes.success) isElementarySchool = !!levelRes.isElementary;
     } catch (e) {
         showAlert('Could not load report data: ' + e.message, 'error');
     }

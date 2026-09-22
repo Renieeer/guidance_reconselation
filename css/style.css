@@ -10480,6 +10480,13 @@ th {
         overflow-y: auto;
         overflow-x: hidden;
         padding: 4px;
+        /* Wider than the base rule's 10px — each chip's order badge now
+           overhangs its own top-left corner by 8px (added alongside the
+           remove button's existing -10px top-right overhang), so a plain
+           10px gap left only ~2px clearance between one chip's badge and
+           the chip stacked above it. 16px keeps both corner overhangs
+           clear of the neighboring chip with real margin, not just barely. */
+        gap: 16px;
         scrollbar-width: thin;
     }
 }
@@ -10738,6 +10745,36 @@ th {
     transform: translateY(0);
 }
 
+/* Small context label ("People Added") so the chip strip reads as an
+   intentional tray of collapsed people rather than a stray floating icon
+   — most noticeable in the fixed floating variant (>=1600px, see the media
+   query above), where the tray sits with no other heading nearby. Generated
+   content doesn't count as a child node for the :empty check above, so
+   this doesn't defeat "hide the whole bar until someone's been added". */
+#peopleChips::before {
+    content: 'People Added';
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    background: var(--clay-white);
+    padding: 5px 10px;
+    border-radius: var(--clay-r-sm);
+    box-shadow: var(--clay-out-sm);
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Numbers each chip in DOM order — pure CSS, no JS bookkeeping needed, and
+   automatically stays correct as people are added/removed/reordered.
+   Distinguishes people from each other by position even before a name is
+   typed (two not-yet-named people otherwise both just read "Not filled in
+   yet" — indistinguishable without this). */
+#peopleChips {
+    counter-reset: referral-person-chip;
+}
+
 /* Collapsed representation: a small file/document icon labeled with the
    person's name — click it to reopen the full form. Hidden unless the
    card is collapsed. */
@@ -10746,19 +10783,45 @@ th {
 }
 
 .referral-person-card.is-collapsed .referral-person-chip {
+    counter-increment: referral-person-chip;
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    width: 68px;
-    padding: 10px 8px 8px;
+    width: 82px;
+    padding: 12px 8px 9px;
     border: none;
+    /* Neutral by default (role not yet tagged) — colored per role below,
+       so at a glance an untagged person reads as distinctly "not yet
+       tagged" rather than blending in with Victim's blue. */
+    border-bottom: 3px solid var(--text-light);
     border-radius: var(--clay-r-sm);
     background: var(--clay-light-bg);
     box-shadow: var(--clay-out-sm);
     cursor: pointer;
     transition: box-shadow 0.2s ease, transform 0.2s ease;
     animation: referralChipPopIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Order badge — top-left corner, opposite the remove (x) button which
+   already owns the top-right corner (see .referral-person-remove above). */
+.referral-person-card.is-collapsed .referral-person-chip::after {
+    content: counter(referral-person-chip);
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--clay-out-sm);
 }
 
 @keyframes referralChipPopIn {
@@ -10773,11 +10836,23 @@ th {
 
 .referral-person-chip i {
     font-size: 22px;
-    color: #1a4c88;
+    color: var(--text-light);
+}
+
+/* Matches the base rule's own ancestor scope (.referral-person-card.is-collapsed
+   .referral-person-chip) so these role overrides actually win — a bare
+   .referral-person-chip.role-offender has lower specificity than that base
+   rule and would silently lose to its neutral border-bottom otherwise. */
+.referral-person-card.is-collapsed .referral-person-chip.role-offender {
+    border-bottom-color: var(--danger);
 }
 
 .referral-person-chip.role-offender i {
     color: var(--danger);
+}
+
+.referral-person-card.is-collapsed .referral-person-chip.role-victim {
+    border-bottom-color: var(--info);
 }
 
 .referral-person-chip.role-victim i {

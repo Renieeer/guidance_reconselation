@@ -1,5 +1,36 @@
 // Utility functions
 
+// Redirects to the login page the moment ANY fetch() on this page gets a
+// 401 with sessionExpired:true — see includes/session-guard.php's
+// require_api_session(). Without this, a tab left open after the same
+// account logs in elsewhere (or a session that's simply been invalidated)
+// would just show a silent "failed to load" for whatever it tried to
+// fetch next, instead of actually landing the user back on the login
+// page like a real single-session system should. Patches window.fetch
+// once, here, rather than editing every individual fetch() call site
+// across ~50 page scripts.
+(function () {
+    const originalFetch = window.fetch;
+    if (typeof originalFetch !== 'function') return;
+
+    window.fetch = function (...args) {
+        return originalFetch.apply(this, args).then(response => {
+            if (response.status === 401) {
+                // .clone() so the caller's own .json()/.text() on this same
+                // response still works — a Response body can only be read
+                // once, and this check must not consume it out from under
+                // normal, unrelated 401 handling elsewhere in the app.
+                response.clone().json().then(data => {
+                    if (data && data.sessionExpired) {
+                        window.location.href = '../../index.php';
+                    }
+                }).catch(() => { /* not JSON, or no body — not our 401 */ });
+            }
+            return response;
+        });
+    };
+})();
+
 // Age in whole years as of today, from a birth date string — shared by
 // every referral form (teacher's, counselor's and other-school's walk-in
 // forms) so a student's age is always computed from their date of birth
@@ -408,14 +439,21 @@ function gradeScopeToList(scope, isElementary = false) {
         .filter(num => Number.isInteger(num) && num >= min && num <= max);
 }
 
-function normalizeGradeNumber(rawGrade) {
+// isElementary switches the accepted range to 1-6 (East/West/South schools)
+// and turns off the legacy 1-6-code-means-grade-7-12 mapping, which only
+// makes sense for secondary schools — same convention as gradeScopeToList().
+// Every existing caller omits it and keeps the original 7-12 behavior.
+function normalizeGradeNumber(rawGrade, isElementary = false) {
     const raw = String(rawGrade == null ? '' : rawGrade).trim();
     if (!raw) return null;
 
+    const min = isElementary ? 1 : 7;
+    const max = isElementary ? 6 : 12;
+
     if (/^\d+$/.test(raw)) {
         const num = parseInt(raw, 10);
-        if (num >= 7 && num <= 12) return num;
-        if (GRADE_LEGACY_CODE_MAP[raw] !== undefined) return GRADE_LEGACY_CODE_MAP[raw];
+        if (num >= min && num <= max) return num;
+        if (!isElementary && GRADE_LEGACY_CODE_MAP[raw] !== undefined) return GRADE_LEGACY_CODE_MAP[raw];
     }
 
     // Free-text fields (e.g. "Grade 10 - Section Alpha") — pull the first
@@ -423,7 +461,7 @@ function normalizeGradeNumber(rawGrade) {
     const textMatch = raw.match(/grade\s*(\d{1,2})/i);
     if (textMatch) {
         const num = parseInt(textMatch[1], 10);
-        return (num >= 7 && num <= 12) ? num : null;
+        return (num >= min && num <= max) ? num : null;
     }
 
     return null;

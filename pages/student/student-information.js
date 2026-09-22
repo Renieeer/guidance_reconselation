@@ -870,6 +870,16 @@ async function fetchAddressOptions(level, params = {}) {
                     const data = JSON.parse(text);
                     if (data.success) {
                         showNotification('✓ All information saved successfully!', 'success');
+                        // Always land back on Step 1 after a save, regardless
+                        // of which step the user was on when they clicked
+                        // Save/Update — not navigateToStep(1), which no-ops
+                        // when already on the target step and also re-runs
+                        // saveCurrentStep()'s local-only bookkeeping, neither
+                        // of which is needed right after a real DB save.
+                        currentStep = 1;
+                        updateStepIndicator();
+                        updateNavigationButtons();
+                        scrollToTop();
                     } else {
                         showNotification(data.message || 'Failed to save information', 'error');
                     }
@@ -1571,10 +1581,9 @@ async function fetchAddressOptions(level, params = {}) {
             // NEW selector: .step-panel instead of .step-form
             const panel = document.querySelector(`.step-panel[data-step="${step}"]`);
             if (!panel) continue;
-            const inputs = panel.querySelectorAll('input, select, textarea');
-            let hasData = false;
-            inputs.forEach(inp => { if (inp.value && inp.value.trim()) hasData = true; });
-            if (hasData) completedSteps.add(step);
+            // Shared with saveCurrentStep() — see panelHasData() for why
+            // plain .value truthiness on a <select> is wrong here.
+            if (panelHasData(panel)) completedSteps.add(step);
         }
         updateStepIndicator();
     }
@@ -1626,17 +1635,39 @@ async function fetchAddressOptions(level, params = {}) {
     }
 
     // ─── SAVE STEP STATE ──────────────────────────────────────────
+    // Whether any field inside a given step's own panel has real user
+    // input — shared by saveCurrentStep() and markStepsAsComplete() so the
+    // two can't drift apart and re-introduce this same bug independently.
+    // <select> fields need selectedIndex (not .value) because several of
+    // this form's selects (father_isDeceased/mother_isDeceased) have no
+    // blank placeholder option — their first <option> is a real value
+    // ("No"), so the browser auto-selects it on page load and .value reads
+    // truthy before the user ever touches the field. selectedIndex > 0
+    // asks "did the user move it off its default", which is correct
+    // whether or not that default happens to be a blank placeholder.
+    function panelHasData(panel) {
+        const fields = panel.querySelectorAll('input, select, textarea');
+        for (const field of fields) {
+            if (field.tagName === 'SELECT') {
+                if (field.selectedIndex > 0) return true;
+            } else if (field.type === 'checkbox' || field.type === 'radio') {
+                if (field.checked) return true;
+            } else if (field.value && field.value.trim()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function saveCurrentStep() {
         const panel = document.querySelector(`.step-panel[data-step="${currentStep}"]`);
         if (!panel) return;
-        
-        const form = document.getElementById('studentForm');
-        if (!form) return;
-        
-        const fd = new FormData(form);
-        let hasData = false;
-        for (let [, v] of fd.entries()) { if (v && v.trim()) { hasData = true; break; } }
-        if (hasData) {
+
+        // Scoped to THIS step's own panel only — using FormData on the whole
+        // multi-step form here marked every step "completed" (green) the
+        // moment ANY other step had data (e.g. Step 1's name fields), since
+        // it has no way to tell which step a given field belongs to.
+        if (panelHasData(panel)) {
             completedSteps.add(currentStep);
         }
     }
