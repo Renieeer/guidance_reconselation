@@ -104,6 +104,8 @@
                             </tr>
                         </tbody>
                     </table>
+
+                    <div class="district-pagination" id="districtAnalyticsPagination" hidden></div>
                 </div>
             </div>
         </div>

@@ -59,6 +59,13 @@ function renderAnalytics(referrals) {
 // counts from the referral table — all joined on school name). Schools
 // without a district assigned yet (the common starting state) show up under
 // a single real "Unassigned" row instead of being split into fake districts.
+// Paginates the district table once it grows past one page — same
+// pattern/CSS class (.district-pagination) as school-management.js's
+// school folder grid, just applied to a <table> instead of a card grid.
+const DISTRICT_ANALYTICS_PAGE_SIZE = 10;
+let districtAnalyticsPage = 1;
+let districtAnalyticsRows = [];
+
 function loadComparativeAnalytics() {
     const tbody = document.getElementById('analyticsTableBody');
 
@@ -68,7 +75,9 @@ function loadComparativeAnalytics() {
             if (!result.success) {
                 throw new Error(result.message || 'Failed to load district summary');
             }
-            renderComparativeAnalytics(result.districts || []);
+            districtAnalyticsRows = result.districts || [];
+            districtAnalyticsPage = 1;
+            renderComparativeAnalytics();
         })
         .catch(error => {
             console.error('Error loading comparative analytics:', error);
@@ -76,15 +85,23 @@ function loadComparativeAnalytics() {
         });
 }
 
-function renderComparativeAnalytics(districts) {
+function renderComparativeAnalytics() {
     const tbody = document.getElementById('analyticsTableBody');
 
-    if (districts.length === 0) {
+    if (districtAnalyticsRows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No schools found.</td></tr>';
+        renderDistrictAnalyticsPagination(1);
         return;
     }
 
-    tbody.innerHTML = districts.map(row => {
+    const totalPages = Math.max(1, Math.ceil(districtAnalyticsRows.length / DISTRICT_ANALYTICS_PAGE_SIZE));
+    if (districtAnalyticsPage > totalPages) districtAnalyticsPage = totalPages;
+    if (districtAnalyticsPage < 1) districtAnalyticsPage = 1;
+
+    const startIndex = (districtAnalyticsPage - 1) * DISTRICT_ANALYTICS_PAGE_SIZE;
+    const pageRows = districtAnalyticsRows.slice(startIndex, startIndex + DISTRICT_ANALYTICS_PAGE_SIZE);
+
+    tbody.innerHTML = pageRows.map(row => {
         const resolution = row.referralCount > 0 ? Math.round((row.resolvedCount / row.referralCount) * 100) : 0;
         const performance = resolution > 65 ? 'Excellent' : (resolution > 50 ? 'Good' : 'Needs Improvement');
 
@@ -101,6 +118,39 @@ function renderComparativeAnalytics(districts) {
             </tr>
         `;
     }).join('');
+
+    renderDistrictAnalyticsPagination(totalPages);
+}
+
+// Prev/Next controls, only shown once the district list actually spans
+// more than one page (10 rows) — a short list never shows this.
+function renderDistrictAnalyticsPagination(totalPages) {
+    const paginationEl = document.getElementById('districtAnalyticsPagination');
+    if (!paginationEl) return;
+
+    if (totalPages <= 1) {
+        paginationEl.hidden = true;
+        paginationEl.innerHTML = '';
+        return;
+    }
+
+    paginationEl.hidden = false;
+    paginationEl.innerHTML = `
+        <button type="button" class="btn btn-secondary btn-sm" id="districtAnalyticsPrevPage" ${districtAnalyticsPage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i> Prev</button>
+        <span class="district-pagination-label">Page ${districtAnalyticsPage} of ${totalPages}</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="districtAnalyticsNextPage" ${districtAnalyticsPage >= totalPages ? 'disabled' : ''}>Next <i class="bi bi-chevron-right"></i></button>
+    `;
+
+    document.getElementById('districtAnalyticsPrevPage')?.addEventListener('click', () => {
+        if (districtAnalyticsPage > 1) {
+            districtAnalyticsPage--;
+            renderComparativeAnalytics();
+        }
+    });
+    document.getElementById('districtAnalyticsNextPage')?.addEventListener('click', () => {
+        districtAnalyticsPage++;
+        renderComparativeAnalytics();
+    });
 }
 
 function escapeHtml(value) {
