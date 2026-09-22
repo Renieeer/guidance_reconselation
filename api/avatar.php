@@ -9,6 +9,8 @@
 
 require_once 'conn.php';
 require_once 'profile-schema.php';
+require_once __DIR__ . '/../includes/session-guard.php';
+require_api_session();
 
 ensure_users_table_profile_image_blob_columns($conn);
 

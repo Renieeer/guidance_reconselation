@@ -5,6 +5,8 @@ header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
 require_once 'conn.php';
+require_once __DIR__ . '/../includes/session-guard.php';
+require_api_session();
 
 function respond($data) {
     echo json_encode(['success' => true, 'data' => $data]);

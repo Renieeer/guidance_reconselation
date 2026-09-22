@@ -247,6 +247,13 @@ function getSchoolConfig(string $school): ?array {
 }
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+    header('Content-Type: application/json');
+    // Deliberately NOT gated with require_api_session() — js/register.js
+    // (the public, pre-login student registration page) fetches
+    // ?action=list directly to populate the School dropdown before any
+    // account/session exists. This is read-only reference data (school
+    // names/grade configs), not sensitive, so it's fine to leave public —
+    // same as it always was before session enforcement existed.
     $action = $_GET['action'] ?? 'list';
 
     if ($action === 'config') {

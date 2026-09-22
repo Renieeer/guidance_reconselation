@@ -1,5 +1,36 @@
 // Utility functions
 
+// Redirects to the login page the moment ANY fetch() on this page gets a
+// 401 with sessionExpired:true — see includes/session-guard.php's
+// require_api_session(). Without this, a tab left open after the same
+// account logs in elsewhere (or a session that's simply been invalidated)
+// would just show a silent "failed to load" for whatever it tried to
+// fetch next, instead of actually landing the user back on the login
+// page like a real single-session system should. Patches window.fetch
+// once, here, rather than editing every individual fetch() call site
+// across ~50 page scripts.
+(function () {
+    const originalFetch = window.fetch;
+    if (typeof originalFetch !== 'function') return;
+
+    window.fetch = function (...args) {
+        return originalFetch.apply(this, args).then(response => {
+            if (response.status === 401) {
+                // .clone() so the caller's own .json()/.text() on this same
+                // response still works — a Response body can only be read
+                // once, and this check must not consume it out from under
+                // normal, unrelated 401 handling elsewhere in the app.
+                response.clone().json().then(data => {
+                    if (data && data.sessionExpired) {
+                        window.location.href = '../../index.php';
+                    }
+                }).catch(() => { /* not JSON, or no body — not our 401 */ });
+            }
+            return response;
+        });
+    };
+})();
+
 // Age in whole years as of today, from a birth date string — shared by
 // every referral form (teacher's, counselor's and other-school's walk-in
 // forms) so a student's age is always computed from their date of birth

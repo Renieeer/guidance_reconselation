@@ -20,10 +20,12 @@ try {
     require_once 'account-status.php';
     require_once 'email-verification.php';
     require_once 'profile-schema.php';
+    require_once __DIR__ . '/../includes/session-guard.php';
     ensure_users_table_grade_column($conn);
     ensure_users_table_active_column($conn);
     ensure_email_verification_schema($conn);
     ensure_users_table_profile_image_column($conn);
+    ensure_users_table_session_column($conn);
 
     // Get JSON input
     $input = file_get_contents('php://input');
@@ -124,8 +126,28 @@ try {
         'profileImage' => $user['profile_image'] ? ('api/avatar.php?id=' . $user['AccountID'] . '&v=' . urlencode($user['profile_image'])) : null
     ];
 
+    // Regenerated (not just reused) so a session id from before this login
+    // can never be replayed to land in the new session's data — standard
+    // session-fixation hardening, and doubly relevant now that a session
+    // id is what "one active session per account" actually keys off of.
+    session_regenerate_id(true);
+
+    // This account's new single active session. Overwriting
+    // active_session_token here is *the* enforcement mechanism: any other
+    // browser/tab/device currently holding the OLD token for this same
+    // AccountID will fail session_guard_current_user()'s comparison on its
+    // very next page load or API call and get logged out immediately — see
+    // includes/session-guard.php.
+    $sessionToken = bin2hex(random_bytes(32));
+
+    $tokenStmt = $conn->prepare('UPDATE users_tables SET active_session_token = ? WHERE AccountID = ?');
+    $tokenStmt->bind_param('si', $sessionToken, $user['AccountID']);
+    $tokenStmt->execute();
+    $tokenStmt->close();
+
     // Store in session
     $_SESSION['user'] = $userData;
+    $_SESSION['session_token'] = $sessionToken;
 
     echo json_encode([
         'success' => true,

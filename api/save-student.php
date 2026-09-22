@@ -11,6 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+require_once __DIR__ . '/../includes/session-guard.php';
+require_api_session();
+
 require_once 'conn.php';
 
 function getTableColumns(mysqli $conn, string $tableName): array {
