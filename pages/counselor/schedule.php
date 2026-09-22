@@ -125,7 +125,27 @@
                     </div>
                     <div class="form-group">
                         <label for="editAppointmentTime">Time *</label>
-                        <input type="time" id="editAppointmentTime" required>
+                        <select id="editAppointmentTime" required>
+                            <option value="">Select a time...</option>
+                            <optgroup label="Morning (8:00 AM - 12:00 PM)">
+                                <option value="08:00">8:00 AM</option>
+                                <option value="08:30">8:30 AM</option>
+                                <option value="09:00">9:00 AM</option>
+                                <option value="09:30">9:30 AM</option>
+                                <option value="10:00">10:00 AM</option>
+                                <option value="10:30">10:30 AM</option>
+                                <option value="11:00">11:00 AM</option>
+                                <option value="11:30">11:30 AM</option>
+                            </optgroup>
+                            <optgroup label="Afternoon (1:00 PM - 4:00 PM)">
+                                <option value="13:00">1:00 PM</option>
+                                <option value="13:30">1:30 PM</option>
+                                <option value="14:00">2:00 PM</option>
+                                <option value="14:30">2:30 PM</option>
+                                <option value="15:00">3:00 PM</option>
+                                <option value="15:30">3:30 PM</option>
+                            </optgroup>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="editAppointmentLocation">Location/Office</label>
@@ -281,11 +301,51 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="modalEventStartTime">Start Time *</label>
-                                    <input type="time" id="modalEventStartTime">
+                                    <select id="modalEventStartTime">
+                                        <option value="">Select a time...</option>
+                                        <optgroup label="Morning (8:00 AM - 12:00 PM)">
+                                            <option value="08:00">8:00 AM</option>
+                                            <option value="08:30">8:30 AM</option>
+                                            <option value="09:00">9:00 AM</option>
+                                            <option value="09:30">9:30 AM</option>
+                                            <option value="10:00">10:00 AM</option>
+                                            <option value="10:30">10:30 AM</option>
+                                            <option value="11:00">11:00 AM</option>
+                                            <option value="11:30">11:30 AM</option>
+                                        </optgroup>
+                                        <optgroup label="Afternoon (1:00 PM - 4:00 PM)">
+                                            <option value="13:00">1:00 PM</option>
+                                            <option value="13:30">1:30 PM</option>
+                                            <option value="14:00">2:00 PM</option>
+                                            <option value="14:30">2:30 PM</option>
+                                            <option value="15:00">3:00 PM</option>
+                                            <option value="15:30">3:30 PM</option>
+                                        </optgroup>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label for="modalEventEndTime">End Time *</label>
-                                    <input type="time" id="modalEventEndTime">
+                                    <select id="modalEventEndTime">
+                                        <option value="">Select a time...</option>
+                                        <optgroup label="Morning (8:00 AM - 12:00 PM)">
+                                            <option value="08:30">8:30 AM</option>
+                                            <option value="09:00">9:00 AM</option>
+                                            <option value="09:30">9:30 AM</option>
+                                            <option value="10:00">10:00 AM</option>
+                                            <option value="10:30">10:30 AM</option>
+                                            <option value="11:00">11:00 AM</option>
+                                            <option value="11:30">11:30 AM</option>
+                                            <option value="12:00">12:00 PM</option>
+                                        </optgroup>
+                                        <optgroup label="Afternoon (1:00 PM - 4:00 PM)">
+                                            <option value="13:30">1:30 PM</option>
+                                            <option value="14:00">2:00 PM</option>
+                                            <option value="14:30">2:30 PM</option>
+                                            <option value="15:00">3:00 PM</option>
+                                            <option value="15:30">3:30 PM</option>
+                                            <option value="16:00">4:00 PM</option>
+                                        </optgroup>
+                                    </select>
                                 </div>
                             </div>
                             <small class="text-muted schedule-modal-hint">Blocks this time window — students can only book online appointments outside it.</small>

@@ -27,6 +27,7 @@
                 </button>
             </div>
 
+            <div class="page-content">
             <div class="case-dashboard" id="caseFormWrapper" style="display:none;">
                 <form id="caseCreateForm" class="case-form card">
                     <div class="form-section">
@@ -180,6 +181,7 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
             </div>
         </div>
     </div>
