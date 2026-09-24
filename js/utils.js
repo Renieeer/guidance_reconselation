@@ -82,12 +82,20 @@ function showAlert(message, type = 'success') {
     const alert = document.createElement('div');
     alert.className = `alert alert-${type} show`;
     alert.textContent = message;
-    
-    const container = document.querySelector('.page-content');
-    if (container) {
-        container.insertBefore(alert, container.firstChild);
-        setTimeout(() => alert.remove(), 3000);
-    }
+
+    // .alert is position:fixed (see css/style.css) — this container only
+    // decides where the element lives in the DOM for cleanup, never its
+    // on-screen position. pages/{counselor,other-school}/counseling.php
+    // don't have a .page-content wrapper (unlike every other page), which
+    // silently swallowed every showAlert() call on those two pages —
+    // nothing ever threw, the alert just never made it into the document.
+    // Falling back through .main-content to document.body means a missing
+    // wrapper on any page, now or in the future, can't cause this again.
+    const container = document.querySelector('.page-content')
+        || document.querySelector('.main-content')
+        || document.body;
+    container.insertBefore(alert, container.firstChild);
+    setTimeout(() => alert.remove(), 3000);
 }
 
 // Format date
@@ -118,6 +126,68 @@ function closeModal(modalId) {
     if (modal) {
         modal.classList.remove('show');
     }
+}
+
+// Reusable Yes/No confirmation dialog, built from this app's own .modal/
+// .modal-content/.modal-header/.modal-footer classes (same clay-themed
+// chrome as every other dialog in the app — see css/style.css) instead of
+// the browser's plain native confirm(), which can't be styled at all.
+// Injected into the DOM on demand, so any page that already loads
+// utils.js can call this with zero markup of its own. Text is set via
+// textContent (not innerHTML), so the message/labels never need escaping
+// even if a caller passes something dynamic.
+function confirmAction(message, onConfirm, options = {}) {
+    const existing = document.getElementById('confirmActionModal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'confirmActionModal';
+    overlay.className = 'modal show';
+
+    const content = document.createElement('div');
+    content.className = 'modal-content';
+    content.style.maxWidth = '420px';
+
+    const header = document.createElement('div');
+    header.className = 'modal-header';
+    const title = document.createElement('h2');
+    title.textContent = options.title || 'Please Confirm';
+    const closeX = document.createElement('span');
+    closeX.className = 'modal-close';
+    closeX.textContent = '×';
+    header.append(title, closeX);
+
+    const body = document.createElement('div');
+    body.className = 'modal-body';
+    const messageEl = document.createElement('p');
+    messageEl.style.margin = '0';
+    messageEl.textContent = message;
+    body.appendChild(messageEl);
+
+    const footer = document.createElement('div');
+    footer.className = 'modal-footer';
+    const noBtn = document.createElement('button');
+    noBtn.type = 'button';
+    noBtn.className = 'btn btn-secondary';
+    noBtn.textContent = options.cancelLabel || 'No';
+    const yesBtn = document.createElement('button');
+    yesBtn.type = 'button';
+    yesBtn.className = 'btn btn-primary';
+    yesBtn.textContent = options.confirmLabel || 'Yes';
+    footer.append(noBtn, yesBtn);
+
+    content.append(header, body, footer);
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+
+    const cleanup = () => overlay.remove();
+    closeX.addEventListener('click', cleanup);
+    noBtn.addEventListener('click', cleanup);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(); });
+    yesBtn.addEventListener('click', () => {
+        cleanup();
+        onConfirm();
+    });
 }
 
 // Initialize date input with today's date

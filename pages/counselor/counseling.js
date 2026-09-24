@@ -1488,6 +1488,15 @@ async function saveFollowUp() {
         return;
     }
 
+    // Confirmed only after every field above is already valid — same
+    // reasoning as submitAppointments()'s confirmAction() call above.
+    confirmAction(
+        'Are you sure you want to save this follow-up?',
+        () => finishSaveFollowUp(modal, caseId, record, date, entries)
+    );
+}
+
+async function finishSaveFollowUp(modal, caseId, record, date, entries) {
     const user = getCurrentUser();
 
     try {
@@ -1526,7 +1535,7 @@ async function saveFollowUp() {
         }
 
         saveData('counselor_case_records', caseDrafts);
-        showAlert('Follow-up recorded successfully.', 'success');
+        showAlert('Follow-up saved successfully.', 'success');
         closeFollowUpModal();
         renderRecentCases();
     } catch (error) {
@@ -1829,6 +1838,20 @@ async function submitAppointments() {
         return;
     }
 
+    // Confirmed only after every field above is already valid — asking
+    // "are you sure" before that would risk confirming, then immediately
+    // hitting a validation error, which reads as if the confirmation itself
+    // failed. confirmAction() (js/utils.js) is styled with this app's own
+    // .modal chrome instead of the browser's plain native confirm(), and
+    // is event-driven rather than blocking — so everything that used to
+    // run after a synchronous confirm() moves into its Yes callback.
+    confirmAction(
+        `Are you sure you want to appoint the selected student${checked.length > 1 ? 's' : ''}?`,
+        () => finishAppointmentSubmission(modal, caseId, record, checked, date, time, reason, notes)
+    );
+}
+
+async function finishAppointmentSubmission(modal, caseId, record, checked, date, time, reason, notes) {
     const user   = getCurrentUser();
     const school = user?.school_attended || '';
 
@@ -1864,7 +1887,7 @@ async function submitAppointments() {
     const bookedStudents = checked.filter((cb, i) => results[i].status === 'fulfilled');
 
     if (succeeded) {
-        showAlert(`Appointment${succeeded > 1 ? 's' : ''} requested for ${succeeded} student${succeeded > 1 ? 's' : ''}.`, 'success');
+        showAlert(`Appointment${succeeded > 1 ? 's' : ''} scheduled successfully for ${succeeded} student${succeeded > 1 ? 's' : ''}.`, 'success');
         closeAppointModal();
 
         // Booking a counseling session also logs it on the case timeline —
@@ -1924,21 +1947,23 @@ async function submitAppointments() {
     }
 }
 
-async function endCase(caseId) {
+function endCase(caseId) {
     const record = caseDrafts.find(r => r.id === caseId);
     if (!record) return;
 
-    if (!confirm(`End case ${record.id}? This marks it as resolved and closes it for further follow-ups.`)) {
-        return;
-    }
+    // confirmAction() (js/utils.js) is styled with this app's own .modal
+    // chrome instead of the browser's plain native confirm().
+    confirmAction('Are you sure you want to end this case?', () => finishEndCase(record));
+}
 
+async function finishEndCase(record) {
     const previousStatus = record.status;
     record.status = 'closed';
 
     try {
         await persistCaseUpdate(record);
         saveData('counselor_case_records', caseDrafts);
-        showAlert('Case ended successfully.', 'success');
+        showAlert('Case closed successfully.', 'success');
         renderRecentCases();
     } catch (error) {
         record.status = previousStatus;

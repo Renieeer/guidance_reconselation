@@ -8,6 +8,11 @@ let currentEditingAppointmentId = null;
 let currentAppointmentRequest = null;
 let editingScheduleEventId = null; // set when createScheduleModal is opened to edit an existing event
 
+function capitalizeFirst(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
 function getTodayDateStr() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

@@ -1619,7 +1619,9 @@ function confirmConsentDecision() {
 }
 
 function closeCase() {
-    if (confirm('Are you sure you want to close this case?')) {
+    // confirmAction() (js/utils.js) is styled with this app's own .modal
+    // chrome instead of the browser's plain native confirm().
+    confirmAction('Are you sure you want to end this case?', () => {
         const apiUrl = `../../api/update-referral.php`;
         const user = getCurrentUser();
 
@@ -1651,7 +1653,7 @@ function closeCase() {
             console.error('Error closing case:', error);
             showAlert('Error closing case. Please try again.', 'error');
         });
-    }
+    });
 }
 
 function backToList() {
