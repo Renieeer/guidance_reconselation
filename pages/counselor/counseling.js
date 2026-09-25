@@ -1849,6 +1849,10 @@ async function submitAppointments() {
         return;
     }
 
+    const submitBtn = document.getElementById('appointSubmitBtn');
+    submitBtn.disabled = true;
+    try {
+
     const user   = getCurrentUser();
     const school = user?.school_attended || '';
 
@@ -1941,6 +1945,10 @@ async function submitAppointments() {
     if (failed.length) {
         console.error('Appointment request failures:', failed.map(f => f.reason?.message));
         showAlert(`${failed.length} appointment request${failed.length > 1 ? 's' : ''} failed: ${failed[0].reason?.message || 'Unknown error'}`, 'warning');
+    }
+
+    } finally {
+        submitBtn.disabled = false;
     }
 }
 

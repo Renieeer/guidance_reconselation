@@ -87,12 +87,20 @@ async function loadAll() {
     state.referrals = referralRes.data || [];
 }
 
+// Bumped on every call so that if the school/level selection changes again
+// before an in-flight fetch resolves, that older request's response gets
+// dropped instead of overwriting the newer (and thus correct) selection's
+// data — same reportRequestId pattern as district-report-cases.js.
+let scopedRequestId = 0;
+
 async function loadScopedCategories() {
+    const requestId = ++scopedRequestId;
     if (!state.school) {
         state.categoriesScoped = state.categoriesAll;
         return;
     }
     const res = await fetchJson(`../../api/case-report.php?action=categories&school=${encodeURIComponent(state.school)}`);
+    if (requestId !== scopedRequestId) return; // superseded by a newer selection
     state.categoriesScoped = { sections: res.sections || [], counts: res.counts || {}, grades: res.grades || [] };
 }
 

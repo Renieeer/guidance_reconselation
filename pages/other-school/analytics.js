@@ -881,10 +881,11 @@ async function init() {
     try {
         // loadReportLetterhead is awaited alongside the rest so Export PDF
         // never races it — see report-letterhead.js.
+        const gradeScope = typeof getCurrentGradeScope === 'function' ? getCurrentGradeScope() : '';
         const [apptRes, refRes, studentsRes, levelRes] = await Promise.all([
-            fetch(`../../api/appointment-request.php?school=${encodeURIComponent(school)}`).then(r => r.json()),
-            fetch(`../../api/referral.php?role=${encodeURIComponent(getReferralApiRole())}&school=${encodeURIComponent(school)}`).then(r => r.json()),
-            fetch(`../../api/get-students.php?school=${encodeURIComponent(school)}`).then(r => r.json()),
+            fetch(`../../api/appointment-request.php?school=${encodeURIComponent(school)}&grade_scope=${encodeURIComponent(gradeScope)}`).then(r => r.json()),
+            fetch(`../../api/referral.php?role=${encodeURIComponent(getReferralApiRole())}&school=${encodeURIComponent(school)}&grade_scope=${encodeURIComponent(gradeScope)}`).then(r => r.json()),
+            fetch(`../../api/get-students.php?school=${encodeURIComponent(school)}&grade_scope=${encodeURIComponent(gradeScope)}`).then(r => r.json()),
             fetch(`../../api/school-config.php?action=getGrades&school=${encodeURIComponent(school)}`).then(r => r.json()).catch(() => null),
             loadReportLetterhead(school),
         ]);

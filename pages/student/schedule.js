@@ -343,7 +343,7 @@ function renderAppointmentCalendar() {
         const dayEvents = [
             ...appointments.filter(a => String(a.date || '').startsWith(dateStr)).map(a => ({ id: a.id || '', title: a.reason || 'Appointment', type: a.status || 'Pending', description: a.notes || '', start: a.date || '', end: a.endDate || '', isRequest: false, category: 'counseling' })),
             ...scheduleEvents.filter(event => isDateInEvent(event, dateStr)).map(event => ({ id: event.id || '', title: event.title || 'Schedule', type: event.type || 'Event', description: event.description || '', start: event.date || '', end: event.endDate || '', isRequest: false, category: 'event' })),
-            ...appointmentRequests.filter(req => req.preferred_date === dateStr).map(req => ({ id: req.id || '', title: req.student_name || 'Request', type: 'pending', description: req.reason || '', start: req.preferred_date || '', end: req.preferred_date || '', isRequest: true, requestData: req, category: req.counselor_notes === 'Scheduled directly by counselor' ? 'counseling' : 'online' }))
+            ...appointmentRequests.filter(req => req.preferred_date === dateStr).map(req => ({ id: req.id || '', title: req.student_name || 'Request', type: 'pending', description: req.reason || '', start: req.preferred_date || '', end: req.preferred_date || '', isRequest: true, requestData: req, category: req.booking_type === 'counseling' ? 'counseling' : 'online' }))
         ];
 
         html += `<div class="schedule-calendar-day ${isOutside ? 'is-outside' : ''} ${isToday ? 'is-today' : ''}" data-date="${dateStr}">

@@ -1990,6 +1990,11 @@ function submitWalkInReferral(e) {
         status: 'pending'
     };
 
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
     fetch('../../api/referral.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2008,6 +2013,10 @@ function submitWalkInReferral(e) {
         })
         .catch(error => {
             showAlert(error.message || 'Failed to submit referral', 'error');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
         });
 }
 

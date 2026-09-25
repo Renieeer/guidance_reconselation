@@ -72,11 +72,6 @@ async function refreshScheduleEventsSafely() {
     } catch (error) {
         console.error('Error loading schedule events:', error);
         showAlert(error.message || 'Unable to load schedule events', 'error');
-    
-        if (ev.kind === 'appointment' || ev.student_id || ev.student_name) {
-            viewRequestDetails(ev.id);
-            return;
-        }
     }
 }
 
