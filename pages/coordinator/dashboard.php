@@ -58,7 +58,7 @@
                             <p>Awaiting review</p>
                         </div>
                         <div class="card-footer">
-                            <a href="referrals.html?status=pending" class="btn btn-warning btn-sm">Review</a>
+                            <a href="referrals.php?status=pending" class="btn btn-warning btn-sm">Review</a>
                         </div>
                     </div>
 
@@ -75,7 +75,7 @@
                             <p>Currently in progress</p>
                         </div>
                         <div class="card-footer">
-                            <a href="referrals.html?status=active" class="btn btn-primary btn-sm">Manage</a>
+                            <a href="referrals.php?status=active" class="btn btn-primary btn-sm">Manage</a>
                         </div>
                     </div>
 

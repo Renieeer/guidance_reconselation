@@ -151,12 +151,12 @@ function getStatusLabel(stage) {
     const labels = {
         1: 'pending',
         2: 'pending',
-        3: 'processing',
-        4: 'processing',
-        5: 'processing',
+        3: 'in-progress',
+        4: 'in-progress',
+        5: 'in-progress',
         6: 'completed'
     };
-    return labels[stage] || 'unknown';
+    return labels[stage] || 'pending';
 }
 
 // Logout functionality

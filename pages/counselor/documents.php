@@ -787,11 +787,8 @@
             }
         }
 
-        function logout() {
-            sessionStorage.clear();
-            localStorage.removeItem('currentUser');
-            window.location.href = '../../index.php';
-        }
+        // Logout is provided by js/auth.js (calls api/logout.php to clear the
+        // server-side session token) — do not redeclare it here.
     </script>
 </body>
 </html>

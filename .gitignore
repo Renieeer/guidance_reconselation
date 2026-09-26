@@ -3,4 +3,8 @@ api/mail-config.php
 
 # Runtime logs
 api/logs/
+
+# Full database dump — contains real password hashes, student PII, and
+# parent contact info. Never commit; keep this file local-only.
+guidance_tbl.sql
          

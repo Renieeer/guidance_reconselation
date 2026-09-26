@@ -28,6 +28,7 @@
                 </button>
             </div>
 
+            <div class="page-content">
             <div class="case-dashboard" id="caseFormWrapper" style="display:none;">
                 <form id="caseCreateForm" class="case-form card">
                     <div class="form-section">
@@ -182,6 +183,7 @@
                     </table>
                 </div>
             </div>
+            </div>
         </div>
     </div>
 
@@ -208,7 +210,7 @@
             <div class="modal-body" id="appointBody"></div>
             <div class="form-actions" style="padding:16px 32px 24px;">
                 <button type="button" class="btn btn-secondary" onclick="closeAppointModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitAppointments()"><i class="bi bi-check2"></i> Appoint selected</button>
+                <button type="button" class="btn btn-primary" id="appointSubmitBtn" onclick="submitAppointments()"><i class="bi bi-check2"></i> Appoint selected</button>
             </div>
         </div>
     </div>

@@ -87,7 +87,7 @@ function displayReferralProgress(referrals) {
         viewLink.href = `referral-status.php?ref=${encodeURIComponent(latest.id)}`;
     }
     const currentStage = parseInt(latest.stage || latest.progress_stage || 1) || 1;
-    const progress = (currentStage / 6) * 100;
+    const progress = (currentStage / 7) * 100;
 
     const stageLabels = {
         1: 'Interview/Background',
@@ -95,7 +95,8 @@ function displayReferralProgress(referrals) {
         3: 'Parent Call-up/Consent',
         4: 'Intervention',
         5: 'Counseling',
-        6: 'Student Follow-up'
+        6: 'Student Follow-up',
+        7: 'Case Closing'
     };
 
     const statusColor = getProgressColor(latest.status);
@@ -107,7 +108,7 @@ function displayReferralProgress(referrals) {
                 <div style="height: 100%; width: ${progress}%; background: ${statusColor}; transition: width 0.3s ease;"></div>
             </div>
             <small style="color: #6b7280; display: block;">
-                <strong>Stage ${currentStage}/6</strong> - ${stageLabels[currentStage] || 'In Progress'}
+                <strong>Stage ${currentStage}/7</strong> - ${stageLabels[currentStage] || 'In Progress'}
             </small>
         </div>
     `;

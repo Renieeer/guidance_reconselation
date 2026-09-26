@@ -1676,9 +1676,9 @@ function loadListView() {
     tbody.innerHTML = allReferrals.map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
+            <td>${escapeHtml(referral.student_name)} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
-            <td>${referral.referral_reason}</td>
+            <td>${escapeHtml(referral.referral_reason)}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${referral.urgency || 'normal'}</td>
             <td>${referral.stage}/7</td>
@@ -1718,9 +1718,9 @@ function applyStageFilter() {
     tbody.innerHTML = filtered.map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
+            <td>${escapeHtml(referral.student_name)} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
-            <td>${referral.referral_reason}</td>
+            <td>${escapeHtml(referral.referral_reason)}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${referral.urgency || 'normal'}</td>
             <td>${referral.stage}/7</td>
@@ -2204,6 +2204,11 @@ function submitWalkInReferral(e) {
     const payload = people.map(person => Object.assign({}, shared, person));
     const body = payload.length === 1 ? payload[0] : payload;
 
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
     fetch('../../api/referral.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2222,6 +2227,10 @@ function submitWalkInReferral(e) {
         })
         .catch(error => {
             showAlert(error.message || 'Failed to submit referral', 'error');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
         });
 }
 

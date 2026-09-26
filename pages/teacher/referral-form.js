@@ -806,6 +806,9 @@ function submitReferralForm(e) {
     // only 2+ people switches to the array/batch form.
     const body = payload.length === 1 ? payload[0] : payload;
 
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
     fetch('../../api/referral.php', {
         method: 'POST',
         headers: {
@@ -836,6 +839,9 @@ function submitReferralForm(e) {
     .catch(error => {
         console.error('Error submitting referral:', error);
         showErrorMessage('Error submitting referral. Please try again.');
+    })
+    .finally(() => {
+        if (submitBtn) submitBtn.disabled = false;
     });
 }
 

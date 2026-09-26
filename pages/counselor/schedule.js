@@ -225,7 +225,7 @@ const SCHEDULE_CATEGORY_META = {
 
 function getEventCategory(event, isAppointment) {
     if (!isAppointment) return 'event';
-    return event.counselor_notes === 'Scheduled directly by counselor' ? 'counseling' : 'online';
+    return event.booking_type === 'counseling' ? 'counseling' : 'online';
 }
 
 function getAppointmentTypeClass(status) {
@@ -807,18 +807,20 @@ function approveAppointment(requestId) {
 
 function proposeChanges(requestId) {
     currentEditingAppointmentId = requestId;
-    const tbody = document.getElementById('appointmentRequestsBody');
-    const row = tbody.querySelector(`button[onclick*="${requestId}"]`)?.closest('tr');
-    
-    if (!row) {
+    // Pulled from the raw request data (not the table cells, which hold
+    // display-formatted text) so the date/time inputs get real ISO/24h
+    // values instead of strings like "Wed, Jan 7, 2026" that <input type="date">
+    // silently rejects.
+    const request = (appointmentCalendarEvents || []).find(r => String(r.id) === String(requestId));
+
+    if (!request) {
         showAlert('Request not found', 'error');
         return;
     }
 
-    const cells = row.cells;
-    document.getElementById('editStudentName').value = cells[0].textContent;
-    document.getElementById('editAppointmentDate').value = cells[1].textContent;
-    document.getElementById('editAppointmentTime').value = cells[2].textContent;
+    document.getElementById('editStudentName').value = request.student_name || '';
+    document.getElementById('editAppointmentDate').value = request.preferred_date || '';
+    document.getElementById('editAppointmentTime').value = (request.preferred_time || '').slice(0, 5);
     document.getElementById('editAppointmentLocation').value = 'Counseling Office';
     document.getElementById('editAppointmentNotes').value = '';
 
@@ -846,7 +848,9 @@ function submitEditAppointment(e) {
         id: currentEditingAppointmentId,
         status: 'proposed_change',
         counselor_id: user?.id || 0,
-        counselor_notes: document.getElementById('editAppointmentNotes').value || 'Proposed time change by counselor'
+        counselor_notes: document.getElementById('editAppointmentNotes').value || 'Proposed time change by counselor',
+        preferred_date: document.getElementById('editAppointmentDate').value,
+        preferred_time: document.getElementById('editAppointmentTime').value
     };
 
     fetch('../../api/appointment-request.php', {

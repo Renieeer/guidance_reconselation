@@ -9,6 +9,7 @@ async function initReferralsPage() {
 
     const params = new URLSearchParams(window.location.search);
     const referralId = params.get('id');
+    const statusParam = params.get('status');
 
     // Fetch referrals from database
     fetchCoordinatorReferrals()
@@ -20,6 +21,15 @@ async function initReferralsPage() {
                 } else {
                     loadReferralsList();
                 }
+            } else if (statusParam) {
+                // Dashboard quick links use 'pending'/'active'/'completed';
+                // 'active' maps to the 'in-progress' filter value (stages 3-6).
+                const statusFilterValue = statusParam === 'active' ? 'in-progress' : statusParam;
+                const statusFilterEl = document.getElementById('statusFilter');
+                if ([...statusFilterEl.options].some(opt => opt.value === statusFilterValue)) {
+                    statusFilterEl.value = statusFilterValue;
+                }
+                applyFilters();
             } else {
                 loadReferralsList();
             }
@@ -278,9 +288,9 @@ function loadReferralsList() {
     tbody.innerHTML = allReferrals.map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
+            <td>${escapeHtml(referral.student_name)} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
-            <td>${referral.referral_reason}</td>
+            <td>${escapeHtml(referral.referral_reason)}</td>
             <td>${referral.teacher_name || 'Unknown'}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${referral.urgency || 'normal'}</td>
@@ -331,9 +341,9 @@ function applyFilters() {
     tbody.innerHTML = filtered.map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
+            <td>${escapeHtml(referral.student_name)} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
-            <td>${referral.referral_reason}</td>
+            <td>${escapeHtml(referral.referral_reason)}</td>
             <td>${referral.teacher_name || 'Unknown'}</td>
             <td>${formatDate(referral.date_submitted)}</td>
             <td>${referral.urgency || 'normal'}</td>

@@ -409,6 +409,10 @@ try {
         $status = trim((string)($payload['status'] ?? ''));
         $counselor_id = (int)($payload['counselor_id'] ?? 0);
         $counselor_notes = trim((string)($payload['counselor_notes'] ?? ''));
+        // Optional — only sent by "Propose New Time" (status=proposed_change).
+        // Approve/reject calls omit these, so the columns are left untouched.
+        $preferred_date = trim((string)($payload['preferred_date'] ?? ''));
+        $preferred_time = trim((string)($payload['preferred_time'] ?? ''));
 
         if ($request_id === '' || $status === '') {
             send_json(400, ['success' => false, 'message' => 'Missing required fields']);
@@ -421,13 +425,31 @@ try {
         $previousStatusStmt->close();
         $previousStatus = $previousStatusRow['status'] ?? null;
 
-        $sql = "UPDATE appointment_requests SET status = ?, counselor_id = ?, counselor_notes = ? WHERE request_id = ?";
+        $sql = "UPDATE appointment_requests SET status = ?, counselor_id = ?, counselor_notes = ?";
+        $types = 'sis';
+        $params = [$status, $counselor_id, $counselor_notes];
+
+        if ($preferred_date !== '') {
+            $sql .= ", preferred_date = ?";
+            $types .= 's';
+            $params[] = $preferred_date;
+        }
+        if ($preferred_time !== '') {
+            $sql .= ", preferred_time = ?";
+            $types .= 's';
+            $params[] = $preferred_time;
+        }
+
+        $sql .= " WHERE request_id = ?";
+        $types .= 's';
+        $params[] = $request_id;
+
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
             send_json(500, ['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
         }
 
-        $stmt->bind_param('siss', $status, $counselor_id, $counselor_notes, $request_id);
+        $stmt->bind_param($types, ...$params);
 
         if (!$stmt->execute()) {
             send_json(500, ['success' => false, 'message' => 'Update failed: ' . $stmt->error]);

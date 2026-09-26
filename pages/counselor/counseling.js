@@ -1770,7 +1770,27 @@ function openAppointModal(caseId) {
                 <div class="fu-form-row-two">
                     <div class="fu-form-field">
                         <label class="fu-form-label">Preferred time</label>
-                        <input type="time" id="appoint-time" class="fu-form-input">
+                        <select id="appoint-time" class="fu-form-input">
+                            <option value="">Select a time...</option>
+                            <optgroup label="Morning (8:00 AM - 12:00 PM)">
+                                <option value="08:00">8:00 AM</option>
+                                <option value="08:30">8:30 AM</option>
+                                <option value="09:00">9:00 AM</option>
+                                <option value="09:30">9:30 AM</option>
+                                <option value="10:00">10:00 AM</option>
+                                <option value="10:30">10:30 AM</option>
+                                <option value="11:00">11:00 AM</option>
+                                <option value="11:30">11:30 AM</option>
+                            </optgroup>
+                            <optgroup label="Afternoon (1:00 PM - 4:00 PM)">
+                                <option value="13:00">1:00 PM</option>
+                                <option value="13:30">1:30 PM</option>
+                                <option value="14:00">2:00 PM</option>
+                                <option value="14:30">2:30 PM</option>
+                                <option value="15:00">3:00 PM</option>
+                                <option value="15:30">3:30 PM</option>
+                            </optgroup>
+                        </select>
                     </div>
                     <div class="fu-form-field">
                         <label class="fu-form-label">Reason</label>
@@ -1852,6 +1872,11 @@ async function submitAppointments() {
 }
 
 async function finishAppointmentSubmission(modal, caseId, record, checked, date, time, reason, notes) {
+    const submitBtn = document.getElementById('appointSubmitBtn');
+    submitBtn.disabled = true;
+    try {
+
+
     const user   = getCurrentUser();
     const school = user?.school_attended || '';
 
@@ -1944,6 +1969,10 @@ async function finishAppointmentSubmission(modal, caseId, record, checked, date,
     if (failed.length) {
         console.error('Appointment request failures:', failed.map(f => f.reason?.message));
         showAlert(`${failed.length} appointment request${failed.length > 1 ? 's' : ''} failed: ${failed[0].reason?.message || 'Unknown error'}`, 'warning');
+    }
+
+    } finally {
+        submitBtn.disabled = false;
     }
 }
 

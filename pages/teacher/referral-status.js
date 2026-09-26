@@ -97,10 +97,10 @@ function loadReferralsList() {
     tbody.innerHTML = referrals.reverse().map(referral => `
         <tr>
             <td><strong>${referral.referral_code || referral.id}</strong></td>
-            <td>${referral.student_name} ${referralRoleBadge(referral.referral_role)}</td>
+            <td>${escapeHtml(referral.student_name)} ${referralRoleBadge(referral.referral_role)}</td>
             <td>${referral.grade || 'N/A'}</td>
             <td>${formatDate(referral.date_submitted)}</td>
-            <td>${referral.referral_reason}</td>
+            <td>${escapeHtml(referral.referral_reason)}</td>
             <td><strong>${referral.stage}/7</strong></td>
             <td>${createBadge(referral.status)}</td>
             <td>
