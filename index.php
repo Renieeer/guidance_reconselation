@@ -15,7 +15,7 @@
     <!-- NAVBAR -->
     <nav id="navbar">
         <a class="nav-brand" href="index.php">
-            <span class="nav-dot"></span> Guidance Portal
+            <span class="nav-dot"></span> EGuide
         </a>
         <button class="nav-toggle" id="navToggle" aria-label="Menu">
             <i class="bi bi-list"></i>
@@ -215,7 +215,7 @@
 
     <!-- FOOTER -->
     <footer>
-        <div class="footer-brand">Guidance Portal</div>
+        <div class="footer-brand">EGuide</div>
         <div class="footer-copy">&copy; <?php echo date('Y'); ?> Guidance Management System. All rights reserved.</div>
         <ul class="footer-nav">
             <li><a href="#features">Features</a></li>

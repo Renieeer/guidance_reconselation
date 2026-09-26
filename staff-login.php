@@ -13,7 +13,7 @@
 <body class="auth-page" data-portal="staff">
     <nav id="navbar">
         <a class="nav-brand" href="index.php">
-            <span class="nav-dot"></span> Guidance Portal
+            <span class="nav-dot"></span> EGuide
         </a>
         <button class="nav-toggle" id="navToggle" aria-label="Menu">
             <i class="bi bi-list"></i>
